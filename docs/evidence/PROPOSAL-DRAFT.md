@@ -68,19 +68,25 @@ PMV's increment: verdicts carry reasons and evidence citations, not just differe
 
 A runnable minimum prototype exists at https://github.com/yijigao/pkgmeta-verify (Apache-2.0). Current state: **zero failures in the existing test suite (56/56); PMV is a proof of concept.**
 
-Baseline evidence cases (each with snapshots, results, and SHA-256 manifest):
+**Frozen baseline** (5 cases, each with snapshots, results, and SHA-256 manifest — 12/12 hash-verified):
 
 | Case | Verdict | Status |
 |---|---|---|
-| `pkg:pypi/hatch-vcs` | Real parser fault (deps.dev mislabeled SOURCE_REPO as the funding URL) | **Proven** — confirmed by deps.dev's own team in issue #220; `git ls-remote` falsification |
-| `pkg:pypi/validfilepath@0.1` | Sync delay | **Proven** — complete time chain, original HTTP response headers |
-| `pkg:pypi/django-flowcontrol@0.0.21` | INDETERMINATE | **Proven** — genuine missing evidence, naturally undecidable, not constructed |
+| `pkg:pypi/typing-extensions@4.12.2` | Standards contradiction (earlier fault attribution falsified and removed) | Documented |
+| `pkg:pypi/archgraph-layout@2.3.0` | Suspected delay | **suspect/retracted** — time-order contradiction unresolved |
 | `pkg:npm/esprima@4.0.1` | License semantic difference | Documented with field/facet scope |
-| `pkg:pypi/archgraph-layout@2.3.0` | Suspected delay | **suspect/retracted** — time-order contradiction could not be resolved |
-| `pkg:npm/debug@4.3.4` | INDETERMINATE | Synthetic cross-algorithm test, marked `synthetic=true` |
-| `pkg:npm/synthetic-fixture@1.0.0` | DIGEST_CONFLICT | Constructed fixture, marked `synthetic=true` |
+| `pkg:npm/debug@4.3.4` | INDETERMINATE | Synthetic cross-algorithm test, `synthetic=true` |
+| `pkg:npm/synthetic-fixture@1.0.0` | DIGEST_CONFLICT | Constructed fixture, `synthetic=true` |
 
-An earlier unilateral fault attribution for `typing-extensions@4.12.2` (downstream parsing error) was **falsified and removed**: both sides complied with their own specifications; the case is a standards contradiction, not a provable field error.
+**Supplementary documented cases** (reports only; raw collection records being added as supplementary evidence, not part of the frozen 5-case baseline):
+
+| Case | Verdict | Status |
+|---|---|---|
+| `pkg:pypi/hatch-vcs@0.4.0` | Real repository-link error (deps.dev listed the funding URL as SOURCE_REPO) | **Documented** — link error publicly reported in deps.dev issue #220; the specific parsing mechanism is unconfirmed (the deps.dev team suspects a spec-change-related cause and is investigating); `git ls-remote` shows the funding URL is not a Git repository |
+| `pkg:pypi/validfilepath@0.1` | Sync delay | **Documented** — complete time chain claimed; original HTTP records being archived as supplementary evidence |
+| `pkg:pypi/django-flowcontrol@0.0.21` | INDETERMINATE | **Documented** — genuine missing evidence, naturally undecidable, not constructed |
+
+Byte-identical replay results are reported after isolating `evaluation_timestamp` (clock-dependent fields are normalised before comparison; this is documented in `rerun-report.md`).
 
 ---
 
@@ -92,8 +98,10 @@ Versioned inspection rules (`rules v0.1`) with:
 - Artifact identity requires valid digest content, not just key names.
 - Algorithm names normalised before length checks; unknown algorithms → `undecidable`.
 - Future times rejected against the real clock; HTTP statuses reported exactly.
-- Blank/unknown license values → `undecidable`; confidence scored by evidence strength, never hardcoded 1.0.
-- No hardcoded assertions from keyword hits or self-attested flags.
+- Blank/unknown license values → `undecidable`; confidence is scored by evidence strength in the general case.
+- No hardcoded assertions from keyword hits or self-attested flags as a design goal.
+
+**Known limitations of the proof of concept** (disclosed): some verdict paths still carry hardcoded `confidence: 1.0` (e.g. `verifier.py` L1097), and the PSF-license branch can trigger on license title text plus "version 2" alone (L346) without authorisation/conditions/disclaimer text. These are documented limitations, not claimed-away. The "concept validation" standard at the top of this proposal does not cancel these specific limitations.
 
 The output contract (JSON Schema, Draft 2020-12) carries field-level verdicts, provenance, observation times, and minimal evidence packages.
 
@@ -110,7 +118,7 @@ The output contract (JSON Schema, Draft 2020-12) carries field-level verdicts, p
 
 ## 8. Independent rerun
 
-An independent rerun (non-implementer, clean environment) is a pre-submission requirement. The implementer was an AI agent working to a human-authored task specification; the rerun must be performed by a different party with full attribution (identity, relationship to the project, commit, dependency versions, commands, raw logs). The rerun record is archived in `docs/evidence/`; the rerun's own honest conclusions are preserved verbatim, including any findings against the project.
+An independent rerun (non-implementer, clean environment) is a pre-submission requirement. The implementer was an AI agent working to an AI-agent-authored task specification (TASK-PMV-gemini.md); the rerun must be performed by a different party with full attribution (identity, relationship to the project, commit, dependency versions, commands, raw logs). The rerun performed to date was done by a non-implementer **within the same applicant AI team** — this is documented as such and is not presented as external third-party verification. The rerun record is archived in `docs/evidence/`; the rerun's own honest conclusions are preserved verbatim, including any findings against the project.
 
 ---
 
@@ -145,6 +153,8 @@ Clear boundary: the prototype, baseline cases, rules, Schema, and self-test proc
 | M1: Alignment + core verification | Month 3 | €6,000 | CLI/library completion; dual-ecosystem adapters; 200 coordinates; four categories of real evidence plus separately-marked constructed tests; rules, Schema, evidence package, CI |
 | M2: Lifecycle + dataset | Month 5 | €5,000 | 1,000 coordinates × 3 observation rounds; 100 coordinates daily; ≥100 boundary tests; evidence-backed lifecycle records; dataset v1 |
 | M3: Independent reproduction + scorecard | Month 7 | €2,500 | Complete records from two independent rerunners; fixed-input result comparison; scorecard and time series |
+
+**M3 rerunner arrangements**: the two independent rerunners are third parties external to the applicant's AI team (not the implementer, not the applicant). The applicant's budgeted hours cover preparation of the reproduction package, coordination, and analysis of results — **not** the third-party execution itself, which is covered by the M3 budget (€2,500, including €100 non-labour for their environments). Self-tests and the applicant-team rerun are documented separately and are **not** counted as independent acceptance.
 | M4: Release + upstream adaptation | Month 9 | €1,500 | v1.0, install/reproduction manual, integration examples, upstream submissions with feedback-handling records, SBOM, release checksums |
 
 - Third-party replies, adoption, or merges are **not** acceptance criteria.
@@ -194,19 +204,17 @@ Per the eligibility terms, non-qualifying-region applicants must separately supp
 
 ### 11.2 Applicant's unique technical expertise (Jigao Yi)
 
-Three-layer credentials, each with the applicant's own contribution and verification scope:
+Contribution — technical judgment — verifiable evidence mapping (applicant's own work only; AI assistance disclosed per §13):
 
-| Layer | Evidence | Relation to PMV |
+| Applicant's contribution | Technical judgment demonstrated | Verifiable evidence |
 |---|---|---|
-| **Primary: Market Evidence Check** | Versioned rules, timeliness judgments, structured reasons, fixed snapshots, API/connector integration | Evidence collection, rule execution, reproducible verdicts |
-| **Supporting: dsh custom patches** | Public fork of the DeepSeek project; protocol adaptation, tool-message normalisation, endpoint fault localisation, regression records | Cross-source interface semantics, multi-step integration fault handling |
-| **Auxiliary: OKX scanner** | Sanitised collection code, recovery mechanisms, logs, maintenance postmortems | Continuous observation and operations |
+| Designed the Market Evidence Check rule system: versioned rules, timeliness judgments, structured reasons, fixed snapshots | Judged that aggregator-style evidence must be reproducible from fixed inputs, not live pages | [MEC project](https://github.com/yijigao/market-evidence-check-devday) — code, rules, test records |
+| Diagnosed three dsh adapter faults (tool-result protocol mismatch, 429 retry policy, Claude thinking-signature replay) and wrote the fixes | Judged that cascading endpoint fallbacks mask the real error; added per-endpoint status/body logging to expose it | `docs/evidence/dsh-patches.md` + 4 diffs with SHA-256 and regression records; dsh is DeepSeek's project, the [fork](https://github.com/yijigao/deepseek-harness) carries only the applicant's patches |
+| Specified PMV's verdict rules and evidence contract (rules v0.1, output Schema) | Judged that missing evidence must yield `undecidable`, never false "consistent"; confidence must follow evidence strength | This repository: rules, Schema, 56 regression tests, frozen baseline |
 
-- [MEC project](https://github.com/yijigao/market-evidence-check-devday) is the primary evidence, linking concrete code, rules, and test records.
 - terramike's external verification covered the `muse.md` + OpenAPI path for generating a reusable read-only skill, passing three smoke checks; it is **not** generalised to CLI/directory install-path verification or production maturity. [External report](https://github.com/terramike/xrpl-muse-skill/issues/8#issuecomment-6109879435)
-- dsh is DeepSeek's project; the [public repo](https://github.com/yijigao/deepseek-harness) is a fork. Only the applicant's own patches are claimed, with diffs and regression records; third-party adapter sources are listed separately.
-- OKX work supports general engineering capability only, not package-metadata domain expertise by itself.
-- PMV's own evidence and the three-layer credentials jointly support the application; general engineering credentials are not presented as a substitute for domain-specific expertise argumentation.
+- AI contributions: the PMV implementation was written by an AI agent (Gemini) to the applicant's task specification; outline revisions used DeepSeek/GPT-6.1-Sol/Astra Max; this draft was AI-assisted. All are logged in PROMPT-LOG.md. The applicant's claimed expertise is in the **specification, fault diagnosis, and verification design** — not in hand-writing every line.
+- PMV's own evidence and the above credentials jointly support the application; general engineering credentials are not presented as a substitute for domain-specific expertise argumentation.
 
 ### 11.3 Concrete European benefit
 
@@ -254,7 +262,7 @@ A prompt provenance log — model, date/time, prompts, and unedited outputs — 
 | Claim in this proposal | Evidence | Verification scope / limits |
 |---|---|---|
 | 56/56 regression tests, zero failures | `tests/`, `rerun-report.md`, independent rerun logs | Existing test set only; PMV is a proof of concept |
-| hatch-vcs real parser fault | `evidence/real-error-case-v2.md` | Confirmed by deps.dev team (issue #220); `git ls-remote` falsification |
+| hatch-vcs real link error | `evidence/real-error-case-v2.md` | Link error publicly reported (deps.dev #220); root-cause mechanism unconfirmed — **not** claimed as officially confirmed |
 | validfilepath sync delay | `evidence/delay-chain.md` | Complete time chain + original HTTP headers |
 | django-flowcontrol INDETERMINATE | `evidence/natural-undecidable-case.md` | Genuine missing evidence, not constructed |
 | archgraph-layout suspected delay | `evidence/delay-chain.md` + issue #39 comment | suspect/retracted; contradiction unresolved |

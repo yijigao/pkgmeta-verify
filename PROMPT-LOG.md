@@ -183,8 +183,17 @@
 - verifier.py 保持冻结；56/56 测试、MANIFEST 12/12 不受影响。
 
 ## 条目 25 — 提案正文草稿＋Schema $id 落实＋政策复查（2026-10-13 20:22，主聊）
-- 提案正文：孔明（Muse）按 rev3 大纲直接编写英文完整草稿 PROPOSAL-DRAFT.md（19,346 字节），供 Joey 定稿。模型：Muse Spark；时间：2026-10-13 20:22–20:40 CST；未编辑输出即草稿原文（公开副本：docs/evidence/PROPOSAL-DRAFT.md）。GenAI 披露按据实版写入 §13。
+- 提案正文：孔明（Muse）按 rev3 大纲直接编写英文完整草稿 PROPOSAL-DRAFT.md（19,346 字节），供 Joey 定稿。模型：Muse Spark；时间：2026-10-13 20:22–20:40 CST。
+- **正文生成 prompt**：主聊指令原文——"提案正文开写：按 rev3 大纲（已过 Astra 终审）写完整申请文本。英文正文；GenAI 披露按披露草稿（据实版）写入；人工主笔口径——正文由 Joey 定稿，你这边出完整草稿给他改。PROMPT-LOG 同步记录这次写作的模型/时间/prompt/未编辑输出。"（2026-10-13 20:22，主聊 handoff；非逐字重建，见本侧聊记录）
+- 未编辑输出即草稿原文（公开副本：docs/evidence/PROPOSAL-DRAFT.md）。GenAI 披露按据实版写入 §13。
 - Schema $id：`<tag>` 替换为 `v0.1`，tag 已打并推送；发现 $id 曾指向不存在的路径，已修正为真实可访问地址（curl 200 验证）；test_schema 断言同步对齐（$id 关口授权，非规则变更）；56/56 通过。
 - GenAI 政策复查：官网最新仍为 v1.1（2026-01-26 生效），无换版。
 - MoU 签署人＝申请人＝Jigao Yi（个人申请），草稿 §1、§14 已写明。
 - Astra 10 项 checklist：1（真实错误 hatch-vcs 成立）、2（validfilepath 延迟成立）、3（四类案例齐）、4（规则落实）、5（Schema 可用）、6（独立复跑：阿仁已跑，署名记录公开）、7（复跑程序）、8（材料统一）、9（例外口论证）、10（口径收口）——全部已落实。
+
+## 条目 26 — Astra 提案终审 8 项修正（2026-10-13 20:35，主聊；执行中）
+- 终审文件：ASTRA-PROPOSAL-FINAL-2026-10-13.md（审查版本 ef1b3a7；结论：修改后通过，当前不可提交）。
+- 孔明执行分工：
+  - 已修（本机）：① MANIFEST 重生成（$id 变更后）＋pmv.codesupply.org 残留清理＋提交检查纪律；② hatch-vcs 表述撤回（"官方确认"→"公开报告、机制未确认"）＋0.4.0 日期纠正（2023-11-06）＋坐标补全；③ §5 表头拆分（冻结基线 5 案例 vs 补充文档 3 案例）＋evaluation_timestamp 隔离声明；④ §6 去绝对化（披露 confidence 1.0 硬编码＋PSF 标题触发局限）；⑤ §8/§13 归属矛盾修正＋复跑归属明确；⑧ §10 M3 复跑者安排澄清；⑥ §11 专家链重写（贡献—判断—证据映射，删除 OKX）。
+  - Gemini 执行中（TASK-EVIDENCE-gemini.md）：③ 补充案例原始采集记录；⑦ 快照再分发索引；⑥ 接入示例。
+- 日志补齐：ASTRA-REV3FIX3、ASTRA-FINAL、ASTRA-PROPOSAL-FINAL 输出文件已公开；条目 25 补正文生成 prompt。

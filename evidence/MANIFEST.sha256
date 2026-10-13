@@ -1,5 +1,5 @@
 24334c2185bbb0b245c9173e6804467ebbc8fb8fada932d59ed943758ef3a06f  ../rules/rules-v0.1.json
-7a72b4df16ce262dc6ab3cb78d5b808f5840d879ca001a2b21bd1d679b4530b9  ../schemas/pmv-output.schema.json
+b5996ac42ba7e1d9156eb1d8e779bfcabd9933f67ef2b5a79bd664abb924fceb  ../schemas/pmv-output.schema.json
 b666ebb73446cae6a7a52ede7113f5d0294b03633ef11214e7053ff0d5ee131f  results/pkg-npm-debug-4.3.4.result.json
 e668d74fdbb8ee000e839a2ea41fc8b2bbf8ee4b757fa275e081bc7a890754b1  results/pkg-npm-esprima-4.0.1.result.json
 14c89563b3e8c4aeb9c607a8e362d971605f213832cc8dc92b946b8891b94f33  results/pkg-npm-synthetic-fixture-1.0.0.result.json
