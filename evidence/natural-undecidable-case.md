@@ -26,7 +26,7 @@
 - `info.license`: `null` (None)
 - `info.license_expression`: `null`
 - `info.classifiers`: 包含编程语言与框架，但**完全不包含**任何 License 相关的 Trove Classifiers（`[]`）。
-- **缺失证据**: 上游发布者在打包清单（`pyproject.toml` / `setup.py` / `PKG-INFO`）中完全未声明开源许可证。
+- **缺失证据（范围限定）**: 所采集的声明字段中（`info.license`、`info.license_expression`、Trove classifiers）均无许可证声明。**注意**：raw 数据实际含 `license_files: ["LICENSE"]`，该 LICENSE 文件内容**尚未核验**——本报告只能证明"所采声明字段缺失"，不能推出"整包无许可证、零授权"。
 
 ### 2.2 衍生索引 deps.dev API v3
 调用 `https://api.deps.dev/v3/systems/pypi/packages/django-flowcontrol/versions/0.0.21` 实测返回：

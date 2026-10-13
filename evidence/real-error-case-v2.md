@@ -136,15 +136,15 @@ dfec2c06defdb4648eb66f6aadf7b57453d732cd HEAD
 ```
 可秒级成功解析，证明制品内所载 `Source` 才是唯一的真实代码库。
 
-##### 权威确认 2: deps.dev 官方 Issue #220 归因
+##### 公开报告 2: deps.dev Issue #220（机制未确认）
 在 [google/deps.dev Issue #220 (pypi/hatch-vcs wrong repo link)](https://github.com/google/deps.dev/issues/220) 中：
 - 社区提出 hatch-vcs 的 `SOURCE_REPO` 被错误指向 `github.com/sponsors/ofek`；
-- deps.dev 官方团队核心成员（`@distractible`）公开确认：“Yep, I think https://peps.python.org/pep-0753/ and following updates have changed how things are represented. We'll take a look.”；
+- deps.dev 团队成员（`@distractible`）回复：“怀疑与 PEP 753 及后续更新改变了表示方式有关，会调查。”——**仅为怀疑＋调查承诺，未确认根因**；
 - hatch-vcs 维护者（`@ofek`）亲自介入跟进确认该错误。
 
 #### 2.4 四维严格判定归因
 1. **字段错误 (Field Error)**: **成立**。deps.dev 输出的 `links[label="SOURCE_REPO"].url` 为客观错误事实。其字段值并非源码仓库，而是赞助打赏页面。
-2. **解析器故障 (Parser Fault)**: **成立**。上游制品元数据严格遵守 PEP 566 标准，清晰标明了 `Funding, ...` 与 `Source, ...`。deps.dev 摄取管道解析器未按 PEP 566 标签语义映射，而是使用了贪婪或首个匹配的启发式规则，把非代码仓库的赞助链接错误提升为 `SOURCE_REPO`。
+2. **解析器故障 (Parser Fault)**: **机制未确认**。deps.dev 输出的 SOURCE_REPO 链接错误是客观事实（字段错误成立）；但具体是解析器缺陷、标签映射规则还是规范版本差异导致，**尚未确认**——deps.dev 官方回复仅表示怀疑与 PEP 753 规范变化有关、会调查（Issue #220），未确认根因。此前"贪婪或首个匹配"的断言**撤回**。
 3. **同步延迟 (Sync Delay)**: **排除**。该版本于 2023-11-06 上传，距今已超 2 年；deps.dev 返回 HTTP 200 正常消费结果，处于数据持久化稳定态，绝非下游写入延迟。
 4. **语义差异 (Semantic Difference)**: **排除**。“软件源代码仓库”与“开发者个人赞助主页”在计算机科学与开源法律范畴内具有零语义重叠，无法被归类为合理的多重视角解读。
 

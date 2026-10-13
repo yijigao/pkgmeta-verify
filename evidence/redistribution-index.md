@@ -14,7 +14,7 @@ PMV 离线快照涉及四个主要外部数据提供方。在对具体快照逐�
 | **npm Registry** | `https://registry.npmjs.org/<pkg>/<ver>` | npm Terms of Use (GitHub Acceptable Use Policies) | 官方建议标明数据来源于 npm public registry；未要求特定法律格式 | 事实性技术元数据（不受独创性版权保护）；微量提取供安全验证之合理使用 (Fair Use) | **部分具备，核心待办**：缺少 GitHub/npm 官方书面数据再分发白名单确认 |
 | **PyPI (Warehouse)** | `https://pypi.org/pypi/<pkg>/<ver>/json` | Python Software Foundation (PSF) Terms of Use / PyPI Acceptable Use Policy | 需注明来源于 Python Package Index (pypi.org) | 纯事实技术数据（文件名、哈希、上传时间、分类器），不含受独创性版权保护的表达 | **部分具备，核心待办**：PSF 尚未就 API 原始 JSON 数据发布显式 CC/开放数据许可，批量分发条款待办确认 |
 | **Google deps.dev** | `https://api.deps.dev/v3/...` | Google APIs Terms of Service / Open Source Insights Terms | 页面要求注明 "Data from Open Source Insights (deps.dev)" | 极小片段的技术分析对照；转化性研究用途 (Transformative Fair Use) | **待办**：Google APIs ToS 对数据缓存与再分发有常规限制；未取得显式离线测试集再分发授权，**严禁写“已具备”** |
-| **ClearlyDefined** | `https://api.clearlydefined.io/definitions/...` | **CC-BY-4.0** (Creative Commons Attribution 4.0 International) | 必须保留 ClearlyDefined 署名及原始定义链接 | CC-BY-4.0 明确授权在遵守署名条件下进行复制与再分发 | **已具备（条款明确）**，待办为补齐统一署名声明格式 |
+| **ClearlyDefined** | `https://api.clearlydefined.io/definitions/...` | **CC0** (Creative Commons Zero) | 建议保留 ClearlyDefined 来源链接（CC0 不强制署名） | CC0 公有领域奉献，自由复制与再分发 | **已具备（条款明确）** |
 | **Synthetic Fixture** | `https://registry.npmjs.org/...` (桩) | Apache-2.0 / CC0 (CodeSupply PMV 原创构造) | 标注为 PMV 项目组合成桩，无第三方署名限制 | 自主版权直接开源分发 | **已具备** |
 
 ---
@@ -46,7 +46,7 @@ PMV 离线快照涉及四个主要外部数据提供方。在对具体快照逐�
   3. **Source: `clearlydefined`**
      - **端点**: `https://api.clearlydefined.io/definitions/npm/npmjs/-/debug/4.3.4`
      - **HTTP 状态**: `0` (采集时发生超时网络异常 `Read timed out`)
-     - **来源许可/条款**: CC-BY-4.0（若成功响应）。
+     - **来源许可/条款**: CC0（若成功响应）。
      - **署名要求**: 署名 ClearlyDefined (OSI/LF)。
      - **裁剪说明**: 仅记录网络错误体，未载入外部版权数据。
      - **再分发依据**: 错误日志不构成第三方版权客体。
@@ -79,10 +79,10 @@ PMV 离线快照涉及四个主要外部数据提供方。在对具体快照逐�
   3. **Source: `clearlydefined`**
      - **端点**: `https://api.clearlydefined.io/definitions/npm/npmjs/-/esprima/4.0.1`
      - **HTTP 状态**: `200 OK`
-     - **来源许可/条款**: **CC-BY-4.0**。
-     - **署名要求**: 必须署名 ClearlyDefined 并附带 CC-BY-4.0 声明。
+     - **来源许可/条款**: **CC0**。
+     - **署名要求**: 建议署名 ClearlyDefined（CC0 不强制要求署名，但保留来源链接）。
      - **裁剪说明**: 剥离了庞大的 ScanCode 原始逐行扫描 AST、50+ 文件级切面细节与内部评分，仅保留核心许可声明 `declared: "BSD-2-Clause AND BSD-3-Clause"` 与 `facets.core.discovered.expressions`。
-     - **再分发依据**: CC-BY-4.0 条款允许在保留署名下再分发。
+     - **再分发依据**: CC0 公有领域奉献允许自由复制与再分发。
      - **授权状态**: **已具备**（条款明确许可，需执行署名归档）。
 
 ---
@@ -137,10 +137,10 @@ PMV 离线快照涉及四个主要外部数据提供方。在对具体快照逐�
   3. **Source: `clearlydefined`**
      - **端点**: `https://api.clearlydefined.io/definitions/pypi/pypi/-/archgraph-layout/2.3.0`
      - **HTTP 状态**: `200 OK`
-     - **来源许可/条款**: **CC-BY-4.0**。
+     - **来源许可/条款**: **CC0**。
      - **署名要求**: 署名 ClearlyDefined。
      - **裁剪说明**: 剥离非核心扫描树，仅保留 `licensed.declared: null`。
-     - **再分发依据**: CC-BY-4.0。
+     - **再分发依据**: CC0。
      - **授权状态**: **已具备**。
 
 ---
@@ -156,7 +156,7 @@ PMV 离线快照涉及四个主要外部数据提供方。在对具体快照逐�
      - **HTTP 状态**: `200 OK`
      - **来源许可/条款**: PSF Terms of Use。
      - **署名要求**: 标注源自 Python Package Index。
-     - **裁剪说明**: 剥离长描述文本、邮箱；仅保留 `info.license: "PSF-2.0"`, `info.classifiers` (License 条目), `releases["4.12.2"]` 的制品摘要与上传时间。
+     - **裁剪说明**: 剥离长描述文本、邮箱；仅保留 `info.license: null`（实测三源均为 null，非 PSF-2.0）, `info.classifiers` (License 条目), `releases["4.12.2"]` 的制品摘要与上传时间。
      - **再分发依据**: 事实性技术元数据。
      - **授权状态**: **待办**（PSF 离线元数据再分发条款待办确认）。
   2. **Source: `deps_dev`**
@@ -170,10 +170,10 @@ PMV 离线快照涉及四个主要外部数据提供方。在对具体快照逐�
   3. **Source: `clearlydefined`**
      - **端点**: `https://api.clearlydefined.io/definitions/pypi/pypi/-/typing-extensions/4.12.2`
      - **HTTP 状态**: `200 OK`
-     - **来源许可/条款**: **CC-BY-4.0**。
+     - **来源许可/条款**: **CC0**。
      - **署名要求**: 署名 ClearlyDefined (OSI/LF)。
      - **裁剪说明**: 裁剪数百个代码扫描切面，保留顶层 `declared: "Python-2.0.1"` 与核心切面汇总表达式。
-     - **再分发依据**: CC-BY-4.0。
+     - **再分发依据**: CC0。
      - **授权状态**: **已具备**。
 
 ---
@@ -182,7 +182,7 @@ PMV 离线快照涉及四个主要外部数据提供方。在对具体快照逐�
 
 | 补充快照文件 | 包含端点 | 裁剪说明 | 当前再分发依据与待办状态 |
 |---|---|---|---|
-| `snapshot-pkg-pypi-hatch-vcs-0.4.0.json` | PyPI JSON, deps.dev v3, ClearlyDefined | 剔除 README、作者信息与依赖树，仅保留 URL/Links/License 核心对比字段 | **待办**：PyPI/deps.dev 官方离线再分发条款待办核实；ClearlyDefined 为 CC-BY-4.0 已具备。 |
+| `snapshot-pkg-pypi-hatch-vcs-0.4.0.json` | PyPI JSON, deps.dev v3, ClearlyDefined | 剔除 README、作者信息与依赖树，仅保留 URL/Links/License 核心对比字段 | **待办**：PyPI/deps.dev 官方离线再分发条款待办核实；ClearlyDefined 为 CC0 已具备。 |
 | `snapshot-pkg-pypi-validfilepath-0.1.json` | PyPI JSON, deps.dev v3, ClearlyDefined | 同上，剔除长文本与非目标版本 | **待办**：同上；且历史 404 瞬态数据受限于当时记录，非全量抓包。 |
 | `snapshot-pkg-pypi-django-flowcontrol-0.0.21.json` | PyPI JSON, deps.dev v3, ClearlyDefined | 同上，三方皆空字段极小保留 | **待办**：同上；纯事实空值数据不具独创性版权。 |
 
@@ -202,5 +202,5 @@ PMV 离线快照涉及四个主要外部数据提供方。在对具体快照逐�
    - 现状：npm 仅提供公共 API 访问权限，未对第三方仓库内打包 registry packuments 片段提供格式化再分发授权声明。
    - 动作：核对 GitHub Acceptable Use Policies 与 npm Open Source Terms 中的非商业性技术验证豁免范围。
 4. **[待办 4 · ClearlyDefined] 统一法律署名规范落地**：
-   - 现状：CC-BY-4.0 明确允许再分发，但需在项目顶级分发包中提供格式化署名（Attribution Notice）。
-   - 动作：在项目发布物根目录增设 `ATTRIBUTIONS.md`，完整声明 ClearlyDefined 的 CC-BY-4.0 署名文本与链接。
+   - 现状：CC0 公有领域奉献，再分发无署名强制要求。
+   - 动作：保留 ClearlyDefined 来源链接（建议性署名）。

@@ -185,7 +185,7 @@
 ## 条目 25 — 提案正文草稿＋Schema $id 落实＋政策复查（2026-10-13 20:22，主聊）
 - 提案正文：孔明（Muse）按 rev3 大纲直接编写英文完整草稿 PROPOSAL-DRAFT.md（19,346 字节），供 Joey 定稿。模型：Muse Spark；时间：2026-10-13 20:22–20:40 CST。
 - **正文生成 prompt**：主聊指令原文——"提案正文开写：按 rev3 大纲（已过 Astra 终审）写完整申请文本。英文正文；GenAI 披露按披露草稿（据实版）写入；人工主笔口径——正文由 Joey 定稿，你这边出完整草稿给他改。PROMPT-LOG 同步记录这次写作的模型/时间/prompt/未编辑输出。"（2026-10-13 20:22，主聊 handoff；非逐字重建，见本侧聊记录）
-- 未编辑输出即草稿原文（公开副本：docs/evidence/PROPOSAL-DRAFT.md）。GenAI 披露按据实版写入 §13。
+- 未编辑输出：19,346 字节初稿原文（commit 82b1fbc 的 docs/evidence/PROPOSAL-DRAFT.md）。**注意**：当前公开副本已被后续修正改动，不再是未编辑输出；未编辑输出以 82b1fbc 为准。
 - Schema $id：`<tag>` 替换为 `v0.1`，tag 已打并推送；发现 $id 曾指向不存在的路径，已修正为真实可访问地址（curl 200 验证）；test_schema 断言同步对齐（$id 关口授权，非规则变更）；56/56 通过。
 - GenAI 政策复查：官网最新仍为 v1.1（2026-01-26 生效），无换版。
 - MoU 签署人＝申请人＝Jigao Yi（个人申请），草稿 §1、§14 已写明。
@@ -193,6 +193,8 @@
 
 ## 条目 26 — Astra 提案终审 8 项修正（2026-10-13 20:35，主聊；执行中）
 - 终审文件：ASTRA-PROPOSAL-FINAL-2026-10-13.md（审查版本 ef1b3a7；结论：修改后通过，当前不可提交）。
+- **终审 prompt**（主聊 handoff 原文，2026-10-13 20:35）："孔明，Astra 对提案正文的最终验收回来了（全文 ~/workspace/nlnet-codesupply-council/ASTRA-PROPOSAL-FINAL-2026-10-13.md，审查版本 ef1b3a7）。结论：修改后通过，当前不可提交，8 项必须改。金额工时算术通过，AboutCode 口径和截止时间都对。逐项修：[8 项清单]…修完 push，push 前跑一遍 manifest 校验，改完交 Astra 再验。Joey 的指令是 Astra 通过就直接交——所以这轮修完就是最后一验。"（非逐字重建，见本侧聊记录；模型：Astra Max，gpt-6-astra，effort max）
+- 未编辑输出：ASTRA-PROPOSAL-FINAL-2026-10-13.md（公开副本：docs/evidence/outputs/）
 - 孔明执行分工：
   - 已修（本机）：① MANIFEST 重生成（$id 变更后）＋pmv.codesupply.org 残留清理＋提交检查纪律；② hatch-vcs 表述撤回（"官方确认"→"公开报告、机制未确认"）＋0.4.0 日期纠正（2023-11-06）＋坐标补全；③ §5 表头拆分（冻结基线 5 案例 vs 补充文档 3 案例）＋evaluation_timestamp 隔离声明；④ §6 去绝对化（披露 confidence 1.0 硬编码＋PSF 标题触发局限）；⑤ §8/§13 归属矛盾修正＋复跑归属明确；⑧ §10 M3 复跑者安排澄清；⑥ §11 专家链重写（贡献—判断—证据映射，删除 OKX）。
   - Gemini 执行中（TASK-EVIDENCE-gemini.md）：③ 补充案例原始采集记录；⑦ 快照再分发索引；⑥ 接入示例。
@@ -204,3 +206,15 @@
 - 任务 B：evidence/redistribution-index.md —— 快照逐项再分发索引；拿不到的如实标"待办"（23 处）。
 - 任务 C：examples/integration/ —— 接入示例（pipeline_demo.py＋README＋实跑审计日志）；孔明独立运行验证通过。
 - verifier.py/测试/MANIFEST 均未动；rerun.sh 12/12、56/56 不受影响。
+
+## 条目 28 — Astra 提案二审 8 项修正（2026-10-13 21:01，主聊；已修完）
+- 终审文件：ASTRA-PROPOSAL-FINAL2-2026-10-13.md（审查版本 565c70e）。
+- ① hatch-vcs：附件 L139"官方确认/贪婪匹配/解析器故障成立"全部撤回→"链接错误成立，具体机制未确认"（官方仅怀疑＋调查）。
+- ② validfilepath："可证明区间""100% 封闭完整""通常 7–12 分钟"撤回→单次观察记录；正文 §14 同步。
+- ③ django-flowcontrol：收窄为"所采声明字段缺失"，披露 LICENSE 文件未核验、不能推出整包无许可。
+- ④ §11：重写为 Joey 实际技术判断（验证原则、验收纪律、口径决策）vs AI 起草的明细规格；给 PROMPT-LOG 对应记录。
+- ⑤ 日志：条目 25 未编辑输出固定指向 82b1fbc（19,346 字节）；条目 26 补上一轮终审 prompt。
+- ⑥ 再分发索引：ClearlyDefined CC-BY-4.0→CC0（官网 FAQ 核验）；typing-extensions info.license PSF-2.0→null（三源实测）。
+- ⑦ §10：M3 第三方明确为无偿参与；€100 覆盖其环境费；申请人 43.64h 仅为准备/协调/分析。
+- ⑧ 接入示例：删除 CONSISTENT 安全保证；STANDARDS_CONTRADICTION 分流人工复核；README"彻底避免误报"撤回。
+- 56/56 通过，MANIFEST 12/12 通过。
