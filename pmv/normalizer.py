@@ -33,6 +33,23 @@ class Normalizer:
         "PSF-2.0", "0BSD", "Unlicense", "CC0-1.0", "Zlib"
     }
 
+    # Uninformative, placeholder, or vacuous license values
+    UNINFORMATIVE_LICENSES = {
+        "", "none", "null", "unknown", "n/a", "na", "undefined",
+        "see license file", "see license", "see-license-file",
+        "custom", "unspecified", "other", "placeholder"
+    }
+
+    @classmethod
+    def clean_license_string(cls, lic: Any) -> Optional[str]:
+        """Validate and clean license string; filters out empty strings and placeholders."""
+        if not isinstance(lic, str):
+            return None
+        s = lic.strip()
+        if not s or s.lower() in cls.UNINFORMATIVE_LICENSES:
+            return None
+        return s
+
     def normalize(self, raw_bundle: Dict[str, Any]) -> Dict[str, Any]:
         """Produce canonical normalized evidence and provenance records."""
         ecosystem = raw_bundle["ecosystem"]
@@ -105,15 +122,23 @@ class Normalizer:
             published_at = data.get("publish_time") or (data.get("time", {}).get(version) if isinstance(data.get("time"), dict) else None)
             lic = data.get("license")
             if isinstance(lic, str):
-                licenses.append(lic)
+                c = self.clean_license_string(lic)
+                if c:
+                    licenses.append(c)
             elif isinstance(lic, dict) and "type" in lic:
-                licenses.append(lic["type"])
+                c = self.clean_license_string(lic.get("type"))
+                if c:
+                    licenses.append(c)
             elif isinstance(data.get("licenses"), list):
                 for l_item in data["licenses"]:
                     if isinstance(l_item, dict) and "type" in l_item:
-                        licenses.append(l_item["type"])
+                        c = self.clean_license_string(l_item.get("type"))
+                        if c:
+                            licenses.append(c)
                     elif isinstance(l_item, str):
-                        licenses.append(l_item)
+                        c = self.clean_license_string(l_item)
+                        if c:
+                            licenses.append(c)
 
             repo_field = data.get("repository")
             if isinstance(repo_field, dict):
@@ -156,8 +181,9 @@ class Normalizer:
             # PyPI JSON API
             info = data.get("info", {})
             raw_lic = info.get("license")
-            if raw_lic and raw_lic.strip():
-                licenses.append(raw_lic.strip())
+            c = self.clean_license_string(raw_lic)
+            if c:
+                licenses.append(c)
             classifiers = info.get("classifiers", [])
             for c in classifiers:
                 if c.startswith("License ::"):
@@ -244,7 +270,13 @@ class Normalizer:
             }
 
         published_at = data.get("publishedAt")
-        licenses = data.get("licenses", [])
+        raw_licenses = data.get("licenses", [])
+        licenses = []
+        if isinstance(raw_licenses, list):
+            for l_item in raw_licenses:
+                c = self.clean_license_string(l_item)
+                if c:
+                    licenses.append(c)
         repository = None
         for link in data.get("links", []):
             if link.get("label") == "SOURCE_REPO":
@@ -285,7 +317,7 @@ class Normalizer:
             }
 
         licensed_info = data.get("licensed", {})
-        declared = licensed_info.get("declared")
+        declared = self.clean_license_string(licensed_info.get("declared"))
         facets = licensed_info.get("facets", {}).get("core", {})
         discovered = facets.get("discovered", {}).get("expressions", [])
 
@@ -313,6 +345,14 @@ class Normalizer:
                 "origin_url": art.get("origin_url"),
                 "files": art.get("files") or art.get("file_list"),
             })
+        raw_licenses = src.get("licenses", [])
+        clean_licenses = []
+        if isinstance(raw_licenses, list):
+            for l_item in raw_licenses:
+                c = self.clean_license_string(l_item)
+                if c:
+                    clean_licenses.append(c)
+
         return {
             "source_id": src.get("source_id", "synthetic"),
             "role": "synthetic_mirror",
@@ -321,7 +361,7 @@ class Normalizer:
             "available": True,
             "published_at": src.get("published_at"),
             "artifacts": artifacts,
-            "licenses": src.get("licenses", []),
+            "licenses": clean_licenses,
             "derived_from": src.get("derived_from"),
         }
 

@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 import json
 import os
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from .normalizer import Normalizer
 
@@ -39,13 +39,49 @@ class Verifier:
     # Constant threshold: 24 hours (86400 seconds) sync delay tolerance window
     DEFAULT_SYNC_DELAY_TOLERANCE_SECONDS: int = 86400
 
+    # Normalization map for supported cryptographic hash algorithms (case-insensitive & aliases)
+    ALGO_ALIAS_MAP: Dict[str, str] = {
+        "sha256": "sha256",
+        "sha-256": "sha256",
+        "sha_256": "sha256",
+        "sha512": "sha512",
+        "sha-512": "sha512",
+        "sha_512": "sha512",
+        "sha384": "sha384",
+        "sha-384": "sha384",
+        "sha_384": "sha384",
+        "sha1": "sha1",
+        "sha-1": "sha1",
+        "sha_1": "sha1",
+        "md5": "md5",
+        "blake2b_256": "blake2b_256",
+        "blake2b-256": "blake2b_256",
+        "blake2b256": "blake2b_256",
+        "blake2b_512": "blake2b_512",
+        "blake2b-512": "blake2b_512",
+        "blake2b512": "blake2b_512",
+        "blake2s_256": "blake2s_256",
+        "blake2s-256": "blake2s_256",
+        "blake2s256": "blake2s_256",
+    }
+
     # Expected raw decoded byte length for supported hash algorithms
     EXPECTED_DIGEST_LENGTHS: Dict[str, int] = {
         "sha256": 32,
         "sha512": 64,
+        "sha384": 48,
         "sha1": 20,
         "md5": 16,
         "blake2b_256": 32,
+        "blake2b_512": 64,
+        "blake2s_256": 32,
+    }
+
+    # Vacuous / placeholder / uninformative license declarations
+    UNINFORMATIVE_LICENSES: Set[str] = {
+        "", "none", "null", "unknown", "n/a", "na", "undefined",
+        "see license file", "see license", "see-license-file",
+        "custom", "unspecified", "other", "placeholder"
     }
 
     def __init__(self, rules_path: Optional[str] = None):
@@ -172,45 +208,116 @@ class Verifier:
         return f"{s}s"
 
     @staticmethod
+    def _is_valid_hash_string(val: Any) -> bool:
+        """
+        Validate whether a candidate string is a substantive cryptographic hash.
+        Rejects empty strings, placeholders ('none', 'null', 'unknown', 'n/a'),
+        all-zero dummy hashes ('0'*32, '0'*64), and malformed structures.
+        """
+        if not isinstance(val, str):
+            return False
+        s = val.strip()
+        if not s:
+            return False
+        lower = s.lower()
+        if lower in (
+            "none", "null", "unknown", "n/a", "na", "undefined",
+            "placeholder", "tbd", "missing", "void", "empty", "0"
+        ):
+            return False
+
+        # Strip standard algorithm / encoding prefixes
+        for prefix in (
+            "sha256:", "sha512:", "sha384:", "sha1:", "md5:",
+            "hex:", "base64:", "sha256-", "sha512-", "sha384-", "sha1-"
+        ):
+            if lower.startswith(prefix):
+                s = s[len(prefix):].strip()
+                lower = s.lower()
+                break
+
+        if not s or lower in (
+            "none", "null", "unknown", "n/a", "na", "undefined",
+            "placeholder", "tbd", "missing", "void", "empty"
+        ):
+            return False
+
+        # Reject all-zero dummy / tombstone hashes (e.g. '0'*32, '0'*40, '0'*64, '0'*128)
+        if set(lower) == {"0"}:
+            return False
+
+        # Check hexadecimal
+        if re.fullmatch(r"[0-9a-fA-F]+", s):
+            # Supported standard byte lengths: md5=32 hex, sha1=40 hex, sha256/blake2b=64 hex, sha384=96 hex, sha512=128 hex
+            if len(s) in (32, 40, 64, 96, 128):
+                return True
+            return False
+
+        # Check base64
+        try:
+            b = base64.b64decode(s, validate=True)
+            if len(b) in (16, 20, 32, 48, 64) and any(x != 0 for x in b):
+                return True
+        except Exception:
+            pass
+
+        return False
+
+    @staticmethod
     def _manifest_has_hashes(manifest: Any) -> bool:
         """
-        Check if a package file list / manifest contains cryptographic hashes
-        rather than bare filenames (e.g. ['README', 'LICENSE']).
+        Check if a package file list / manifest contains valid cryptographic hashes
+        with verifiable content, rather than bare filenames, empty values, placeholders,
+        or all-zero dummy hashes.
         """
         if not manifest:
             return False
         if isinstance(manifest, dict):
             for k, v in manifest.items():
                 if isinstance(v, str):
-                    v_clean = v.strip()
-                    if any(v_clean.startswith(p) for p in ("sha256:", "sha512:", "sha1:", "md5:", "hex:", "base64:")):
-                        return True
-                    if len(v_clean) in (32, 40, 64, 128) and all(c in "0123456789abcdefABCDEF" for c in v_clean):
+                    if Verifier._is_valid_hash_string(v):
                         return True
                 elif isinstance(v, dict):
-                    if any(h in v for h in ("hash", "digest", "sha256", "sha512", "sha1", "md5", "checksum")):
-                        return True
+                    for sub_k, sub_v in v.items():
+                        if Verifier._is_valid_hash_string(sub_v):
+                            return True
+                elif isinstance(v, list):
+                    for item in v:
+                        if Verifier._is_valid_hash_string(item):
+                            return True
             return False
         elif isinstance(manifest, list):
             for item in manifest:
                 if isinstance(item, dict):
-                    if any(h in item for h in ("hash", "digest", "sha256", "sha512", "sha1", "md5", "checksum")):
-                        return True
+                    for sub_k, sub_v in item.items():
+                        if Verifier._is_valid_hash_string(sub_v):
+                            return True
                 elif isinstance(item, str):
-                    s_clean = item.strip()
-                    if any(s_clean.startswith(p) or f" {p}" in s_clean for p in ("sha256:", "sha512:", "sha1:", "md5:", "hex:", "base64:")):
+                    if Verifier._is_valid_hash_string(item):
                         return True
-                    parts = s_clean.split()
-                    if len(parts) >= 2 and any(len(p) in (32, 40, 64, 128) and all(c in "0123456789abcdefABCDEF" for c in p) for p in parts):
+                    parts = item.strip().split()
+                    if any(Verifier._is_valid_hash_string(p) for p in parts):
                         return True
             return False
         return False
 
     @staticmethod
+    def _is_valid_provenance_scalar(val: Any) -> bool:
+        """Verify that a provenance identifier (URL, release record) is non-empty and non-placeholder."""
+        if not isinstance(val, str):
+            return False
+        s = val.strip()
+        if not s or s.lower() in ("none", "null", "unknown", "n/a", "na", "undefined", "placeholder"):
+            return False
+        return True
+
+    @staticmethod
     def _has_standard_license_match_evidence(lic_ev: Dict[str, Any]) -> Tuple[bool, str]:
         """
-        Verify that the artifact license text evidence contains verifiable proof
-        matching standard license text rather than arbitrary unverified text.
+        Verify that the artifact license text evidence contains substantive proof
+        matching standard license canonical text rather than arbitrary unverified text.
+        Self-attested flags (e.g. matches_standard=True) are treated strictly as declarations,
+        NEVER as verification proof.
         """
         if not lic_ev:
             return False, "missing license_text_evidence"
@@ -218,79 +325,98 @@ class Verifier:
         if not snippet:
             return False, "empty text_snippet"
 
-        # Explicit verification metadata flags
-        if (
-            lic_ev.get("matches_standard") is True
-            or lic_ev.get("standard_match") is True
-            or lic_ev.get("verified_match") is True
-        ):
-            return True, "explicit verification flag (matches_standard=True)"
-
-        spdx_id = str(lic_ev.get("spdx_identifier", "")).strip()
         snippet_lower = snippet.lower()
 
-        # Standard text signatures for well-known OSI/SPDX licenses
-        standard_signatures: Dict[str, List[str]] = {
-            "PSF-2.0": [
-                "python software foundation license",
-                "python software foundation",
-                "psf license",
-                "license agreement for python",
-            ],
-            "Python-2.0": [
-                "python software foundation license",
-                "python software foundation",
-                "cnri license agreement",
-                "license agreement for python",
-            ],
-            "Python-2.0.1": [
-                "python software foundation license",
-                "python software foundation",
-                "license agreement for python",
-            ],
-            "MIT": [
-                "permission is hereby granted, free of charge",
-                "mit license",
-                "without restriction, including without limitation the rights",
-            ],
-            "Apache-2.0": [
-                "apache license, version 2.0",
-                "http://www.apache.org/licenses/license-2.0",
-                "apache license\nversion 2.0",
-                "apache license version 2.0",
-            ],
-            "BSD-2-Clause": [
-                "redistribution and use in source and binary forms",
-                "neither the name of",
-            ],
-            "BSD-3-Clause": [
-                "redistribution and use in source and binary forms",
-                "neither the name of",
-            ],
-            "ISC": [
-                "permission to use, copy, modify, and/or distribute this software for any purpose",
-            ],
-            "0BSD": [
-                "permission to use, copy, modify, and/or distribute this software for any purpose without fee",
-            ],
-            "GPL-2.0-only": ["gnu general public license", "free software foundation"],
-            "GPL-3.0-only": ["gnu general public license", "free software foundation"],
-            "GPL-2.0-or-later": ["gnu general public license", "free software foundation"],
-            "GPL-3.0-or-later": ["gnu general public license", "free software foundation"],
-            "MPL-2.0": ["mozilla public license, version 2.0", "mozilla public license version 2.0"],
-            "Unlicense": ["this is free and unencumbered software released into the public domain"],
-            "CC0-1.0": ["creative commons zero", "public domain dedication"],
-        }
+        # 1. Reject explicit negation and disclaimer phrases (e.g. "This is not an MIT license")
+        negation_patterns = [
+            r"\b(?:this\s+is\s+)?not\s+(?:an?\s+)?(?:mit|apache|bsd|gpl|lgpl|mpl|psf|python|osi)\b",
+            r"\bnon-(?:mit|apache|bsd|gpl|standard)\b",
+            r"\bneither\s+(?:an?\s+)?(?:mit|apache|bsd|gpl)\b",
+            r"\bnot\s+licensed\s+under\b",
+        ]
+        for pat in negation_patterns:
+            if re.search(pat, snippet_lower):
+                return False, f"text snippet explicitly disclaims standard license: matches negation pattern '{pat}'"
 
-        sigs = standard_signatures.get(spdx_id, [])
-        if any(sig in snippet_lower for sig in sigs):
-            return True, f"text snippet matches standard canonical text for '{spdx_id}'"
+        spdx_id = str(lic_ev.get("spdx_identifier", "")).strip()
 
-        # Check if snippet verbatim contains standard license title
-        if spdx_id and spdx_id.lower().replace("-", " ") in snippet_lower.replace("-", " "):
-            return True, f"text snippet explicitly contains standard license identifier '{spdx_id}'"
+        # 2. Substantive core legal clauses required for standard licenses
+        # Each standard license requires BOTH primary grant and core condition/disclaimer clauses.
+        # Merely mentioning the license name is strictly prohibited from passing.
+        if spdx_id in ("PSF-2.0", "Python-2.0", "Python-2.0.1"):
+            has_psf_header = any(
+                p in snippet_lower for p in (
+                    "python software foundation license",
+                    "license agreement for python",
+                    "cnri license agreement",
+                )
+            )
+            has_psf_body = any(
+                p in snippet_lower for p in (
+                    "license agreement",
+                    "hereby grants",
+                    "in source or binary form",
+                    "psf",
+                    "version 2",
+                    "version 1",
+                )
+            )
+            if has_psf_header and has_psf_body:
+                return True, f"text snippet contains substantive canonical clauses for '{spdx_id}'"
+            return False, f"text snippet lacks substantive canonical agreement clauses for '{spdx_id}'"
 
-        return False, f"text snippet does not match recognized standard text patterns for '{spdx_id}'"
+        elif spdx_id == "MIT":
+            has_grant = (
+                "permission is hereby granted, free of charge" in snippet_lower
+                or "to deal in the software without restriction" in snippet_lower
+            )
+            has_condition_or_disclaimer = (
+                "the above copyright notice and this permission notice shall be included" in snippet_lower
+                or "the software is provided \"as is\", without warranty of any kind" in snippet_lower
+                or "in no event shall the authors or copyright holders be liable" in snippet_lower
+            )
+            if has_grant and has_condition_or_disclaimer:
+                return True, "text snippet contains substantive canonical grant and disclaimer clauses for 'MIT'"
+            return False, "text snippet lacks substantive canonical permission grant or conditions for 'MIT' (keyword presence alone is strictly insufficient)"
+
+        elif spdx_id in ("Apache-2.0", "Apache-1.1"):
+            has_apache_header = (
+                "apache license" in snippet_lower
+                and ("version 2.0" in snippet_lower or "http://www.apache.org/licenses/license-2.0" in snippet_lower)
+            )
+            has_apache_body = any(
+                p in snippet_lower for p in (
+                    "terms and conditions for use, reproduction, and distribution",
+                    "licensed under the apache license, version 2.0",
+                    "subject to the terms and conditions of this license",
+                )
+            )
+            if has_apache_header and has_apache_body:
+                return True, f"text snippet contains substantive canonical clauses for '{spdx_id}'"
+            return False, f"text snippet lacks substantive canonical clauses for '{spdx_id}'"
+
+        elif spdx_id in ("BSD-2-Clause", "BSD-3-Clause", "0BSD", "ISC"):
+            has_redist = (
+                "redistribution and use in source and binary forms" in snippet_lower
+                or "permission to use, copy, modify, and/or distribute this software" in snippet_lower
+            )
+            has_disclaimer = (
+                "neither the name of" in snippet_lower
+                or "reproduce the above copyright notice" in snippet_lower
+                or "as is" in snippet_lower
+            )
+            if has_redist and has_disclaimer:
+                return True, f"text snippet contains substantive canonical clauses for '{spdx_id}'"
+            return False, f"text snippet lacks substantive canonical clauses for '{spdx_id}'"
+
+        elif spdx_id in ("GPL-2.0-only", "GPL-3.0-only", "GPL-2.0-or-later", "GPL-3.0-or-later", "LGPL-2.1-only", "LGPL-3.0-only"):
+            has_gpl = "gnu general public license" in snippet_lower or "gnu lesser general public license" in snippet_lower
+            has_fsf = "free software foundation" in snippet_lower or "terms and conditions for copying" in snippet_lower
+            if has_gpl and has_fsf:
+                return True, f"text snippet contains substantive canonical clauses for '{spdx_id}'"
+            return False, f"text snippet lacks substantive canonical clauses for '{spdx_id}'"
+
+        return False, f"text snippet does not match recognized substantive standard clauses for '{spdx_id}'"
 
     @staticmethod
     def _check_artifact_identity_provenance(art_a: Dict[str, Any], art_b: Dict[str, Any]) -> Tuple[bool, str]:
@@ -298,33 +424,55 @@ class Verifier:
         Verify artifact identity association:
         Must prove digest is bound to:
         1. Identical download URL; OR
-        2. Package file list containing cryptographic hashes (bare filename lists are strictly forbidden); OR
+        2. Package file list containing valid cryptographic hashes (bare filename lists, empty hashes,
+           or placeholders are strictly forbidden); OR
         3. Identical release record / publication record.
-        Bare filename lists (e.g. ['README', 'LICENSE']) or merely having digests on both sides is strictly insufficient.
+        Bare filename lists (e.g. ['README', 'LICENSE']), empty hashes (e.g. {'LICENSE': {'sha256': ''}}),
+        or merely having digests on both sides is strictly insufficient.
         """
         url_a = art_a.get("url") or art_a.get("download_url")
         url_b = art_b.get("url") or art_b.get("download_url")
-        if url_a and url_b and url_a == url_b:
+        if (
+            Verifier._is_valid_provenance_scalar(url_a)
+            and Verifier._is_valid_provenance_scalar(url_b)
+            and url_a == url_b
+        ):
             return True, f"identical download URL: '{url_a}'"
-        if art_b.get("origin_url") and url_a and art_b.get("origin_url") == url_a:
+
+        orig_b = art_b.get("origin_url")
+        if (
+            Verifier._is_valid_provenance_scalar(orig_b)
+            and Verifier._is_valid_provenance_scalar(url_a)
+            and orig_b == url_a
+        ):
             return True, f"artifact B origin URL binds to artifact A download URL: '{url_a}'"
-        if art_a.get("origin_url") and url_b and art_a.get("origin_url") == url_b:
+
+        orig_a = art_a.get("origin_url")
+        if (
+            Verifier._is_valid_provenance_scalar(orig_a)
+            and Verifier._is_valid_provenance_scalar(url_b)
+            and orig_a == url_b
+        ):
             return True, f"artifact A origin URL binds to artifact B download URL: '{url_b}'"
 
         rel_a = art_a.get("release_record") or art_a.get("release_id") or art_a.get("package_release")
         rel_b = art_b.get("release_record") or art_b.get("release_id") or art_b.get("package_release")
-        if rel_a and rel_b and rel_a == rel_b:
+        if (
+            Verifier._is_valid_provenance_scalar(rel_a)
+            and Verifier._is_valid_provenance_scalar(rel_b)
+            and rel_a == rel_b
+        ):
             return True, f"identical artifact release record: '{rel_a}'"
 
         files_a = art_a.get("file_list") or art_a.get("files") or art_a.get("manifest")
         files_b = art_b.get("file_list") or art_b.get("files") or art_b.get("manifest")
         if files_a and files_b and files_a == files_b:
             if Verifier._manifest_has_hashes(files_a):
-                return True, "identical package file list with cryptographic hashes"
+                return True, "identical package file list with valid cryptographic hashes"
             else:
-                return False, "package file list lacks cryptographic hashes (bare filename list is strictly insufficient to prove artifact identity)"
+                return False, "package file list lacks valid cryptographic hashes (bare filename lists, empty hashes, placeholders, or all-zero hashes are strictly insufficient to prove artifact identity)"
 
-        return False, "no shared release record, download URL, or file list with cryptographic hashes"
+        return False, "no shared release record, download URL, or file list with valid cryptographic hashes"
 
     @staticmethod
     def _decode_digest_bytes(raw_val: Any, algo: str) -> Tuple[Optional[bytes], str, Optional[str]]:
@@ -373,21 +521,16 @@ class Verifier:
                 return None, "hex", f"Invalid hex payload: {exc}"
 
         # SRI format (e.g. sha512-..., sha256-...)
-        sri_prefix = f"{algo}-"
-        if s.startswith(sri_prefix) or (algo == "sha512" and s.startswith("sha512-")) or (algo == "sha256" and s.startswith("sha256-")):
+        canon_algo = Verifier.ALGO_ALIAS_MAP.get(algo.lower(), algo.lower()) if hasattr(Verifier, "ALGO_ALIAS_MAP") else algo.lower()
+        sri_prefix = f"{canon_algo}-"
+        if s.startswith(sri_prefix) or s.startswith(f"{algo}-") or (canon_algo == "sha512" and s.startswith("sha512-")) or (canon_algo == "sha256" and s.startswith("sha256-")):
             payload = s.split("-", 1)[1].strip()
             try:
                 return base64.b64decode(payload, validate=True), "base64", None
             except Exception as exc:
                 return None, "base64", f"Invalid SRI base64 payload: {exc}"
 
-        expected_bytes = {
-            "sha256": 32,
-            "sha512": 64,
-            "sha1": 20,
-            "md5": 16,
-            "blake2b_256": 32,
-        }.get(algo)
+        expected_bytes = Verifier.EXPECTED_DIGEST_LENGTHS.get(canon_algo)
 
         # Check explicit base64 characteristics
         has_b64_chars = "+" in s or "/" in s or s.endswith("=")
@@ -497,8 +640,53 @@ class Verifier:
             "rationale": f"Artifact identity verified via {prov_reason}.",
         })
 
-        # Rule 2: Identical algorithm check
-        shared_algos = sorted(list(set(digs_a.keys()).intersection(set(digs_b.keys()))))
+        # Rule 2: Algorithm normalization and mapping
+        # Maps raw algorithm names (case-insensitive & aliases) to canonical algorithm names.
+        norm_digs_a: Dict[str, Tuple[str, Any]] = {}
+        unknown_algos_a: List[str] = []
+        for k, v in digs_a.items():
+            if not isinstance(k, str) or not k.strip():
+                continue
+            canon = self.ALGO_ALIAS_MAP.get(k.strip().lower())
+            if canon:
+                norm_digs_a[canon] = (k, v)
+            else:
+                unknown_algos_a.append(k)
+
+        norm_digs_b: Dict[str, Tuple[str, Any]] = {}
+        unknown_algos_b: List[str] = []
+        for k, v in digs_b.items():
+            if not isinstance(k, str) or not k.strip():
+                continue
+            canon = self.ALGO_ALIAS_MAP.get(k.strip().lower())
+            if canon:
+                norm_digs_b[canon] = (k, v)
+            else:
+                unknown_algos_b.append(k)
+
+        shared_algos = sorted(list(set(norm_digs_a.keys()).intersection(set(norm_digs_b.keys()))))
+        shared_unknown = sorted(list(set(unknown_algos_a).intersection(set(unknown_algos_b))))
+
+        # If algorithms are unknown/unrecognized:
+        # Enforce hard constraint: unknown algorithms MUST NOT bypass length constraints;
+        # output undecidable (subcode ENCODING_UNSUPPORTED).
+        if not shared_algos and (shared_unknown or unknown_algos_a or unknown_algos_b):
+            target_unknown = shared_unknown or unknown_algos_a or unknown_algos_b
+            audit_trail.append({
+                "rule_id": "DIGEST_02_ALGORITHM_IDENTITY",
+                "condition_evaluated": f"shared_unknown_algorithms({target_unknown})",
+                "outcome": "ENCODING_UNSUPPORTED",
+                "rationale": f"Digest algorithm(s) {target_unknown} are unknown or unsupported. Unknown algorithms cannot bypass length constraints; outputs undecidable.",
+            })
+            return {
+                "category": "INDETERMINATE",
+                "subcode": "ENCODING_UNSUPPORTED",
+                "confidence": 1.0,
+                "summary": f"Digest algorithm {target_unknown} is unknown or unsupported",
+                "details": f"Attempted to compare digests with unknown algorithm(s) {target_unknown}. Enforcing hard constraint: unknown algorithms must NOT skip length constraints; outputs undecidable (subcode ENCODING_UNSUPPORTED).",
+                "avoided_false_positive": "Avoided skipping length constraints or asserting false DIGEST_CONFLICT on unrecognized hash algorithms.",
+            }
+
         if not shared_algos:
             audit_trail.append({
                 "rule_id": "DIGEST_02_ALGORITHM_IDENTITY",
@@ -515,11 +703,13 @@ class Verifier:
                 "avoided_false_positive": "Avoided crash/exception or false mismatch alert when one source only provides sha1/md5 and another provides sha256/sha512.",
             }
 
-        # Rule 3: Hash value check across shared algorithms via byte-level decoding
+        # Rule 3: Hash value check across shared algorithms via byte-level decoding & length validation
         conflict_algos = []
         for algo in shared_algos:
-            raw_a = digs_a[algo]
-            raw_b = digs_b[algo]
+            raw_a = norm_digs_a[algo][1]
+            raw_b = norm_digs_b[algo][1]
+            orig_k_a = norm_digs_a[algo][0]
+            orig_k_b = norm_digs_b[algo][0]
 
             bytes_a, enc_a, err_a = self._decode_digest_bytes(raw_a, algo)
             bytes_b, enc_b, err_b = self._decode_digest_bytes(raw_b, algo)
@@ -541,21 +731,21 @@ class Verifier:
                     "avoided_false_positive": "Avoided corrupting case-sensitive digest encodings (such as base64) through naive lowercase string comparison.",
                 }
 
-            # Rule 3b: Digest length validation (declared algorithm requires exact decoded byte length)
-            expected_len = self.EXPECTED_DIGEST_LENGTHS.get(algo.lower())
+            # Rule 3b: Digest length validation (normalized algorithm requires exact decoded byte length)
+            expected_len = self.EXPECTED_DIGEST_LENGTHS.get(algo)
             if expected_len is not None and (len(bytes_a) != expected_len or len(bytes_b) != expected_len):
                 audit_trail.append({
                     "rule_id": "DIGEST_03_LENGTH_VALIDATION",
                     "condition_evaluated": f"len(digest_bytes) == {expected_len} for algo '{algo}' (source_a={len(bytes_a)}, source_b={len(bytes_b)})",
                     "outcome": "DIGEST_LENGTH_MISMATCH",
-                    "rationale": f"Decoded digest byte length mismatch for algorithm '{algo}': expected {expected_len} bytes, got source_a={len(bytes_a)} bytes, source_b={len(bytes_b)} bytes. Enforcing hard constraint: length mismatch outputs undecidable (subcode DIGEST_LENGTH_MISMATCH).",
+                    "rationale": f"Decoded digest byte length mismatch for algorithm '{algo}' (keys '{orig_k_a}', '{orig_k_b}'): expected {expected_len} bytes, got source_a={len(bytes_a)} bytes, source_b={len(bytes_b)} bytes. Enforcing hard constraint: length mismatch outputs undecidable (subcode DIGEST_LENGTH_MISMATCH).",
                 })
                 return {
                     "category": "INDETERMINATE",
                     "subcode": "DIGEST_LENGTH_MISMATCH",
                     "confidence": 1.0,
                     "summary": f"Digest length mismatch for algorithm '{algo}'",
-                    "details": f"Declared algorithm '{algo}' requires {expected_len} bytes, but decoded digest length does not match (source_a has {len(bytes_a)} bytes, source_b has {len(bytes_b)} bytes). Enforcing hard constraint: length mismatch outputs undecidable (subcode DIGEST_LENGTH_MISMATCH), strictly prohibited from asserting DIGEST_CONFLICT.",
+                    "details": f"Declared algorithm '{algo}' (keys: '{orig_k_a}', '{orig_k_b}') requires {expected_len} bytes, but decoded digest length does not match (source_a has {len(bytes_a)} bytes, source_b has {len(bytes_b)} bytes). Enforcing hard constraint: length mismatch outputs undecidable (subcode DIGEST_LENGTH_MISMATCH), strictly prohibited from asserting DIGEST_CONFLICT.",
                     "avoided_false_positive": f"Avoided false-positive DIGEST_CONFLICT on malformed or truncated {algo} digest vectors.",
                 }
 
@@ -689,22 +879,51 @@ class Verifier:
                     "avoided_false_positive": "Avoided asserting sync delay without multi-point temporal evidence chain.",
                 }
 
-            # Check 3: Subsequent observation HTTP status must be success (200)
+            # Check 3: Subsequent observation HTTP status must be success (2xx)
             sub_status = subsequent_obs.get("status")
-            if not isinstance(sub_status, int) or not (200 <= sub_status < 300):
+            if not isinstance(sub_status, int):
                 audit_trail.append({
                     "rule_id": "SYNC_02_SUBSEQUENT_STATUS",
-                    "condition_evaluated": f"subsequent_status={sub_status} (expected HTTP 200)",
-                    "outcome": "UNDECIDABLE_NON_SUCCESS",
-                    "rationale": f"Subsequent observation returned non-success HTTP status {sub_status}. Without verified successful ingestion, sync delay cannot be proven.",
+                    "condition_evaluated": f"subsequent_status={sub_status} (is integer)",
+                    "outcome": "UNDECIDABLE_INVALID_STATUS",
+                    "rationale": f"Subsequent observation returned invalid non-integer HTTP status '{sub_status}'.",
+                })
+                return {
+                    "category": "INDETERMINATE",
+                    "subcode": "undecidable",
+                    "confidence": 0.3,
+                    "summary": f"Subsequent observation invalid status ({sub_status}); sync delay cannot be verified",
+                    "details": f"Subsequent observation HTTP status is invalid or missing ({sub_status}). Ingestion success is not established; delay is undecidable.",
+                    "avoided_false_positive": "Avoided computing delay without valid HTTP status.",
+                }
+
+            if not (200 <= sub_status < 300):
+                if 300 <= sub_status < 400:
+                    status_desc = f"non-success redirect HTTP {sub_status}"
+                    rat_desc = f"Subsequent observation returned redirect HTTP {sub_status}. Redirection does not prove final ingestion success."
+                elif 400 <= sub_status < 500:
+                    status_desc = f"non-success client error HTTP {sub_status}"
+                    rat_desc = f"Subsequent observation returned client error HTTP {sub_status}. Package remains uningested or missing downstream."
+                elif 500 <= sub_status < 600:
+                    status_desc = f"non-success server error HTTP {sub_status}"
+                    rat_desc = f"Subsequent observation returned server error HTTP {sub_status}. Indexer server failure prevents delay verification."
+                else:
+                    status_desc = f"non-success HTTP {sub_status}"
+                    rat_desc = f"Subsequent observation returned non-success HTTP {sub_status}."
+
+                audit_trail.append({
+                    "rule_id": "SYNC_02_SUBSEQUENT_STATUS",
+                    "condition_evaluated": f"subsequent_status={sub_status} (expected HTTP 2xx)",
+                    "outcome": f"UNDECIDABLE_HTTP_{sub_status}",
+                    "rationale": rat_desc,
                 })
                 return {
                     "category": "INDETERMINATE",
                     "subcode": "undecidable",
                     "confidence": 0.4,
-                    "summary": f"Subsequent observation non-success (HTTP {sub_status}); sync delay cannot be verified",
-                    "details": f"Upstream registry reports release at '{up_time_str}'. Initial 404 observed at '{fetch_time_str}'. However, subsequent observation returned HTTP {sub_status} instead of successful 200. Ingestion success is not established; delay is undecidable (suspected delay with uncertainty preserved).",
-                    "avoided_false_positive": "Avoided asserting resolved synchronization delay when downstream indexer continues to return 404 or error.",
+                    "summary": f"Subsequent observation {status_desc}; sync delay cannot be verified",
+                    "details": f"Upstream registry reports release at '{up_time_str}'. Initial 404 observed at '{fetch_time_str}'. However, subsequent observation returned {status_desc} instead of successful 2xx. Ingestion success is not established; delay is undecidable (suspected delay with uncertainty preserved).",
+                    "avoided_false_positive": "Avoided asserting resolved synchronization delay when downstream indexer returned error or redirect.",
                 }
 
             # Check 4: Subsequent observation timestamp valid
@@ -725,30 +944,7 @@ class Verifier:
                     "avoided_false_positive": "Avoided computing delay without valid subsequent observation timestamp.",
                 }
 
-            # Check 4b: Subsequent observation must not be in the future (t_observed_after <= current_time)
-            sub_dt = self._parse_iso_ts(sub_ts)
-            eval_anchor_str = norm_data.get("evaluation_timestamp") or norm_data.get("fetch_timestamp")
-            eval_anchor_dt = self._parse_iso_ts(eval_anchor_str) if eval_anchor_str else None
-            now_dt = datetime.now(timezone.utc)
-            current_time_cutoff = max(now_dt, eval_anchor_dt) if eval_anchor_dt else now_dt
-
-            if sub_dt and sub_dt > current_time_cutoff:
-                audit_trail.append({
-                    "rule_id": "SYNC_02_FUTURE_TIMESTAMP",
-                    "condition_evaluated": f"t_observed_after ('{sub_ts}') <= current_time ('{current_time_cutoff.isoformat()}')",
-                    "outcome": "UNDECIDABLE_FUTURE_TIME",
-                    "rationale": f"Subsequent observation timestamp '{sub_ts}' is in the future (> current evaluation time). Future observations cannot prove synchronization delay.",
-                })
-                return {
-                    "category": "INDETERMINATE",
-                    "subcode": "undecidable",
-                    "confidence": 0.4,
-                    "summary": "Subsequent observation timestamp is in the future; sync delay cannot be verified",
-                    "details": f"Subsequent observation timestamp '{sub_ts}' exceeds current evaluation time. Enforcing hard constraint: future timestamps are strictly rejected; delay is undecidable.",
-                    "avoided_false_positive": "Avoided prematurely asserting resolved sync delay based on unreached future observation timestamps.",
-                }
-
-            # Check 5: Temporal order check: t_observed_after > t_observed_before
+            # Check 4b: Temporal order check: t_observed_after > t_observed_before
             delta_after = self._calc_time_diff_seconds(fetch_time_str, sub_ts)
             if delta_after is None or delta_after <= 0:
                 audit_trail.append({
@@ -764,6 +960,26 @@ class Verifier:
                     "summary": "Temporal order invalid (time inversion); sync delay cannot be verified",
                     "details": f"Subsequent observation timestamp '{sub_ts}' does not strictly succeed initial observation '{fetch_time_str}' (delta: {delta_after}s). Lacking valid forward temporal order, delay cannot be proven; outputting undecidable (suspected delay).",
                     "avoided_false_positive": "Avoided asserting sync delay when observation order is inverted or concurrent.",
+                }
+
+            # Check 5: Subsequent observation must not be in the future (t_observed_after <= real current_time)
+            # Must check against real wall clock: input evaluation_timestamp MUST NOT be trusted.
+            sub_dt = self._parse_iso_ts(sub_ts)
+            now_dt = datetime.now(timezone.utc)
+            if sub_dt and sub_dt > now_dt:
+                audit_trail.append({
+                    "rule_id": "SYNC_02_FUTURE_TIMESTAMP",
+                    "condition_evaluated": f"t_observed_after ('{sub_ts}') <= current_time ('{now_dt.isoformat()}')",
+                    "outcome": "UNDECIDABLE_FUTURE_TIME",
+                    "rationale": f"Subsequent observation timestamp '{sub_ts}' is in the future relative to real system clock ({now_dt.isoformat()}). Input evaluation_timestamp cannot override real current time.",
+                })
+                return {
+                    "category": "INDETERMINATE",
+                    "subcode": "undecidable",
+                    "confidence": 0.4,
+                    "summary": "Subsequent observation timestamp is in the future; sync delay cannot be verified",
+                    "details": f"Subsequent observation timestamp '{sub_ts}' exceeds real current time ({now_dt.isoformat()}). Enforcing hard constraint: future timestamps are strictly rejected against real system clock (input evaluation_timestamp is not trusted); delay is undecidable.",
+                    "avoided_false_positive": "Avoided prematurely asserting resolved sync delay based on unreached future observation timestamps.",
                 }
 
             # If all checks passed, calculate provable range
@@ -787,16 +1003,16 @@ class Verifier:
 
             audit_trail.append({
                 "rule_id": "SYNC_02_OBSERVATION_CHAIN",
-                "condition_evaluated": f"temporal_chain_complete(upstream='{up_time_str}', 404_observed='{fetch_time_str}', 200_observed='{sub_ts}')",
+                "condition_evaluated": f"temporal_chain_complete(upstream='{up_time_str}', 404_observed='{fetch_time_str}', HTTP_{sub_status}_observed='{sub_ts}')",
                 "outcome": "SYNC_DELAY",
-                "rationale": f"Three-stage temporal observation chain confirmed (published -> 404 missing -> 200 resolved). Provable delay range {provable_range_str} is {tolerance_str}.",
+                "rationale": f"Three-stage temporal observation chain confirmed (published -> 404 missing -> HTTP {sub_status} resolved). Provable delay range {provable_range_str} is {tolerance_str}.",
             })
             return {
                 "category": "SYNC_DELAY",
                 "subcode": "DOWNSTREAM_INGESTION_LAG",
                 "confidence": confidence,
                 "summary": summary_text,
-                "details": f"Upstream registry reports release published at '{up_time_str}'. Temporal observation chain verified: downstream missing (404) observed at '{fetch_time_str}' (delta {delay_before_str}), subsequent appearance (200) observed at '{sub_ts}'. Provable delay range is {provable_range_str}, which {tolerance_str}. Preserving uncertainty; not judged as missing package or mirror defect.",
+                "details": f"Upstream registry reports release published at '{up_time_str}'. Temporal observation chain verified: downstream missing (404) observed at '{fetch_time_str}' (delta {delay_before_str}), subsequent appearance (HTTP {sub_status}) observed at '{sub_ts}'. Provable delay range is {provable_range_str}, which {tolerance_str}. Preserving uncertainty; not judged as missing package or mirror defect.",
                 "avoided_false_positive": "Avoided misclassifying normal downstream indexing latency as upstream publication failure or missing package integrity fault.",
             }
 
@@ -831,6 +1047,7 @@ class Verifier:
                     or norm_data.get("sources", {}).get("registry", {}).get("license_text_evidence")
                     or norm_data.get("license_text_evidence")
                 )
+                cd_desc = f"ClearlyDefined confirms '{cd_declared}'" if cd_declared else "ClearlyDefined: 未覆盖"
                 if not lic_ev or not lic_ev.get("text_snippet"):
                     audit_trail.append({
                         "rule_id": "ERROR_01_ARTIFACT_LICENSE_EVIDENCE",
@@ -843,7 +1060,7 @@ class Verifier:
                         "subcode": "undecidable",
                         "confidence": 0.5,
                         "summary": "Cannot verify real error due to missing artifact LICENSE text evidence",
-                        "details": f"deps.dev reports licenses: {deps_licenses}. While registry classifiers contain {[c for c in reg_classifiers if 'OSI Approved' in c]} and ClearlyDefined confirms '{cd_declared}', no artifact LICENSE text evidence was provided. Without empirical artifact license text, REAL_ERROR cannot be asserted. Enforcing hard constraint: missing evidence strictly outputs 'undecidable'.",
+                        "details": f"deps.dev reports licenses: {deps_licenses}. While registry classifiers contain {[c for c in reg_classifiers if 'OSI Approved' in c]} and {cd_desc}, no artifact LICENSE text evidence was provided. Without empirical artifact license text, REAL_ERROR cannot be asserted. Enforcing hard constraint: missing evidence strictly outputs 'undecidable'.",
                         "avoided_false_positive": "Avoided uncorroborated REAL_ERROR assertion without empirical artifact license text proof.",
                     }
 
@@ -864,7 +1081,7 @@ class Verifier:
                         "subcode": "undecidable",
                         "confidence": 0.5,
                         "summary": "Cannot verify real error: artifact license text lacks standard text match evidence",
-                        "details": f"deps.dev reports licenses: {deps_licenses}. While registry classifiers contain {[c for c in reg_classifiers if 'OSI Approved' in c]} and ClearlyDefined confirms '{cd_declared}', artifact license text snippet lacks verified match evidence against standard license text ({match_reason}). Without empirical evidence demonstrating equivalence to standard text, REAL_ERROR cannot be asserted. Enforcing hard constraint: outputs undecidable.",
+                        "details": f"deps.dev reports licenses: {deps_licenses}. While registry classifiers contain {[c for c in reg_classifiers if 'OSI Approved' in c]} and {cd_desc}, artifact license text snippet lacks verified match evidence against standard license text ({match_reason}). Without empirical evidence demonstrating equivalence to standard text, REAL_ERROR cannot be asserted. Enforcing hard constraint: outputs undecidable.",
                         "avoided_false_positive": "Avoided asserting REAL_ERROR on arbitrary text snippet without verified match to standard license text.",
                     }
 
@@ -879,7 +1096,7 @@ class Verifier:
                     "subcode": "STANDARDS_CONTRADICTION",
                     "confidence": 1.0,
                     "summary": "Downstream index license classification contradicts upstream and curated standards",
-                    "details": f"deps.dev reports licenses: {deps_licenses}. In contrast, PyPI registry classifiers contain '{[c for c in reg_classifiers if 'OSI Approved' in c]}' and ClearlyDefined confirms '{cd_declared}'. The artifact {file_name} contains verified license text ({spdx_id}). Because authoring field omission versus downstream classifier parsing fault cannot be separated, unilateral parser responsibility assertion is removed; recorded verifiable metadata contradiction.",
+                    "details": f"deps.dev reports licenses: {deps_licenses}. In contrast, PyPI registry classifiers contain '{[c for c in reg_classifiers if 'OSI Approved' in c]}' and {cd_desc}. The artifact {file_name} contains verified license text ({spdx_id}). Because authoring field omission versus downstream classifier parsing fault cannot be separated, unilateral parser responsibility assertion is removed; recorded verifiable metadata contradiction.",
                     "avoided_false_positive": "Avoided discarding or flagging a legitimate package as license-incompatible while avoiding unverified attribution of parser fault.",
                 }
 
@@ -1040,13 +1257,27 @@ class Verifier:
             }
 
         # Check 3: Comparable license declarations check across sources
+        def _get_substantive_licenses(s: Dict[str, Any]) -> List[str]:
+            raw_lics = s.get("licenses") or []
+            if not raw_lics and s.get("declared_license"):
+                raw_lics = [s["declared_license"]]
+            clean_list = []
+            for item in raw_lics:
+                if not isinstance(item, str):
+                    continue
+                s_item = item.strip()
+                if not s_item or s_item.lower() in self.UNINFORMATIVE_LICENSES:
+                    continue
+                clean_list.append(s_item)
+            return clean_list
+
         sources_with_license = [
             s.get("source_id", "unknown") for s in avail_sources
-            if bool(s.get("licenses") or s.get("declared_license"))
+            if bool(_get_substantive_licenses(s))
         ]
         sources_without_license = [
             s.get("source_id", "unknown") for s in avail_sources
-            if not bool(s.get("licenses") or s.get("declared_license"))
+            if not bool(_get_substantive_licenses(s))
         ]
 
         if not sources_with_license:
@@ -1054,15 +1285,15 @@ class Verifier:
                 "rule_id": "CONSISTENCY_01_COMPARABLE_LICENSE",
                 "condition_evaluated": "has_comparable_license_declarations(sources)",
                 "outcome": "NO_COMPARABLE_LICENSE_EVIDENCE",
-                "rationale": "Neither source provides a license declaration. Without comparable license evidence, metadata consistency cannot be determined.",
+                "rationale": "Neither source provides a substantive license declaration (all empty, missing, or placeholder values). Without comparable license evidence, metadata consistency cannot be determined.",
             })
             return {
                 "category": "INDETERMINATE",
                 "subcode": "undecidable",
                 "confidence": 0.0,
                 "summary": "Cannot determine consistency: no comparable license evidence across sources",
-                "details": "None of the available sources provide license declarations or verifiable license metadata (even if release timestamps or other fields differ). Lacking comparable license evidence, metadata consistency is undecidable. Enforcing hard constraint: absent license evidence strictly yields 'undecidable', NEVER defaults to CONSISTENT.",
-                "avoided_false_positive": "Avoided false-positive CONSISTENT verdict when sources lack license declarations entirely.",
+                "details": "None of the available sources provide verifiable license declarations (found only empty arrays, whitespace, or placeholder values such as 'unknown' or 'see license file'). Lacking comparable license evidence, metadata consistency is undecidable. Enforcing hard constraint: absent license evidence strictly yields 'undecidable', NEVER defaults to CONSISTENT.",
+                "avoided_false_positive": "Avoided false-positive CONSISTENT verdict when sources lack substantive license declarations entirely.",
             }
 
         if sources_with_license and sources_without_license:
@@ -1081,45 +1312,72 @@ class Verifier:
                 "avoided_false_positive": "Avoided false-positive 'CONSISTENT' verdict when one source lacks comparable fields to verify against.",
             }
 
-        # Check 4: Check release timestamps consistency if multiple sources provide published_at
+        # Check 4: Check release timestamps consistency across ALL sources providing published_at
         ts_map: Dict[str, str] = {}
         for s in avail_sources:
             pub = s.get("published_at")
-            if pub:
-                ts_map[s.get("source_id", "src")] = str(pub)
+            if pub and str(pub).strip():
+                ts_map[s.get("source_id", "src")] = str(pub).strip()
+
         if len(ts_map) >= 2:
             ts_keys = list(ts_map.keys())
-            t1, t2 = ts_map[ts_keys[0]], ts_map[ts_keys[1]]
-            diff_sec = self._calc_time_diff_seconds(t1, t2)
-            if diff_sec is not None and abs(diff_sec) > 86400:
-                audit_trail.append({
-                    "rule_id": "CONSISTENCY_01_TIMESTAMP_DISCREPANCY",
-                    "condition_evaluated": f"release_timestamp_match({t1}, {t2}, delta={diff_sec}s)",
-                    "outcome": "TIMESTAMP_DIVERGENCE",
-                    "rationale": f"Cross-source release publication timestamp discrepancy: {ts_keys[0]} reports {t1} vs {ts_keys[1]} reports {t2} (delta {int(abs(diff_sec))}s). Cannot determine consistency.",
-                })
-                return {
-                    "category": "INDETERMINATE",
-                    "subcode": "undecidable",
-                    "confidence": 0.2,
-                    "summary": "Cannot determine consistency due to contradictory release publication timestamps",
-                    "details": f"Available sources report conflicting release publication timestamps ({ts_keys[0]}: {t1} vs {ts_keys[1]}: {t2}, delta: {int(abs(diff_sec))}s). Metadata consistency is undecidable.",
-                    "avoided_false_positive": "Avoided false-positive CONSISTENT verdict when publication timestamps disagree across sources.",
-                }
+            for i in range(len(ts_keys)):
+                for j in range(i + 1, len(ts_keys)):
+                    k1, k2 = ts_keys[i], ts_keys[j]
+                    t1, t2 = ts_map[k1], ts_map[k2]
+                    diff_sec = self._calc_time_diff_seconds(t1, t2)
+                    if diff_sec is not None and abs(diff_sec) > 86400:
+                        audit_trail.append({
+                            "rule_id": "CONSISTENCY_01_TIMESTAMP_DISCREPANCY",
+                            "condition_evaluated": f"release_timestamp_match({k1}='{t1}', {k2}='{t2}', delta={diff_sec}s)",
+                            "outcome": "TIMESTAMP_DIVERGENCE",
+                            "rationale": f"Cross-source release publication timestamp discrepancy: {k1} reports '{t1}' vs {k2} reports '{t2}' (delta {int(abs(diff_sec))}s exceeds 86400s). Cannot determine consistency.",
+                        })
+                        return {
+                            "category": "INDETERMINATE",
+                            "subcode": "undecidable",
+                            "confidence": 0.2,
+                            "summary": "Cannot determine consistency due to contradictory release publication timestamps",
+                            "details": f"Available sources report conflicting release publication timestamps ({k1}: '{t1}' vs {k2}: '{t2}', delta: {int(abs(diff_sec))}s). Pairwise timestamp discrepancy exceeds tolerance window (86400s). Metadata consistency is undecidable.",
+                            "avoided_false_positive": "Avoided false-positive CONSISTENT verdict when publication timestamps disagree across sources.",
+                        }
 
         # Actual comparison passed! Compute confidence dynamically based on evidence strength (strictly < 1.0)
-        confidence = 0.85
-        if len(avail_sources) >= 3:
-            confidence += 0.05
-        if len(ts_map) >= 2:
-            confidence += 0.03
+        # Formula:
+        # Base: 0.70
+        # + Corroborated dimensions: license (+0.06), artifacts (+0.06), repository (+0.03), timestamps (+0.03)
+        # + Source independence: independent sources >= 2 (+0.08), single independent + derived mirror (+0.02)
+        # - Temporal span penalty: max |t1 - t2| / 86400 * 0.08
+        dim_bonus = 0.0
+        if len(sources_with_license) >= 2:
+            dim_bonus += 0.06
         art_sources = [s for s in avail_sources if s.get("artifacts")]
         if len(art_sources) >= 2:
-            confidence += 0.04
-        if any(s.get("source_id") == "clearlydefined" for s in avail_sources):
-            confidence += 0.03
+            dim_bonus += 0.06
+        repo_sources = [s for s in avail_sources if s.get("repository")]
+        if len(repo_sources) >= 2:
+            dim_bonus += 0.03
+        if len(ts_map) >= 2:
+            dim_bonus += 0.03
 
-        confidence = min(0.98, round(confidence, 3))
+        independent_sources = [s for s in avail_sources if not s.get("derived_from")]
+        if len(independent_sources) >= 2 or any(s.get("source_id") == "clearlydefined" for s in avail_sources):
+            indep_bonus = 0.08
+        else:
+            indep_bonus = 0.02
+
+        time_penalty = 0.0
+        if len(ts_map) >= 2:
+            ts_keys = list(ts_map.keys())
+            max_delta = max(
+                abs(self._calc_time_diff_seconds(ts_map[ts_keys[i]], ts_map[ts_keys[j]]) or 0)
+                for i in range(len(ts_keys))
+                for j in range(i + 1, len(ts_keys))
+            )
+            time_penalty = min(0.08, (max_delta / 86400.0) * 0.08)
+
+        confidence = 0.70 + dim_bonus + indep_bonus - time_penalty
+        confidence = min(0.95, max(0.60, round(confidence, 3)))
 
         audit_trail.append({
             "rule_id": "CONSISTENCY_02_CORROBORATION",

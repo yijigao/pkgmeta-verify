@@ -62,38 +62,52 @@ PMV 锁定 **npm** 与 **PyPI** 双生态，每个生态均包含权威注册表
 
 ---
 
-## 4. 终审硬约束在规则中的落实
+## 4. 判定规则覆盖范围与已知未覆盖项
 
-根据终审意见原文（ASTRA-REV2 与 ASTRA-REV3 终审意见），PMV 在 `rules/rules-v0.1.json` 与 `verifier.py` 中严格落实了各项判定硬约束：
+根据终审意见原文（ASTRA-REV2、ASTRA-REV3 及 ASTRA-REV3FIX2 审查意见），PMV 在 `rules/rules-v0.1.json` 与 `verifier.py` 中落实了与现有回归测试集严格对齐的判定规则。口径统一为**“现有测试零失败”**，不宣称绝对判定正确，并在下方明确声明已知未覆盖项：
 
-1. **制品身份关联核验 (同名文件不同摘要)**：
-   - 摘要比对**必须验证制品身份关联**（证明 digest 绑定到同一制品发布记录、同一下载 URL、或包内文件清单含 hash 其一）。
-   - 单纯的文件名清单（如 `["README", "LICENSE"]`）**不得**作为制品身份证据；未证明身份关联时严格输出 `INDETERMINATE`（子状态码 `ARTIFACT_IDENTITY_UNPROVEN`），**严禁判定为 `DIGEST_CONFLICT`**。
-   - 对于同一制品、同一算法且身份已证明的哈希冲突，判定为 `DIGEST_CONFLICT`，结论严格限定为“摘要冲突”，**严禁断言镜像损坏或恶意篡改**。
-2. **编码感知字节级解码与长度校验**：
-   - 摘要比对统一按编码**解码为原始字节后比对**（十六进制 hex 经解码比对消除大小写差异；Base64 区分大小写比对）。
-   - 禁止对 Base64 等区分大小写的编码静默 `.lower()` 判匹配。若编码未知或不支持，明确输出 `INDETERMINATE`（子状态码 `ENCODING_UNSUPPORTED`）。
-   - 增加摘要长度校验：声明算法 SHA-256 则解码后必须为 32 字节，否则明确输出 `INDETERMINATE`（子状态码 `DIGEST_LENGTH_MISMATCH`）。
-3. **延迟时间链与容差校验 (`SYNC_DELAY`)**：
-   - 必须同时满足：**后续观察 HTTP 成功状态 (200)**、**有效发布时间**、**严格正向观察时间顺序**（`t_observed_after > t_observed_before > t_published`）且**后续观察时间必须 ≤ 当前时间**（拒绝未来时间）。
-   - 延迟容差具有明确定义的阈值常量（`DEFAULT_SYNC_DELAY_TOLERANCE_SECONDS = 86400`，即 24 小时）；超出容差如实报告观测时长（例如 42 天延迟如实报告为 42 天，明确注明超出容差，严禁压缩表述或妄称“在容差内”）。
-   - 包含发布时间、下游缺失观察（404）、后续出现观察（200）的完整可信三段链，方可输出可证明的延迟范围。
-4. **跨源许可证主动比对与可比性检查 (`SEMANTIC_DIVERGENCE`)**：
-   - 实际进行字段比较；两源许可证为 MIT vs Apache-2.0 或 MIT vs non-standard 属于**明确不一致**，判定为 `SEMANTIC_DIVERGENCE`（子状态码 `LICENSE_DECLARATION_DISCREPANCY`）。
-   - 当许可证出现逻辑运算符时，按 SPDX 语义如实描述：`OR` 表达式描述为许可选择（alternative choice），`AND` 表达式描述为双重义务（dual obligations），严禁将 OR 描述为 AND 双重义务。
-   - 一源缺少可比字段或双方均无许可证时，严格判定为 `INDETERMINATE`（`undecidable`，无可比证据），**坚决禁止“无比较就判一致”**。
-   - `CONSISTENT` 仅在实际比较且一致时输出，置信度按证据强度动态计算（严格 < 1.0），不得恒为 1.0。
-5. **真实错误经验证据要求 (`REAL_ERROR`)**：
-   - 必须有许可证原文与标准文本的匹配证据（如 wheel 包内 `dist-info/LICENSE` 文本与已知标准文本模式匹配），否则不得断言 `REAL_ERROR`（输出 `undecidable` 并注明缺少标准文本匹配证据）。
-   - **删除一切硬编码事实断言**：删除硬编码“缺少 PEP 639 License-Expression”表述；在无法区分字段缺失 vs 解析器故障的情况下，删除 `DOWNSTREAM_PARSING_ERROR` 及其单边责任断言，客观判定为 `STANDARDS_CONTRADICTION`。
+### 4.1 已覆盖规则与边界约束（以 56 项回归测试为准）
+
+1. **制品身份关联核验 (同名文件不同摘要 & 空值/占位符/全零 hash 扫荡)**：
+   - 摘要比对**必须验证制品身份关联**（证明 digest 绑定到同一制品发布记录、同一下载 URL、或包内文件清单含有效 hash 其一）。
+   - 单纯文件名清单（如 `["README", "LICENSE"]`）、空字符串 hash（`{"LICENSE": {"sha256": ""}}`）、占位符（`null`、`"unknown"`、`"n/a"`）以及全零 dummy hash（`"0"*64`）**一律不作为有效身份证据**；未证明身份关联时严格输出 `INDETERMINATE`（子状态码 `ARTIFACT_IDENTITY_UNPROVEN`），**严禁判定为 `DIGEST_CONFLICT`**。
+   - 仅对同一制品、同一算法且身份已证明的哈希冲突判定为 `DIGEST_CONFLICT`，结论严格限定为“摘要冲突”，**严禁断言镜像损坏或恶意篡改**。
+2. **算法别名规范化与强制长度校验**：
+   - 摘要比对前对算法名进行大小写与别名规范化（`SHA-256` / `sha256` / `sha-256` / `sha_256` 映射为同一算法；`BLAKE2B-256` / `SHA-512` 等同理）。
+   - 未知算法名（如 `crc32`、`superhash`）或缺算法字段**不得跳过约束**，明确输出 `INDETERMINATE`（子状态码 `ENCODING_UNSUPPORTED`）。
+   - 摘要按编码解码为原始字节比对，禁止静默 `.lower()`；对规范化后的算法强制执行精确字节长度校验（如 SHA-256 解码后必须为 32 字节，单字节截断如 `hex:00` 明确输出 `DIGEST_LENGTH_MISMATCH`，严禁误判为冲突）。
+3. **延迟时间链真实时钟校验与精确状态码报告 (`SYNC_DELAY`)**：
+   - 未来时间检查**必须对照真实当前系统时钟**（`datetime.now(timezone.utc)`，绝不信任输入自带的 `evaluation_timestamp`；超过当前时钟判定为 `undecidable`）。
+   - HTTP 状态码**精确如实报告实际值**（HTTP 204 即报告为 HTTP 204，严禁改写为“200 已出现”）；3xx 重定向、4xx 客户端错误、5xx 服务端错误逐类明确输出为 `undecidable`。
+   - 只有 HTTP 2xx 且时间链完整严格正向（`t_observed_after > t_observed_before > t_published`）才判定延迟；延迟容差为明确阈值常量（24 小时），超出容差如实报告观测时长。
+4. **跨源许可证主动比对、无信息值扫荡、全两两时间比对与置信度动态公式 (`SEMANTIC_DIVERGENCE` / `CONSISTENT`)**：
+   - 空白数组 `[]`、`null`、空白字符串 `[" "]`、占位符 `"unknown"`、泛指声明 `"see license file"` / `"custom"` 等无信息值归一化后视同**无可比证据**，严格判定为 `INDETERMINATE`（`undecidable`），**坚决禁止“无比较就判一致”**。
+   - 真实不一致（如 MIT vs Apache-2.0）判定为 `SEMANTIC_DIVERGENCE`；SPDX 复合表达式中 `OR` 如实描述为许可选择，`AND` 如实描述为双重义务。
+   - 多源发布时间强制执行**全两两比对 (pairwise comparison)**：若任意两源时间差超过 24 小时（如三源中第三者差六年），判定为 `TIMESTAMP_DIVERGENCE`，严禁仅比对前两项或输出拍脑袋高置信度。
+   - `CONSISTENT` 仅在实际比较且一致时输出，置信度依据数学公式动态计算（严格 < 1.0）：
+     $$C = \min\left(0.95, \max\left(0.60, C_{\text{base}} + N_{\text{items}} \cdot W_{\text{item}} + I_{\text{indep}} \cdot W_{\text{indep}} - P_{\text{time}}\right)\right)$$
+     其中 $C_{\text{base}}=0.70$，维度项（许可、哈希、仓库、时间）每项加 $0.03\sim0.06$，独立源加 $0.08$（派生源仅加 $0.02$），时间差引入时间跨度惩罚 $P_{\text{time}}$。
+5. **真实错误经验证据实质比对、降权自证标记与空源脱敏 (`REAL_ERROR`)**：
+   - 标准文本判定必须具备原文与已知标准文本核心法律条款（授权条款、条件与免责条款）的实质比对证据，**彻底排除否定模式**（如 `"This is not an MIT license"` 判定不匹配）。
+   - `matches_standard=True` 等自报标记一律降权，仅作为输入声明，**不得单独作为判定依据**。
+   - 缺少 ClearlyDefined 等外部数据源时，如实输出“ClearlyDefined: 未覆盖”，**严禁输出“确认了 None”**。
+   - 删除一切硬编码事实断言（如“缺少 PEP 639”），客观判定为 `STANDARDS_CONTRADICTION`。
 6. **archgraph-layout 延迟案例降级**：
-   - 该公开案例降级为“**疑似延迟，时间链待核验**”，在证据与结果中标记 `verification_status: "suspect"` 与 `audit_status: "retracted"`，不再列为已证明的延迟。
-7. **空证据严禁默认一致**：
-   - 当证据为空或不足（可用对照源少于 2 个）时，严禁默认返回 `CONSISTENT`，必须返回 `undecidable`。
-8. **来源依赖关系明确记录 (Source Provenance DAG)**：
-   - PMV 在 `provenance_and_dependencies` 中强制记录 `[deps_dev -> registry]` 依赖链，显式标注“二者一致仅为摄取传播结果，不得作为独立真值证明”。
-9. **synthetic 标记一致性**：
-   - 跨算法比较模拟输入明确标记 `synthetic=true`，与构造基准 fixture 分开统计。
+   - 降级为“**疑似延迟，时间链待核验**”，标记 `verification_status: "suspect"` 与 `audit_status: "retracted"`，撤出已证明延迟案例。
+7. **空证据严禁默认一致**：可用对照源少于 2 个时严格输出 `undecidable`。
+8. **来源依赖关系明确记录 (Source Provenance DAG)**：记录 `[deps_dev -> registry]` 依赖链，显式标注非独立真值验证。
+9. **synthetic 标记一致性**：跨算法等构造测试标记 `synthetic=true`，与真实案例分开统计。
+
+---
+
+### 4.2 已知未覆盖项声明 (Known Uncovered Items)
+
+受当前原型开发阶段与测试集范围所限，以下边界尚未纳入当前规则集覆盖范围：
+1. **密码学哈希算法覆盖范围**：当前仅支持 SHA-256、SHA-512、SHA-384、SHA-1、MD5、BLAKE2（256/512）；尚未覆盖 SHA-3、Git Tree OID、SM3 等其它算法；遇到非支持算法统一降级为 `ENCODING_UNSUPPORTED`。
+2. **生态覆盖范围**：当前仅支持 npm 与 PyPI 双生态；尚未接入 crates.io、Maven Central、Go Proxy、RubyGems 等生态。
+3. **SPDX 表达式语法树解析**：当前仅支持顶层二元 AND / OR 复合拆分；尚未实现任意嵌套括号（如 `(MIT OR Apache-2.0) AND (BSD-3-Clause OR 0BSD)`）的通用 AST 递归求解器。
+4. **自定义例外与非标准许可文本全文比对**：当前仅覆盖已知常用 OSI/SPDX 标准许可的核心条款比对；对于带有自定义例外条款（如 Classpath Exception、LLVM Exception）或非常用自由软件许可证，尚未建立模糊相似度（Fuzzy/Dice）阈值判定器。
+5. **运行时钟动态漂移**：延迟时间链判定依赖运行环境的真实 UTC 时钟；若复跑环境系统时钟发生偏差或输入跨越容差边界，判定可能发生变化，不代表跨时间维度的绝对静态确定性。
 
 ---
 

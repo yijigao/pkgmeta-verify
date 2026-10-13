@@ -1,6 +1,6 @@
 # CodeSupply PMV 独立复跑审计报告 (Independent Rerun Audit Report)
 
-- **执行时间 (Run Timestamp)**: 2026-10-13T08:09:36Z
+- **执行时间 (Run Timestamp)**: 2026-10-13T09:32:27Z
 - **执行环境 (Environment)**: Linux 7.0.0-39-generic / Python 3.12.3
 - **技术负责人 (Technical Lead)**: Joey (Jigao Yi) 个人申请
 - **规则集版本 (Ruleset Version)**: `rules v0.1` (`rules/rules-v0.1.json`)
@@ -46,9 +46,9 @@ BASELINE_VALIDATE [pkg-pypi-typing-extensions-4.12.2.result.json]: PASS
 **状态: 现有测试零失败 (ALL TESTS PASSED)**
 
 ```
-....................................
+........................................................
 ----------------------------------------------------------------------
-Ran 36 tests in 0.091s
+Ran 56 tests in 0.070s
 
 OK
 ```
@@ -83,13 +83,12 @@ OK
 
 > **重要口径说明**：本轮起严格遵照 Astra rev3 审查要求，\"0 错误\"收窄为\"现有测试零失败\"——测试通过仅代表符合当前测试集规范，不等于判定绝对正确。本报告仅陈述客观测试结果。
 
-### Astra rev3 终审修复规则落实情况
-1. **制品身份关联核验 (同名文件不同摘要)**: 必须验证制品身份关联（绑定同一下载 URL / 包内文件清单含 hash / 发布记录之一）；单纯文件名清单不得作为身份证据，未证明身份关联严格判定为 `undecidable` (子码 `ARTIFACT_IDENTITY_UNPROVEN`)，严禁判定为 `DIGEST_CONFLICT`。
-2. **编码感知字节级解码与摘要长度校验**: 摘要统一按编码解码为原始字节后比对，严禁静默 `.lower()` 后判匹配；增加长度校验（SHA-256 解码后必须为 32 字节，否则判 `undecidable` / `DIGEST_LENGTH_MISMATCH`）。
-3. **延迟观测链严苛校验与容差如实报告**: 后续观察时间必须 ≤ 当前时间（拒绝未来时间）；延迟容差设为明确常量，超出容差不得称\"在容差内\"；42 天延迟如实报告为 42 天，严禁压缩表述。
-4. **跨源许可证主动比对与置信度动态计算**: MIT vs non-standard 判定为不一致 (`SEMANTIC_DIVERGENCE`)；双方均无许可证严格判定为无可比证据 (`undecidable`)；CONSISTENT 仅在实际比对一致时输出，置信度按证据强度动态计算（严格 < 1.0），不得恒为 1.0。
-5. **真实错误严禁硬编码断言与 SPDX 语义**: 必须有许可证原文与标准文本匹配证据方可断言；彻底删除\"缺少 PEP 639 License-Expression\"硬编码表述；OR 表达式按 SPDX 语义如实描述为许可选择，严禁描述为 AND 双重义务。
-6. **archgraph-layout 延迟案例降级**: 公开口径降级为\"疑似延迟，时间链待核验\"，证据中标记 `verification_status: suspect` 与 `audit_status: retracted`，撤出已证明延迟案例名单。
+### Astra rev4 终审修复与系统性边界扫荡落实情况
+1. **制品身份关联核验 (空值/占位符/全零 hash 扫荡)**: 身份证据必须含有效内容；空字符串 `{"LICENSE":{"sha256":""}}`、占位符（null、""、"unknown"、"n/a"）、全零 dummy hash 均视同无有效 hash，判定为 `undecidable` (`ARTIFACT_IDENTITY_UNPROVEN`)，严禁误判 `DIGEST_CONFLICT`。
+2. **算法规范化与长度约束强制执行**: 算法名称先做大小写与别名映射归一化（SHA-256/sha256/sha-256 同等处理）；未知算法输出 `undecidable` (`ENCODING_UNSUPPORTED`)，严禁跳过长度约束；所有规范化算法强制执行精确字节长度校验（截断输出 `DIGEST_LENGTH_MISMATCH`）。
+3. **延迟时间链真实时钟校验与精确状态码报告**: 未来时间检查必须对照真实当前系统时钟（拒绝信任输入自带的 evaluation_timestamp）；HTTP 状态码精确如实报告（HTTP 204 即报告为 HTTP 204，严禁改写为 200）；3xx/4xx/5xx 分类明确输出 undecidable。
+4. **许可证空值扫荡、全两两时间比对与置信度公式**: 空白数组、空白字符串、"unknown"、"see license file" 等无信息值归一化后视同无可比证据（`undecidable`）；多源发布时间强制执行全两两比对（跨源跨年差距判定为 `TIMESTAMP_DIVERGENCE`，严禁仅比对前两项或输出拍脑袋高置信度）；置信度严格依据证据项数、来源独立性、时间跨度惩罚等公式动态计算（严格 < 1.0）。
+5. **标准文本实质比对、降权自证标记与空源脱敏**: 彻底排除否定模式（如 "This is not an MIT license"）与名称关键词假命中；matches_standard=True 等自证标记一律降权，仅作为输入声明不得作为判定证据；必须具备核心法律条款实质比对证据；缺少 ClearlyDefined 时如实输出“ClearlyDefined: 未覆盖”，严禁输出“确认了 None”。
 
 ## 4. Diff 详细说明
-所有案例在离线快照复跑中与基线输出逐字节比对完全一致（0 diff，动态 `evaluation_timestamp` 字段中立隔离），证明 PMV 判定逻辑具备 100% 确定性与可复现性。
+本次固定输入基线的复跑结果（所有案例在离线快照复跑中与基线输出逐字节比对完全一致，0 diff，动态 `evaluation_timestamp` 字段中立隔离；注：若改变运行时钟或引入外部动态时变输入，判定可能发生变化，不代表全环境或未来时段的绝对确定性）。

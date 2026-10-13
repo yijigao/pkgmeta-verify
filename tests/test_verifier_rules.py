@@ -979,6 +979,737 @@ class TestVerifierRulesRegression(unittest.TestCase):
         self.assertIn("or disjunction", verdict["summary"].lower() + verdict["details"].lower())
         self.assertNotIn("dual compliance obligations", verdict["details"].lower())
 
+    # =========================================================================
+    # Rev4 Bug Fixes & Systematic Boundary Sweeps (Astra Rev3Fix2)
+    # =========================================================================
+
+    # -------------------------------------------------------------------------
+    # Group 1: Artifact Identity & Valid Cryptographic Hashes in Manifest
+    # -------------------------------------------------------------------------
+
+    def test_rev4_fix1_empty_hash_in_manifest_yields_unproven_identity(self):
+        """
+        Rev4 Counterexample 1:
+        Identical manifest {"LICENSE": {"sha256": ""}} has empty hash string.
+        Must NOT be treated as identity evidence; outputs ARTIFACT_IDENTITY_UNPROVEN,
+        strictly prohibited from outputting DIGEST_CONFLICT.
+        """
+        art_a = {
+            "artifact_id": "pkg-1.0.0.tar.gz",
+            "digests": {"sha256": "1" * 64},
+            "manifest": {"LICENSE": {"sha256": ""}},
+        }
+        art_b = {
+            "artifact_id": "pkg-1.0.0.tar.gz",
+            "digests": {"sha256": "2" * 64},
+            "manifest": {"LICENSE": {"sha256": ""}},
+        }
+        norm_data = self._base_norm_data()
+        res = self.verifier.verify(norm_data, compare_artifacts=(art_a, art_b))
+        verdict = res["verdict"]
+
+        self.assertNotEqual(verdict["category"], "DIGEST_CONFLICT")
+        self.assertEqual(verdict["category"], "INDETERMINATE")
+        self.assertEqual(verdict["subcode"], "ARTIFACT_IDENTITY_UNPROVEN")
+        self.assertIn("identity association unproven", verdict["summary"].lower())
+
+    def test_rev4_fix1_placeholder_hashes_in_manifest_sweep(self):
+        """
+        Rev4 Fix 1 Boundary Sweep:
+        Manifest variants with null, whitespace, 'unknown', 'n/a' dummy hashes.
+        All must yield ARTIFACT_IDENTITY_UNPROVEN without asserting DIGEST_CONFLICT.
+        """
+        placeholders = [
+            {"LICENSE": {"sha256": None}},
+            {"LICENSE": {"sha256": "   "}},
+            {"LICENSE": {"sha256": "unknown"}},
+            {"LICENSE": {"sha256": "n/a"}},
+            {"LICENSE": {"hash": "none"}},
+            {"LICENSE": "sha256:"},
+            {"LICENSE": "hex:"},
+            [{"path": "LICENSE", "sha256": ""}],
+            [{"path": "LICENSE", "sha256": "placeholder"}],
+            ["LICENSE sha256:"],
+        ]
+
+        for ph_manifest in placeholders:
+            art_a = {
+                "artifact_id": "test-1.0.0.tgz",
+                "digests": {"sha256": "a" * 64},
+                "manifest": ph_manifest,
+            }
+            art_b = {
+                "artifact_id": "test-1.0.0.tgz",
+                "digests": {"sha256": "b" * 64},
+                "manifest": ph_manifest,
+            }
+            norm_data = self._base_norm_data()
+            res = self.verifier.verify(norm_data, compare_artifacts=(art_a, art_b))
+            verdict = res["verdict"]
+
+            self.assertNotEqual(
+                verdict["category"], "DIGEST_CONFLICT",
+                f"Failed on placeholder manifest: {ph_manifest}"
+            )
+            self.assertEqual(verdict["subcode"], "ARTIFACT_IDENTITY_UNPROVEN")
+
+    def test_rev4_fix1_all_zero_dummy_hashes_yield_unproven_identity(self):
+        """
+        Rev4 Fix 1 Boundary Sweep:
+        All-zero hashes ('0'*32, '0'*64, SRI all zeroes) are dummy tombstone values.
+        Must NOT prove artifact identity.
+        """
+        zero_manifests = [
+            {"LICENSE": {"sha256": "0" * 64}},
+            {"LICENSE": "0" * 32},
+            {"LICENSE": "sha256:" + "0" * 64},
+            [{"path": "LICENSE", "sha256": "0" * 64}],
+            ["LICENSE 00000000000000000000000000000000"],
+        ]
+
+        for z_man in zero_manifests:
+            art_a = {
+                "artifact_id": "zero-1.0.0.tgz",
+                "digests": {"sha256": "3" * 64},
+                "manifest": z_man,
+            }
+            art_b = {
+                "artifact_id": "zero-1.0.0.tgz",
+                "digests": {"sha256": "4" * 64},
+                "manifest": z_man,
+            }
+            norm_data = self._base_norm_data()
+            res = self.verifier.verify(norm_data, compare_artifacts=(art_a, art_b))
+            verdict = res["verdict"]
+
+            self.assertEqual(verdict["category"], "INDETERMINATE")
+            self.assertEqual(verdict["subcode"], "ARTIFACT_IDENTITY_UNPROVEN")
+
+    def test_rev4_fix1_placeholder_urls_and_release_records_yield_unproven_identity(self):
+        """
+        Rev4 Fix 1 Boundary Sweep:
+        URL or release_record as 'unknown', 'n/a', '' does not prove identity.
+        """
+        art_a = {
+            "artifact_id": "lib-1.0.0.whl",
+            "url": "unknown",
+            "release_record": "n/a",
+            "digests": {"sha256": "5" * 64},
+        }
+        art_b = {
+            "artifact_id": "lib-1.0.0.whl",
+            "url": "unknown",
+            "release_record": "n/a",
+            "digests": {"sha256": "6" * 64},
+        }
+        norm_data = self._base_norm_data()
+        res = self.verifier.verify(norm_data, compare_artifacts=(art_a, art_b))
+        verdict = res["verdict"]
+
+        self.assertEqual(verdict["category"], "INDETERMINATE")
+        self.assertEqual(verdict["subcode"], "ARTIFACT_IDENTITY_UNPROVEN")
+
+    def test_rev4_fix1_valid_hash_in_manifest_proves_identity_and_yields_conflict(self):
+        """
+        Rev4 Fix 1 Positive Control:
+        When manifest contains genuine non-zero cryptographic hashes, identity is proven,
+        allowing valid DIGEST_CONFLICT evaluation.
+        """
+        art_a = {
+            "artifact_id": "proven-1.0.0.tar.gz",
+            "digests": {"sha256": "7" * 64},
+            "manifest": {"LICENSE": {"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}},
+        }
+        art_b = {
+            "artifact_id": "proven-1.0.0.tar.gz",
+            "digests": {"sha256": "8" * 64},
+            "manifest": {"LICENSE": {"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}},
+        }
+        norm_data = self._base_norm_data()
+        res = self.verifier.verify(norm_data, compare_artifacts=(art_a, art_b))
+        verdict = res["verdict"]
+
+        self.assertEqual(verdict["category"], "DIGEST_CONFLICT")
+        self.assertEqual(verdict["subcode"], "ARTIFACT_DIGEST_MISMATCH")
+
+    # -------------------------------------------------------------------------
+    # Group 2: Algorithm Normalization & Length Validation
+    # -------------------------------------------------------------------------
+
+    def test_rev4_fix2_uppercase_sha256_short_digest_yields_length_mismatch(self):
+        """
+        Rev4 Counterexample 2:
+        Algorithm key 'SHA-256' (uppercase/hyphenated) with 1-byte hex 'hex:00' vs 'hex:01'.
+        Algorithm must normalize to 'sha256', mandatory length check (32 bytes) must enforce,
+        yielding DIGEST_LENGTH_MISMATCH (strictly prohibited from outputting DIGEST_CONFLICT).
+        """
+        art_a = {
+            "artifact_id": "test-pkg-1.0.0.tar.gz",
+            "url": "https://example.org/download/test-pkg-1.0.0.tar.gz",
+            "digests": {"SHA-256": "hex:00"},
+        }
+        art_b = {
+            "artifact_id": "test-pkg-1.0.0.tar.gz",
+            "url": "https://example.org/download/test-pkg-1.0.0.tar.gz",
+            "digests": {"SHA-256": "hex:01"},
+        }
+        norm_data = self._base_norm_data()
+        res = self.verifier.verify(norm_data, compare_artifacts=(art_a, art_b))
+        verdict = res["verdict"]
+
+        self.assertNotEqual(verdict["category"], "DIGEST_CONFLICT")
+        self.assertEqual(verdict["category"], "INDETERMINATE")
+        self.assertEqual(verdict["subcode"], "DIGEST_LENGTH_MISMATCH")
+        self.assertIn("length mismatch", verdict["summary"].lower())
+
+    def test_rev4_fix2_algorithm_aliases_sweep_enforce_length_validation(self):
+        """
+        Rev4 Fix 2 Boundary Sweep:
+        Verify that all alias variations (SHA-512, sha_256, BLAKE2B-256, SHA1)
+        are normalized and enforce exact byte length.
+        """
+        alias_cases = [
+            ("SHA-512", "hex:deadbeef", 64),
+            ("sha_256", "hex:010203", 32),
+            ("BLAKE2B-256", "hex:cafe", 32),
+            ("SHA1", "hex:00112233", 20),
+        ]
+        for algo_name, short_val, expected_bytes in alias_cases:
+            art_a = {
+                "artifact_id": "alias-1.0.0.tgz",
+                "url": "https://example.org/alias-1.0.0.tgz",
+                "digests": {algo_name: short_val},
+            }
+            art_b = {
+                "artifact_id": "alias-1.0.0.tgz",
+                "url": "https://example.org/alias-1.0.0.tgz",
+                "digests": {algo_name: short_val},
+            }
+            norm_data = self._base_norm_data()
+            res = self.verifier.verify(norm_data, compare_artifacts=(art_a, art_b))
+            verdict = res["verdict"]
+
+            self.assertEqual(
+                verdict["subcode"], "DIGEST_LENGTH_MISMATCH",
+                f"Failed to enforce length for algorithm alias: {algo_name}"
+            )
+
+    def test_rev4_fix2_unknown_unrecognized_algorithm_yields_encoding_unsupported(self):
+        """
+        Rev4 Fix 2 Boundary Sweep:
+        Unknown algorithms (crc32, superhash, custom-algo) MUST NOT skip length constraints;
+        must yield INDETERMINATE with subcode ENCODING_UNSUPPORTED (never DIGEST_CONFLICT).
+        """
+        art_a = {
+            "artifact_id": "custom-1.0.0.tgz",
+            "url": "https://example.org/custom-1.0.0.tgz",
+            "digests": {"crc32": "1234"},
+        }
+        art_b = {
+            "artifact_id": "custom-1.0.0.tgz",
+            "url": "https://example.org/custom-1.0.0.tgz",
+            "digests": {"crc32": "5678"},
+        }
+        norm_data = self._base_norm_data()
+        res = self.verifier.verify(norm_data, compare_artifacts=(art_a, art_b))
+        verdict = res["verdict"]
+
+        self.assertNotEqual(verdict["category"], "DIGEST_CONFLICT")
+        self.assertEqual(verdict["category"], "INDETERMINATE")
+        self.assertEqual(verdict["subcode"], "ENCODING_UNSUPPORTED")
+        self.assertIn("unknown or unsupported", verdict["summary"].lower())
+
+    def test_rev4_fix2_missing_or_empty_algorithm_keys_yield_undecidable(self):
+        """
+        Rev4 Fix 2 Boundary Sweep:
+        Empty algorithm string or missing algorithm keys yield undecidable.
+        """
+        art_a = {
+            "artifact_id": "empty-algo-1.0.0.tgz",
+            "url": "https://example.org/empty-algo.tgz",
+            "digests": {"": "hex:00"},
+        }
+        art_b = {
+            "artifact_id": "empty-algo-1.0.0.tgz",
+            "url": "https://example.org/empty-algo.tgz",
+            "digests": {"": "hex:01"},
+        }
+        norm_data = self._base_norm_data()
+        res = self.verifier.verify(norm_data, compare_artifacts=(art_a, art_b))
+        verdict = res["verdict"]
+
+        self.assertEqual(verdict["category"], "INDETERMINATE")
+        self.assertEqual(verdict["subcode"], "undecidable")
+
+    # -------------------------------------------------------------------------
+    # Group 3: Temporal Chain & Real Clock Enforcement
+    # -------------------------------------------------------------------------
+
+    def test_rev4_fix3_future_evaluation_timestamp_cannot_bypass_real_clock_check(self):
+        """
+        Rev4 Counterexample 3:
+        Input sets evaluation_timestamp=2100-01-01, and subsequent observation=2099-01-01.
+        Future check MUST be checked against real wall clock (input evaluation_timestamp NOT trusted);
+        must output UNDECIDABLE_FUTURE_TIME.
+        """
+        norm_data = self._base_norm_data()
+        norm_data["evaluation_timestamp"] = "2100-01-01T00:00:00Z"  # Untrusted future anchor
+        norm_data["fetch_timestamp"] = "2026-10-12T12:00:00Z"
+        norm_data["sources"] = {
+            "registry": {
+                "source_id": "registry",
+                "status": 200,
+                "available": True,
+                "published_at": "2026-10-12T11:45:00Z",
+                "licenses": ["MIT"],
+            },
+            "deps_dev": {
+                "source_id": "deps_dev",
+                "status": 404,
+                "available": False,
+                "subsequent_observation": {
+                    "status": 200,
+                    "observed_at": "2099-01-01T00:00:00Z",  # Far in the future!
+                },
+            },
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertNotEqual(verdict["category"], "SYNC_DELAY")
+        self.assertEqual(verdict["category"], "INDETERMINATE")
+        self.assertEqual(verdict["subcode"], "undecidable")
+        self.assertIn("future", verdict["summary"].lower())
+        self.assertIn("not trusted", verdict["details"].lower())
+
+    def test_rev4_fix3_http_204_reports_exact_status_code_never_rewritten_to_200(self):
+        """
+        Rev4 Counterexample 3:
+        Subsequent observation returns HTTP 204.
+        Verdict and audit trail must report exact status 'HTTP 204' (NEVER rewrite to '200').
+        """
+        norm_data = self._base_norm_data()
+        norm_data["fetch_timestamp"] = "2026-10-12T12:00:00Z"
+        norm_data["sources"] = {
+            "registry": {
+                "source_id": "registry",
+                "status": 200,
+                "available": True,
+                "published_at": "2026-10-12T11:45:00Z",
+                "licenses": ["MIT"],
+            },
+            "deps_dev": {
+                "source_id": "deps_dev",
+                "status": 404,
+                "available": False,
+                "subsequent_observation": {
+                    "status": 204,  # HTTP 204 No Content
+                    "observed_at": "2026-10-12T12:30:00Z",
+                },
+            },
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertEqual(verdict["category"], "SYNC_DELAY")
+        self.assertIn("HTTP 204", verdict["details"])
+        self.assertNotIn("200_observed", str(res["decision_audit_trail"]))
+        self.assertIn("HTTP_204_observed", str(res["decision_audit_trail"]))
+
+    def test_rev4_fix3_subsequent_observation_status_codes_sweep(self):
+        """
+        Rev4 Fix 3 Boundary Sweep:
+        Non-2xx status codes (301, 302, 403, 500, 502) must all be rejected as undecidable
+        with categorized explanatory output.
+        """
+        sweep_statuses = [
+            (301, "redirect"),
+            (302, "redirect"),
+            (403, "client error"),
+            (500, "server error"),
+            (502, "server error"),
+        ]
+        for code, expected_kw in sweep_statuses:
+            norm_data = self._base_norm_data()
+            norm_data["fetch_timestamp"] = "2026-10-12T12:00:00Z"
+            norm_data["sources"] = {
+                "registry": {
+                    "source_id": "registry",
+                    "status": 200,
+                    "available": True,
+                    "published_at": "2026-10-12T11:45:00Z",
+                    "licenses": ["MIT"],
+                },
+                "deps_dev": {
+                    "source_id": "deps_dev",
+                    "status": 404,
+                    "available": False,
+                    "subsequent_observation": {
+                        "status": code,
+                        "observed_at": "2026-10-12T12:30:00Z",
+                    },
+                },
+            }
+            res = self.verifier.verify(norm_data)
+            verdict = res["verdict"]
+
+            self.assertNotEqual(
+                verdict["category"], "SYNC_DELAY",
+                f"Status {code} must not yield SYNC_DELAY"
+            )
+            self.assertEqual(verdict["category"], "INDETERMINATE")
+            self.assertIn(expected_kw, verdict["summary"].lower())
+
+    # -------------------------------------------------------------------------
+    # Group 4: License Consistency, Vacuous Value Sweep & Dynamic Confidence
+    # -------------------------------------------------------------------------
+
+    def test_rev4_fix4_whitespace_and_uninformative_licenses_yield_undecidable(self):
+        """
+        Rev4 Counterexample 4:
+        Both sources declare licenses: [" "] (whitespace).
+        Normalizer / Verifier must treat as NO comparable license evidence,
+        strictly prohibited from outputting CONSISTENT.
+        """
+        norm_data = self._base_norm_data()
+        norm_data["sources"] = {
+            "src_a": {
+                "source_id": "src_a",
+                "status": 200,
+                "available": True,
+                "licenses": [" "],
+                "published_at": "2026-10-12T10:00:00Z",
+            },
+            "src_b": {
+                "source_id": "src_b",
+                "status": 200,
+                "available": True,
+                "licenses": [" "],
+                "published_at": "2026-10-12T10:00:00Z",
+            },
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertNotEqual(verdict["category"], "CONSISTENT")
+        self.assertEqual(verdict["category"], "INDETERMINATE")
+        self.assertEqual(verdict["subcode"], "undecidable")
+        self.assertIn("no comparable license evidence", verdict["summary"].lower())
+
+    def test_rev4_fix4_uninformative_license_values_sweep(self):
+        """
+        Rev4 Fix 4 Boundary Sweep:
+        Sweep uninformative license strings: empty array, 'unknown', 'see license file',
+        'custom', 'n/a', 'none'. Must never return CONSISTENT.
+        """
+        uninformative_examples = [
+            [],
+            ["unknown"],
+            ["see license file"],
+            ["see-license-file"],
+            ["custom"],
+            ["n/a"],
+            ["none"],
+        ]
+        for uninf in uninformative_examples:
+            norm_data = self._base_norm_data()
+            norm_data["sources"] = {
+                "s1": {
+                    "source_id": "s1",
+                    "status": 200,
+                    "available": True,
+                    "licenses": uninf,
+                    "published_at": "2026-10-12T10:00:00Z",
+                },
+                "s2": {
+                    "source_id": "s2",
+                    "status": 200,
+                    "available": True,
+                    "licenses": uninf,
+                    "published_at": "2026-10-12T10:00:00Z",
+                },
+            }
+            res = self.verifier.verify(norm_data)
+            verdict = res["verdict"]
+
+            self.assertNotEqual(
+                verdict["category"], "CONSISTENT",
+                f"Failed for uninformative value: {uninf}"
+            )
+            self.assertEqual(verdict["category"], "INDETERMINATE")
+
+    def test_rev4_fix4_three_sources_pairwise_timestamp_divergence_across_years(self):
+        """
+        Rev4 Counterexample 4:
+        Three sources: src1 and src2 have matching timestamps (2020-01-01),
+        while src3 differs by 6 years (2026-01-01).
+        All pairwise timestamps MUST be checked.
+        Must output TIMESTAMP_DIVERGENCE (INDETERMINATE), strictly prohibited from
+        ignoring src3 and outputting CONSISTENT with 0.96 confidence.
+        """
+        norm_data = self._base_norm_data()
+        norm_data["sources"] = {
+            "src_registry": {
+                "source_id": "src_registry",
+                "status": 200,
+                "available": True,
+                "licenses": ["MIT"],
+                "published_at": "2020-01-01T00:00:00Z",
+            },
+            "src_clearlydefined": {
+                "source_id": "clearlydefined",
+                "status": 200,
+                "available": True,
+                "declared_license": "MIT",
+                "published_at": "2020-01-01T00:00:00Z",
+            },
+            "src_indexer": {
+                "source_id": "src_indexer",
+                "status": 200,
+                "available": True,
+                "licenses": ["MIT"],
+                "published_at": "2026-01-01T00:00:00Z",  # 6 years later!
+            },
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertNotEqual(verdict["category"], "CONSISTENT")
+        self.assertEqual(verdict["category"], "INDETERMINATE")
+        self.assertEqual(verdict["subcode"], "undecidable")
+        self.assertNotEqual(verdict["confidence"], 0.96)
+        self.assertLessEqual(verdict["confidence"], 0.3)
+        self.assertIn("conflicting release publication timestamps", verdict["details"].lower())
+
+    def test_rev4_fix4_dynamic_confidence_formula_with_temporal_jitter_penalty(self):
+        """
+        Rev4 Fix 4 Dynamic Confidence:
+        When comparison passes, confidence is dynamically calculated based on evidence strength
+        (strictly capped at 0.95, penalized for time span).
+        """
+        # Case A: Perfectly aligned timestamps
+        norm_data_exact = self._base_norm_data()
+        norm_data_exact["sources"] = {
+            "s1": {
+                "source_id": "s1",
+                "status": 200,
+                "available": True,
+                "licenses": ["MIT"],
+                "repository": "https://github.com/org/repo",
+                "published_at": "2026-10-12T10:00:00Z",
+            },
+            "s2": {
+                "source_id": "clearlydefined",
+                "status": 200,
+                "available": True,
+                "declared_license": "MIT",
+                "repository": "https://github.com/org/repo",
+                "published_at": "2026-10-12T10:00:00Z",
+            },
+        }
+        res_exact = self.verifier.verify(norm_data_exact)
+        conf_exact = res_exact["verdict"]["confidence"]
+
+        self.assertEqual(res_exact["verdict"]["category"], "CONSISTENT")
+        self.assertLessEqual(conf_exact, 0.95)
+        self.assertGreaterEqual(conf_exact, 0.85)
+
+        # Case B: Timestamps differ by 12 hours (43200s, within 24h tolerance window)
+        norm_data_jitter = self._base_norm_data()
+        norm_data_jitter["sources"] = {
+            "s1": {
+                "source_id": "s1",
+                "status": 200,
+                "available": True,
+                "licenses": ["MIT"],
+                "repository": "https://github.com/org/repo",
+                "published_at": "2026-10-12T10:00:00Z",
+            },
+            "s2": {
+                "source_id": "clearlydefined",
+                "status": 200,
+                "available": True,
+                "declared_license": "MIT",
+                "repository": "https://github.com/org/repo",
+                "published_at": "2026-10-12T22:00:00Z",  # +12 hours
+            },
+        }
+        res_jitter = self.verifier.verify(norm_data_jitter)
+        conf_jitter = res_jitter["verdict"]["confidence"]
+
+        self.assertEqual(res_jitter["verdict"]["category"], "CONSISTENT")
+        # Due to temporal penalty, jitter confidence must be strictly lower than exact
+        self.assertLess(conf_jitter, conf_exact)
+
+    # -------------------------------------------------------------------------
+    # Group 5: Standard License Text & Discounting Self-Attested Flags
+    # -------------------------------------------------------------------------
+
+    def test_rev4_fix5_negation_license_text_yields_undecidable_not_real_error(self):
+        """
+        Rev4 Counterexample 5:
+        Text 'This is not an MIT license. All rights reserved.' contains keyword 'mit license',
+        but explicitly negates it and lacks substantive grant clauses.
+        MUST NOT trigger REAL_ERROR with confidence 1.0; outputs undecidable.
+        """
+        norm_data = self._base_norm_data()
+        norm_data["sources"] = {
+            "registry": {
+                "source_id": "pypi_json",
+                "status": 200,
+                "available": True,
+                "license_classifiers": ["License :: OSI Approved :: MIT License"],
+                "licenses": [],
+                "license_text_evidence": {
+                    "file": "pkg.dist-info/LICENSE",
+                    "spdx_identifier": "MIT",
+                    "text_snippet": "This is not an MIT license. All rights reserved.",
+                },
+            },
+            "deps_dev": {
+                "source_id": "deps_dev",
+                "status": 200,
+                "available": True,
+                "licenses": ["non-standard"],
+            },
+            "clearlydefined": {
+                "source_id": "clearlydefined",
+                "status": 200,
+                "available": True,
+                "declared_license": "MIT",
+            },
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertNotEqual(verdict["category"], "REAL_ERROR")
+        self.assertEqual(verdict["category"], "INDETERMINATE")
+        self.assertEqual(verdict["subcode"], "undecidable")
+        self.assertIn("lacks standard text match evidence", verdict["summary"].lower())
+
+    def test_rev4_fix5_self_attested_flags_discounted_without_substantive_clauses(self):
+        """
+        Rev4 Counterexample 5:
+        Arbitrary text with matches_standard=True must NOT be accepted as verification proof.
+        Self-attested flags are discounted; outputs undecidable.
+        """
+        norm_data = self._base_norm_data()
+        norm_data["sources"] = {
+            "registry": {
+                "source_id": "pypi_json",
+                "status": 200,
+                "available": True,
+                "license_classifiers": ["License :: OSI Approved :: MIT License"],
+                "licenses": [],
+                "license_text_evidence": {
+                    "file": "pkg.dist-info/LICENSE",
+                    "spdx_identifier": "MIT",
+                    "text_snippet": "Proprietary internal license. Commercial use only.",
+                    "matches_standard": True,  # Self-attested flag!
+                    "standard_match": True,
+                    "verified_match": True,
+                },
+            },
+            "deps_dev": {
+                "source_id": "deps_dev",
+                "status": 200,
+                "available": True,
+                "licenses": ["non-standard"],
+            },
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertNotEqual(verdict["category"], "REAL_ERROR")
+        self.assertEqual(verdict["category"], "INDETERMINATE")
+        self.assertEqual(verdict["subcode"], "undecidable")
+
+    def test_rev4_fix5_missing_clearlydefined_reports_not_covered_never_none(self):
+        """
+        Rev4 Counterexample 5:
+        When ClearlyDefined is missing (or declared_license is None),
+        verdict details MUST output 'ClearlyDefined: 未覆盖', NEVER 'ClearlyDefined confirms None'.
+        """
+        norm_data = self._base_norm_data()
+        norm_data["sources"] = {
+            "registry": {
+                "source_id": "pypi_json",
+                "status": 200,
+                "available": True,
+                "license_classifiers": ["License :: OSI Approved :: Python Software Foundation License"],
+                "licenses": [],
+                "license_text_evidence": {
+                    "file": "pkg.dist-info/LICENSE",
+                    "spdx_identifier": "PSF-2.0",
+                    "text_snippet": (
+                        "PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2\n\n"
+                        "1. This LICENSE AGREEMENT is between the Python Software Foundation (\"PSF\")..."
+                    ),
+                },
+            },
+            "deps_dev": {
+                "source_id": "deps_dev",
+                "status": 200,
+                "available": True,
+                "licenses": ["non-standard"],
+            },
+            # Note: clearlydefined is completely missing here
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertEqual(verdict["category"], "REAL_ERROR")
+        self.assertIn("clearlydefined: 未覆盖", verdict["details"].lower())
+        self.assertNotIn("confirms 'none'", verdict["details"].lower())
+
+    def test_rev4_fix5_genuine_mit_substantive_grant_and_conditions_yields_real_error(self):
+        """
+        Rev4 Fix 5 Positive Control:
+        Substantive MIT license text containing operative permission grant and condition/disclaimer
+        successfully proves standard text equivalence and yields REAL_ERROR.
+        """
+        norm_data = self._base_norm_data()
+        norm_data["sources"] = {
+            "registry": {
+                "source_id": "pypi_json",
+                "status": 200,
+                "available": True,
+                "license_classifiers": ["License :: OSI Approved :: MIT License"],
+                "licenses": [],
+                "license_text_evidence": {
+                    "file": "pkg.dist-info/LICENSE",
+                    "spdx_identifier": "MIT",
+                    "text_snippet": (
+                        "Permission is hereby granted, free of charge, to any person obtaining a copy "
+                        "of this software and associated documentation files (the \"Software\"), to deal "
+                        "in the Software without restriction, including without limitation the rights "
+                        "to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies... "
+                        "The above copyright notice and this permission notice shall be included in all "
+                        "copies or substantial portions of the Software.\n\n"
+                        "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND."
+                    ),
+                },
+            },
+            "deps_dev": {
+                "source_id": "deps_dev",
+                "status": 200,
+                "available": True,
+                "licenses": ["non-standard"],
+            },
+            "clearlydefined": {
+                "source_id": "clearlydefined",
+                "status": 200,
+                "available": True,
+                "declared_license": "MIT",
+            },
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertEqual(verdict["category"], "REAL_ERROR")
+        self.assertEqual(verdict["subcode"], "STANDARDS_CONTRADICTION")
+        self.assertLessEqual(verdict["confidence"], 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()
