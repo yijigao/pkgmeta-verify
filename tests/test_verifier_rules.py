@@ -114,13 +114,15 @@ class TestVerifierRulesRegression(unittest.TestCase):
     def test_complete_temporal_chain_yields_proven_sync_delay(self):
         """Bug 5: Three-stage temporal observation chain proves delay range within window."""
         norm_data = self._base_norm_data()
+        norm_data["fetch_timestamp"] = "2026-10-12T12:00:00Z"
+        norm_data["evaluation_timestamp"] = "2026-10-12T13:00:00Z"
         norm_data["sources"] = {
             "registry": {
                 "source_id": "test_registry",
                 "role": "upstream_registry",
                 "status": 200,
                 "available": True,
-                "published_at": "2026-10-13T11:45:00Z",
+                "published_at": "2026-10-12T11:45:00Z",
                 "artifacts": [],
                 "licenses": ["MIT"],
             },
@@ -130,9 +132,9 @@ class TestVerifierRulesRegression(unittest.TestCase):
                 "status": 404,
                 "available": False,
                 "subsequent_observation": {
-                    "observed_at": "2026-10-13T12:30:00Z",
+                    "observed_at": "2026-10-12T12:30:00Z",
                     "status": 200,
-                    "published_at": "2026-10-13T11:45:00Z",
+                    "published_at": "2026-10-12T11:45:00Z",
                 },
             },
         }
@@ -265,18 +267,18 @@ class TestVerifierRulesRegression(unittest.TestCase):
 
     def test_rev3_fix2_base64_case_difference_does_not_silently_match(self):
         """
-        Fix 2: Two base64 digests differing only in case must be decoded to bytes and NOT silently match via .lower().
+        Fix 2: Two genuine 32-byte base64 digests differing only in case must be decoded to bytes and NOT silently match via .lower().
         """
         norm_data = self._base_norm_data()
-        # dGVzdDE= ('test1') vs DGVzdDE= ('\x0c-=\xd4')
+        # Genuine 32-byte SHA-256 base64 vectors where .lower() matches but decoded bytes differ
         art_a = {
             "artifact_id": "sample-1.0.0.tgz",
-            "digests": {"sha256": "base64:dGVzdDE="},
+            "digests": {"sha256": "base64:LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ="},
             "release_record": "pkg:npm/sample@1.0.0",
         }
         art_b = {
             "artifact_id": "sample-1.0.0.tgz",
-            "digests": {"sha256": "base64:DGVzdDE="},
+            "digests": {"sha256": "base64:LPJNuL+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ="},
             "release_record": "pkg:npm/sample@1.0.0",
         }
         res = self.verifier.verify(norm_data, compare_artifacts=(art_a, art_b))
@@ -632,6 +634,350 @@ class TestVerifierRulesRegression(unittest.TestCase):
         self.assertEqual(verdict["subcode"], "undecidable")
         self.assertIn("疑似延迟", verdict["summary"])
         self.assertEqual(res.get("verification_status"), "suspect")
+
+    # =========================================================================
+    # Astra 2026-10-13 Counterexample Regression Suite (Rev3 Bug Fixes)
+    # =========================================================================
+
+    def test_astra_counterexample_1_bare_file_list_does_not_prove_identity(self):
+        """
+        Astra 1: Bare filename list ['README', 'LICENSE'] must NOT prove artifact identity.
+        Different digests with only bare filename list MUST return INDETERMINATE (ARTIFACT_IDENTITY_UNPROVEN),
+        strictly prohibited from returning DIGEST_CONFLICT.
+        """
+        norm_data = self._base_norm_data()
+        art_a = {
+            "artifact_id": "sample-1.0.0.tgz",
+            "digests": {"sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+            "files": ["README", "LICENSE"],
+        }
+        art_b = {
+            "artifact_id": "sample-1.0.0.tgz",
+            "digests": {"sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+            "files": ["README", "LICENSE"],
+        }
+        res = self.verifier.verify(norm_data, compare_artifacts=(art_a, art_b))
+        verdict = res["verdict"]
+
+        self.assertNotEqual(verdict["category"], "DIGEST_CONFLICT")
+        self.assertEqual(verdict["category"], "INDETERMINATE")
+        self.assertEqual(verdict["subcode"], "ARTIFACT_IDENTITY_UNPROVEN")
+        self.assertIn("unproven", verdict["summary"].lower())
+
+    def test_astra_counterexample_1_hashed_file_list_proves_identity(self):
+        """
+        Astra 1 (Positive): Package file list containing cryptographic hashes DOES prove artifact identity.
+        Different digests correctly return DIGEST_CONFLICT.
+        """
+        norm_data = self._base_norm_data()
+        hashed_files = {
+            "README.md": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+            "LICENSE": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        }
+        art_a = {
+            "artifact_id": "sample-1.0.0.tgz",
+            "digests": {"sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+            "files": hashed_files,
+        }
+        art_b = {
+            "artifact_id": "sample-1.0.0.tgz",
+            "digests": {"sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+            "files": hashed_files,
+        }
+        res = self.verifier.verify(norm_data, compare_artifacts=(art_a, art_b))
+        verdict = res["verdict"]
+
+        self.assertEqual(verdict["category"], "DIGEST_CONFLICT")
+        self.assertEqual(verdict["subcode"], "ARTIFACT_DIGEST_MISMATCH")
+
+    def test_astra_counterexample_2_sha256_short_hex_yields_length_mismatch(self):
+        """
+        Astra 2: SHA-256 inputs 'hex:00' and 'hex:01' (1 byte) must fail length validation (expected 32 bytes).
+        MUST return INDETERMINATE with subcode DIGEST_LENGTH_MISMATCH, NOT DIGEST_CONFLICT.
+        """
+        norm_data = self._base_norm_data()
+        art_a = {
+            "artifact_id": "sample-1.0.0.tgz",
+            "digests": {"sha256": "hex:00"},
+            "release_record": "pkg:npm/sample@1.0.0",
+        }
+        art_b = {
+            "artifact_id": "sample-1.0.0.tgz",
+            "digests": {"sha256": "hex:01"},
+            "release_record": "pkg:npm/sample@1.0.0",
+        }
+        res = self.verifier.verify(norm_data, compare_artifacts=(art_a, art_b))
+        verdict = res["verdict"]
+
+        self.assertNotEqual(verdict["category"], "DIGEST_CONFLICT")
+        self.assertEqual(verdict["category"], "INDETERMINATE")
+        self.assertEqual(verdict["subcode"], "DIGEST_LENGTH_MISMATCH")
+        self.assertIn("length mismatch", verdict["summary"].lower())
+
+    def test_astra_counterexample_3_future_observation_year_2099_rejected(self):
+        """
+        Astra 3: Subsequent observation with future timestamp (e.g. 2099) MUST be rejected.
+        MUST return INDETERMINATE (subcode undecidable) and NOT assert proven SYNC_DELAY.
+        """
+        norm_data = self._base_norm_data()
+        norm_data["sources"] = {
+            "registry": {
+                "source_id": "upstream",
+                "status": 200,
+                "available": True,
+                "published_at": "2026-10-13T06:00:00Z",
+                "licenses": ["MIT"],
+            },
+            "deps_dev": {
+                "source_id": "deps_dev",
+                "status": 404,
+                "available": False,
+                "subsequent_observation": {
+                    "observed_at": "2099-01-01T00:00:00Z",  # Year 2099 future observation!
+                    "status": 200,
+                },
+            },
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertNotEqual(verdict["category"], "SYNC_DELAY")
+        self.assertEqual(verdict["category"], "INDETERMINATE")
+        self.assertEqual(verdict["subcode"], "undecidable")
+        self.assertIn("future", verdict["summary"].lower() + verdict["details"].lower())
+
+    def test_astra_counterexample_3_42_day_delay_truthfully_reported_exceeding_tolerance(self):
+        """
+        Astra 3: 42-day delay must be truthfully reported as 42 days and explicitly note that it
+        exceeds the sync tolerance window (86400s). Strictly prohibited from claiming 'within tolerance'.
+        """
+        norm_data = self._base_norm_data()
+        # 42 days = 3628800 seconds
+        norm_data["fetch_timestamp"] = "2024-01-01T01:00:00Z"
+        norm_data["evaluation_timestamp"] = "2024-02-15T00:00:00Z"
+        norm_data["sources"] = {
+            "registry": {
+                "source_id": "upstream",
+                "status": 200,
+                "available": True,
+                "published_at": "2024-01-01T00:00:00Z",
+                "licenses": ["MIT"],
+            },
+            "deps_dev": {
+                "source_id": "deps_dev",
+                "status": 404,
+                "available": False,
+                "subsequent_observation": {
+                    "observed_at": "2024-02-12T00:00:00Z",  # Exactly 42 days after published_at
+                    "status": 200,
+                },
+            },
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertEqual(verdict["category"], "SYNC_DELAY")
+        self.assertEqual(verdict["subcode"], "DOWNSTREAM_INGESTION_LAG")
+        self.assertIn("42 days", verdict["details"])
+        self.assertIn("exceeds", verdict["details"].lower())
+        self.assertNotIn("within sync tolerance window", verdict["details"].lower())
+
+    def test_astra_counterexample_4_mit_vs_non_standard_yields_divergence(self):
+        """
+        Astra 4: MIT vs non-standard must yield SEMANTIC_DIVERGENCE, strictly prohibited from judging CONSISTENT.
+        """
+        norm_data = self._base_norm_data()
+        norm_data["sources"] = {
+            "registry": {
+                "source_id": "registry",
+                "status": 200,
+                "available": True,
+                "licenses": ["MIT"],
+            },
+            "deps_dev": {
+                "source_id": "deps_dev",
+                "status": 200,
+                "available": True,
+                "licenses": ["non-standard"],
+            },
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertNotEqual(verdict["category"], "CONSISTENT")
+        self.assertEqual(verdict["category"], "SEMANTIC_DIVERGENCE")
+        self.assertEqual(verdict["subcode"], "LICENSE_DECLARATION_DISCREPANCY")
+
+    def test_astra_counterexample_4_no_license_differing_publication_time_yields_undecidable(self):
+        """
+        Astra 4: Neither source has a license, differing only in publication timestamps.
+        MUST yield INDETERMINATE (subcode undecidable) due to lack of comparable license evidence;
+        strictly prohibited from judging CONSISTENT with 1.0 confidence.
+        """
+        norm_data = self._base_norm_data()
+        norm_data["sources"] = {
+            "source_a": {
+                "source_id": "source_a",
+                "status": 200,
+                "available": True,
+                "published_at": "2024-01-01T00:00:00Z",
+                "licenses": [],
+            },
+            "source_b": {
+                "source_id": "source_b",
+                "status": 200,
+                "available": True,
+                "published_at": "2024-02-01T00:00:00Z",
+                "licenses": [],
+            },
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertNotEqual(verdict["category"], "CONSISTENT")
+        self.assertEqual(verdict["category"], "INDETERMINATE")
+        self.assertEqual(verdict["subcode"], "undecidable")
+
+    def test_astra_counterexample_4_consistent_confidence_strictly_less_than_one(self):
+        """
+        Astra 4: CONSISTENT is only output when actively compared and matching.
+        Confidence is calculated based on evidence strength and MUST NOT be constantly 1.0.
+        """
+        norm_data = self._base_norm_data()
+        norm_data["sources"] = {
+            "source_a": {
+                "source_id": "source_a",
+                "status": 200,
+                "available": True,
+                "licenses": ["MIT"],
+            },
+            "source_b": {
+                "source_id": "source_b",
+                "status": 200,
+                "available": True,
+                "licenses": ["MIT"],
+            },
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertEqual(verdict["category"], "CONSISTENT")
+        self.assertEqual(verdict["subcode"], "MUTUALLY_CONSISTENT")
+        self.assertLess(verdict["confidence"], 1.0)
+        self.assertGreaterEqual(verdict["confidence"], 0.80)
+
+    def test_astra_counterexample_5_arbitrary_snippet_without_standard_match_yields_undecidable(self):
+        """
+        Astra 5: Arbitrary non-empty text snippet lacking evidence of matching standard text
+        MUST NOT trigger REAL_ERROR. MUST return INDETERMINATE with subcode undecidable.
+        """
+        norm_data = self._base_norm_data()
+        norm_data["sources"] = {
+            "registry": {
+                "source_id": "pypi_json",
+                "available": True,
+                "status": 200,
+                "license_classifiers": ["License :: OSI Approved :: Python Software Foundation License"],
+                "licenses": [],
+                "license_text_evidence": {
+                    "file": "custom.dist-info/LICENSE",
+                    "spdx_identifier": "PSF-2.0",
+                    "text_snippet": "This is completely arbitrary custom text that does not follow any standard license at all.",
+                },
+            },
+            "deps_dev": {
+                "source_id": "deps_dev",
+                "available": True,
+                "status": 200,
+                "licenses": ["non-standard"],
+            },
+            "clearlydefined": {
+                "source_id": "clearlydefined",
+                "available": True,
+                "status": 200,
+                "declared_license": "Python-2.0.1",
+            },
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertNotEqual(verdict["category"], "REAL_ERROR")
+        self.assertEqual(verdict["category"], "INDETERMINATE")
+        self.assertEqual(verdict["subcode"], "undecidable")
+        self.assertIn("lacks standard text match", verdict["summary"].lower() + verdict["details"].lower())
+
+    def test_astra_counterexample_5_pep_639_assertion_removed_from_real_error(self):
+        """
+        Astra 5: Verifiable real error must NOT contain hardcoded 'PEP 639' assertions.
+        """
+        norm_data = self._base_norm_data()
+        norm_data["sources"] = {
+            "registry": {
+                "source_id": "pypi_json",
+                "available": True,
+                "status": 200,
+                "license_classifiers": ["License :: OSI Approved :: Python Software Foundation License"],
+                "licenses": [],
+                "license_text_evidence": {
+                    "file": "typing_extensions.dist-info/LICENSE",
+                    "spdx_identifier": "PSF-2.0",
+                    "text_snippet": "PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2\n\n1. This LICENSE AGREEMENT...",
+                },
+            },
+            "deps_dev": {
+                "source_id": "deps_dev",
+                "available": True,
+                "status": 200,
+                "licenses": ["non-standard"],
+            },
+            "clearlydefined": {
+                "source_id": "clearlydefined",
+                "available": True,
+                "status": 200,
+                "declared_license": "Python-2.0.1",
+            },
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertEqual(verdict["category"], "REAL_ERROR")
+        self.assertEqual(verdict["subcode"], "STANDARDS_CONTRADICTION")
+        self.assertNotIn("pep 639", verdict["details"].lower())
+
+    def test_astra_counterexample_5_or_expression_described_as_spdx_disjunction_not_and_obligation(self):
+        """
+        Astra 5: OR compound expression must be described as disjunctive alternative licensing choice
+        under SPDX semantics, NOT as AND dual obligations.
+        """
+        norm_data = self._base_norm_data()
+        norm_data["sources"] = {
+            "registry": {
+                "source_id": "npm_registry",
+                "status": 200,
+                "available": True,
+                "licenses": ["MIT"],
+            },
+            "clearlydefined": {
+                "source_id": "clearlydefined",
+                "status": 200,
+                "available": True,
+                "declared_license": "MIT OR Apache-2.0",
+                "discovered_licenses": ["MIT", "Apache-2.0"],
+            },
+            "deps_dev": {
+                "source_id": "deps_dev",
+                "status": 200,
+                "available": True,
+                "licenses": ["MIT"],
+            },
+        }
+        res = self.verifier.verify(norm_data)
+        verdict = res["verdict"]
+
+        self.assertEqual(verdict["category"], "SEMANTIC_DIVERGENCE")
+        self.assertEqual(verdict["subcode"], "LICENSE_EXPRESSION_DISJUNCTION_MISMATCH")
+        self.assertIn("or disjunction", verdict["summary"].lower() + verdict["details"].lower())
+        self.assertNotIn("dual compliance obligations", verdict["details"].lower())
 
 
 if __name__ == "__main__":

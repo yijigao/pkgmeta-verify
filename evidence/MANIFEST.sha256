@@ -4,7 +4,7 @@ b666ebb73446cae6a7a52ede7113f5d0294b03633ef11214e7053ff0d5ee131f  results/pkg-np
 e668d74fdbb8ee000e839a2ea41fc8b2bbf8ee4b757fa275e081bc7a890754b1  results/pkg-npm-esprima-4.0.1.result.json
 14c89563b3e8c4aeb9c607a8e362d971605f213832cc8dc92b946b8891b94f33  results/pkg-npm-synthetic-fixture-1.0.0.result.json
 71006b7b793c077c297738184d4087b16c88d58f24a77bfa0e28bdbe2af1bca5  results/pkg-pypi-archgraph-layout-2.3.0.result.json
-88aed8e563abb1ca136ddd86b93fc1d0e90ac3ab587f289f924c7610c7037776  results/pkg-pypi-typing-extensions-4.12.2.result.json
+6f995670e65b98258b45182fb0addbaa68b51c97047fc9044a216d80b2c4e1e0  results/pkg-pypi-typing-extensions-4.12.2.result.json
 262f2c3fc2f12527e5c9e0a7652a01691126d405238345c7bfd69e7056bac9cc  snapshots/pkg-npm-debug-4.3.4.json
 e87267c4acf6949711461ab68b50df061b8eb2619fefaa18440b8e4bafae8c39  snapshots/pkg-npm-esprima-4.0.1.json
 a8e9c6596d60333956983641586c1da34060b6081f1e7ebcb7bf6cc6cc6a78e2  snapshots/pkg-npm-synthetic-fixture-1.0.0.json

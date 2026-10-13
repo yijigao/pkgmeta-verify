@@ -1,0 +1,247 @@
+五个子代理全部返回，NLnet 一手页也已核完。以下为交付件。
+
+---
+
+# 第 1 节 真实差异点分析（评审必问）
+
+## 0. 先说定位前提（这决定后面所有差异点怎么写）
+
+联网核到两件必须写进前提的事实：
+
+1. **CodeSupply 核心项目本身就在做"聚合—编目—开放数据"**：CORDIS 目标原文是「aggregates and curates comprehensive software metadata, leveraging PURLs as universal identifiers … compiled into data sets, federated in a data catalog … distributed as open data」，联盟预算 €3M（AboutCode €970k / Edsger €970k / NLnet €650k / URJC €410k），周期 2026-06 至 2029-05。([CORDIS 101298846](https://cordis.europa.eu/project/id/101298846))
+2. **AboutCode 就是 CodeSupply 联盟成员**（`ABOUTCODE EUROPE ASBL`），而 **ClearlyDefined 已于 2026-02 由 OSI 与 AboutCode 签 MoU、交由 AboutCode 日常运营**。([CodeSupply 背景页](https://nlnet.nl/codesupply/background/)、[OSI MoU](https://opensource.org/blog/ensuring-the-long-term-sustainability-of-clearlydefined-osi-and-aboutcode-sign-mou))
+
+**结论：如果提案写成"我们再做一个包元数据聚合器 + 开放数据集"，就是与 €3M 的核心项目、以及核心成员 AboutCode 的 PurlDB 正面重复，二轮会被 "what is the difference in approach to existing projects" 和 "how does upstream project D feel about your application" 直接问死。**
+
+真实、可辩护、且我们**确实做得到**的增量只有一个，必须全文围绕它写：
+
+> **面向"包元数据本身"的独立校验层 + 校验结果开放数据集**——不重建采集与聚合，而是消费各权威源的既有输出，做跨源一致性与存在性/不可变性校验，把"哪条元数据可信、哪里互相矛盾、哪里已经过期"变成机器可读、可复现、可离线下载的数据，并给任何聚合方（含 CodeSupply 核心）当第三方质检用。
+
+下面逐项目说明为什么这个增量是真空。
+
+## 1.1 AboutCode / ScanCode 生态
+
+**已解决**：ScanCode Toolkit v32.5.0（2026-01）是文件级许可证/版权扫描的既成事实标准，能从本地清单/lockfile 抽 PURL 与包元数据，输出 JSON/SPDX/CycloneDX；ScanCode.io v38.1.0 把容器/二进制分析、依赖解析串成流水线；PurlDB/MineCode 按 PURL 采集多生态包元数据（官网称 75M+ 包）；VulnerableCode 30+ 源；LicenseDB 每日更新；`univers` v32.0.1 做版本区间比较。([scancode-toolkit](https://github.com/aboutcode-org/scancode-toolkit)、[purldb](https://github.com/aboutcode-org/purldb)、[vulnerablecode](https://github.com/aboutcode-org/vulnerablecode))
+
+**未解决**：
+- 工具仍以文件/许可证为中心，包元数据主要来自本地清单，不承诺跨生态 registry 的持续采集 SLA。
+- `purl-validator` 仍为 0.0.1b1，**只判断 base PURL 是否存在**，12 个生态，依赖 MineCode 快照；**不校验版本是否存在、字段是否一致、哈希是否漂移**。([purl-validator](https://github.com/aboutcode-org/purl-validator))
+- `univers` 只按各生态自己的 scheme 比较版本区间，**不做跨生态 canonical 化**。
+- **没有单一、持续更新、可整包下载的统一数据集**：`purldb-data` 仓库最后更新约 2024-08，各数据集口径与频率不一致。
+
+**我们的真实增量**：补上它明确缺的那一层——**字段级 + 版本级的校验**（存在性、撤包、改名、哈希漂移、跨源字段冲突），并把校验结论做成独立数据集。**不重做扫描器，不重做 PurlDB。**
+
+## 1.2 ClearlyDefined
+
+**已解决**：坐标模型 `type/provider/namespace/name/revision`，跨 12+ 生态接近 PURL 一一映射；harvest 管线串起 scancode/licensee/fossology/REUSE + 各生态 extractor；许可证归一为 SPDX + LicenseRef（v2.0 新增 2000+ 非 SPDX）；区分 declared/discovered；binary↔source 互链；curation 走 GitHub PR、CC0 开放。实测 `/stats/total` ≈ 55,196,539（2026-10）。([coordinates](https://docs.clearlydefined.io/docs/resources/coordinates)、[curated-data](https://github.com/clearlydefined/curated-data))
+
+**未解决**（官方自己承认的部分最有力）：
+- **官方明说"不解决 identity 问题"**，只给唯一坐标 + links——即**不做跨源一致性判定**。([architecture](https://docs.clearlydefined.io/docs/resources/architecture))
+- **无独立校验层**：只有工具输出 + 人工 PR review，**无签名、无证明、无自动冲突检测**。
+- **无官方全量离线开放数据集**：mirror issue [#386](https://github.com/clearlydefined/service/issues/386) 自 2019 开放至今未解决；路线图把 federated/open data 排到 2027。([roadmap](https://docs.clearlydefined.io/docs/resources/roadmap))
+- 生态约 14 类，缺 RPM/apk、OCI/Helm 等；偏许可证/版权，不含漏洞与依赖图；`licensedScoreMedian` 仅 60，数据陈旧。
+
+**我们的真实增量**：**校验层 + 可离线下载的校验结果数据集**——正好是它公开承认不做、路线图又排在 2027 之后的两块。我们可以做它的**下游质检**，而不是替代它。
+
+## 1.3 deps.dev（Google）
+
+**已解决**：7 生态（Cargo/Go/Maven/npm/NuGet/PyPI/RubyGems，Gradle Plugins 归入 Maven）；每版本"真解析"的传递依赖图（官方称与原生工具一致率 99%+）；跨生态统一 System/Name/Version；`publishedAt`、SPDX 许可证、OSV advisory、hashes、purl、Sigstore attestation、OpenSSF Scorecard；BigQuery 公共数据集 `deps_dev_v1`（生成数据 CC-BY-4.0）。([docs.deps.dev](https://docs.deps.dev/)、[BigQuery](https://docs.deps.dev/bigquery/v1/))
+
+**未解决**：
+- **后端平台闭源**，官方 FAQ 明说；开源仓库只有 API proto、Go 示例和 `util/{semver,maven,pypi,git,resolve}` 解析器。**外部无法参与校验，也无法自建采集器。**([google/deps.dev](https://github.com/google/deps.dev))
+- 全量数据**只有 BigQuery public dataset**，需要 GCP 账号，**不是可直接下载的 dump，不可离线/自托管**。
+- **缺 maintainers/owners、下载量、显式 yank/撤包、改名追踪**；typosquat 仅"相似名 + LOW_USAGE"信号。
+- **无通用元数据校验层**，只有 attestation/hash。
+- 只读公共 registry，**不支持镜像与企业私仓，仓库列表不可配置**。
+
+**我们的真实增量**：做**可离线、可自托管、可在 CI 跑**的校验器；把 deps.dev 当**对照源之一**（用公开 API/开源 util），校验它自己也不追踪的撤包/改名/字段冲突。我们**不重做依赖图解析**。
+
+## 1.4 OSV / OSV.dev
+
+**已解决**：OSV Schema（文档标 v1.9.1）已成漏洞表示事实标准；`aliases`（对称+传递、含 CVE 映射）、`upstream`、`related` 做 advisory 归一去重；覆盖约 30 生态；GCS 全量导出 `gs://osv-vulnerabilities`（all.zip / 按生态 / 增量 `modified_id.csv`），exporter 每 15 分钟，**SLO 新鲜度 ≤15 分钟**；OSV-Scanner 支持离线扫描。([osv-schema](https://ossf.github.io/osv-schema/)、[data](https://google.github.io/osv.dev/data/))
+
+**未解决**：
+- OSV **只描述"漏洞 + 受影响版本范围"**：schema 无作者、仓库、包发布时间、下载量、许可证、删除/改名/存在性；`published` 是公告时间而非包发布时间。
+- 包存在性/版本枚举只能从 advisory range 反推，`versions[]` 可空；`determineversion` 仅 OSS-Fuzz C/C++。
+- 数据质量校验发生在**导入期且面向 advisory**（`data_quality` / `importfindings`），**不是包级元数据校验**。([data_quality](https://google.github.io/osv.dev/data_quality.html))
+- typosquatting/依赖混淆只覆盖 OpenSSF 已判定恶意包；撤包只按 advisory `withdrawn` 处理，**不追踪包下架/改名**。
+
+**我们的真实增量**：**包级**（而非 advisory 级）的存在性、撤包、改名、字段冲突校验；漏洞归一交给 OSV，**我们不碰**。
+
+## 1.5 差异对比表
+
+| 能力维度 | AboutCode / ScanCode | ClearlyDefined | deps.dev | OSV.dev | **我们的真实增量** |
+|---|---|---|---|---|---|
+| 源码许可证/版权扫描 | ✅ 事实标准 | ✅ 复用工具 | ⚠️ 仅读元数据 | ❌ | ❌ 不做（复用/消费） |
+| 跨生态坐标/标识归一 | ✅ PURL / purldb | ✅ 坐标模型 | ✅ System/Name/Ver | ⚠️ advisory 内 | ❌ 不重做 |
+| 包元数据采集（registry） | ✅ PurlDB/MineCode | ✅ harvest | ✅ 7 生态 | ❌ | ❌ 不重建采集器 |
+| 传递依赖图解析 | ⚠️ ScanCode.io | ❌ | ✅ 99%+ 一致 | ❌ | ❌ 不重做（消费 deps.dev） |
+| 漏洞归一/去重 | ✅ VulnerableCode | ❌ | ✅ 用 OSV | ✅ 事实标准 | ❌ 交给 OSV |
+| 全量离线开放数据集 | ⚠️ purldb-data 停更 | ❌ 官方无（#386 开放中） | ⚠️ 仅 BigQuery（需 GCP） | ✅ 漏洞 all.zip | ✅ **校验结果数据集（可离线、带校验和）** |
+| **跨源字段一致性校验** | ❌ | ❌ 官方明说不解决 identity | ❌ 后端闭源、不接受外部校验 | ❌ 仅 advisory 层 | ✅ **核心增量** |
+| **版本存在性 / 撤包 / 改名 / 哈希漂移追踪** | ⚠️ 仅 base PURL 存在性（beta） | ❌ | ❌ 无撤包改名字段 | ❌ 不追踪包 | ✅ **核心增量** |
+| **归一化边界用例一致性**（名/版本/purl） | ⚠️ univers 仅同生态 | ❌ | ⚠️ 有解析器无语料 | ❌ | ✅ **可复用测试语料 + 校验器** |
+| **可复用数据集质检器 + 质量评分卡** | ❌ | ❌ | ❌ | ❌ | ✅ **核心增量** |
+| 可复现 / 可审计 provenance | ⚠️ 无统一 SLA | ⚠️ 仅人工 PR | ❌ 闭源 | ⚠️ 部分 | ✅ **版本化快照 + checksum + CI 复跑** |
+
+## 1.6 我们明确**不做**的（写进提案的诚实边界，防止二轮被打）
+
+- ❌ 不重建全量 registry 采集器（PurlDB / deps.dev 已做，重做在 €15k 预算下不可信）。
+- ❌ 不重做源码许可证扫描（ScanCode 已做）。
+- ❌ 不重做漏洞归一/去重（OSV 已做）。
+- ❌ 不重做联邦数据目录（CodeSupply 核心在做）。
+- ❌ 不做企业私仓/镜像的采集（deps.dev 也不做，但这超出本预算与范围）。
+
+---
+
+# 第 2 节 提案大纲（€12–18k 档）
+
+## 2.0 与官方评分权重的对应（已核原文）
+
+Official Guide for Applicants 原文表（30/40/30，与 Joey 口径一致）：
+
+> 30% Technical excellence/feasibility ｜ 40% Relevance/Impact/Strategic potential ｜ 30% Cost effectiveness/Value for money
+
+加权总分须 **>5.0 / 7** 才进第二轮；二轮会明确问 "what is the difference in approach to existing projects U, V and W"、"how does upstream project D feel about your application"。([CodeSupply Guide for Applicants](https://nlnet.nl/codesupply/guideforapplicants/))
+
+因此大纲按 **40% → 30% → 30%** 的顺序组织。
+
+## 2.1 项目标题（一句话）
+
+> **Package Metadata Verifier：跨源包元数据一致性校验器与开放校验数据集**（作为 CodeSupply 聚合管线的独立质检层）
+
+## 2.2 问题陈述（对应 40% 相关性/影响）
+
+现有项目解决了"**有没有**"（AboutCode/PurlDB、ClearlyDefined、deps.dev 都在采集），也解决了"**漏没漏**"（OSV 做漏洞），但没有解决"**对不对、还新不新**"：
+
+- 同一 PURL 在不同权威源之间的字段会互相矛盾（许可证声明、仓库链接、发布时间、生态归属、purl 规范化结果）。
+- ClearlyDefined 官方明确"不解决 identity 问题"，且**无独立校验层**；数据 `licensedScoreMedian` 仅 60。
+- AboutCode 的 `purl-validator` 目前**只判 base PURL 是否存在**，不校验版本存在性、撤包、改名、哈希漂移。
+- deps.dev **后端闭源、不接受外部校验**，缺撤包/改名/维护者字段，且全量数据只能走 BigQuery。
+- OSV 的质量校验只在**导入期、面向 advisory**，不是包级。
+
+结果是：CodeSupply 这类项目即使聚合成功，**下游拿到的仍是"未经验证的元数据"**；CRA 等法规要求"24 小时内可验证"的场景下，冲突与过期数据无人负责。**我们要补的就是这一层，且只补这一层。**
+
+## 2.3 方案：采集—归一—校验 技术路线（对应 30% 技术可行性）
+
+关键澄清：此处的"采集"**不是**重建 registry 爬虫，而是**采集上游既有元数据与校验证据**（公开 API / 已发布开放数据集 / registry 官方接口）；"归一"**不是**重做坐标模型，而是**把不同源的同一坐标对齐到可比较的字段集**；重心在"校验"。
+
+**阶段 P1（T+0 → T+3 个月）：采集与归一（对齐层）**
+- 接入 3–4 个生态（首批建议 npm + PyPI + Maven + Cargo，覆盖大小写/命名/版本 scheme 差异最大的组合），每个生态 ≥2 个对照源（registry 官方接口 + 开放数据集，如 deps.dev 公开 API、ClearlyDefined API、OSV export、PurlDB public API）。
+- 定义**最小可比字段集**：purl、规范名、版本存在性、发布时间、许可证声明、源码仓库链接、内容哈希。
+- 归一规则显式化为**版本化规则文件**（可测试、可引用），处理 npm 小写、PyPI PEP 503 归一、Maven groupId 大小写敏感、NuGet 大小写不敏感、Go module path `!x` 编码等边界。
+- 交付：`pkgmeta-verify` v0.1（CLI + 库），单元 + 集成测试覆盖率 ≥80%，公开文档站。
+
+**阶段 P2（T+4 → T+5 个月）：校验引擎 + 首次数据集快照**
+- **跨源一致性校验**：同坐标多源比对，输出机器可读 discrepancy 记录（字段、各源取值、来源、时间戳、判定）。
+- **存在性/不可变性校验**：版本是否仍可取、是否被 yank/撤回、内容哈希是否漂移、包名是否改名/迁移。
+- **归一化一致性校验**：对同一逻辑包，各源规范化结果是否一致；冲突用例沉淀为**公开测试语料（conformance corpus）**。
+- 交付：v0.2 + **首个 discrepancy/quality 数据集快照**（版本化、带 SHA-256 清单、CC-BY-4.0，可整包离线下载）。
+
+**阶段 P3（T+6 → T+7 个月）：可复现与持续化**
+- 数据集的**可复现构建**：固定输入快照 + 固定规则版本 → 可复算出同一结果；CI 定期复跑并比对差异。
+- **质量评分卡**：每生态/每源的覆盖度、冲突率、陈旧率、未验证比例，作为时间序列发布。
+- 扩展至第 5–6 个生态（视进度，候选 RubyGems / NuGet / Go）。
+
+**阶段 P4（T+8 → T+9 个月）：上游化与收尾**
+- 向上游（AboutCode / CodeSupply 核心仓库 / ClearlyDefined）提交校验器与语料，按其接口风格适配，争取合并。
+- 最终 Release、文档、复现手册；发布项目自审报告（自身供应链：SBOM、依赖锁定、Release 校验和签名）。
+
+## 2.4 里程碑（3–4 个，可客观验收；M1 ≤ 开工后 3 个月；前两个 ≥70% 付款）
+
+| 里程碑 | 时间（相对开工） | 客观验收标准 | 付款权重（基准 €15,000） |
+|---|---|---|---|
+| **M1 对齐层可用** | **T+0 → T+3 个月** | 开源 Release v0.1（tag + CHANGELOG）；3–4 生态、每生态 ≥2 源跑通；CI 绿；**测试覆盖率 ≥80%（CI 报告可查）**；公开文档站上线；归一规则文件 v1 冻结 | **40% ＝ €6,000** |
+| **M2 校验引擎 + 首个数据集** | **T+3 → T+5 个月** | Release v0.2；三类校验（跨源一致性 / 存在性·不可变性 / 归一化一致性）均有可复现用例；**首个 discrepancy 数据集快照发布**：带 SHA-256 清单、CC-BY-4.0、可离线整包下载；公开测试语料 ≥100 条边界用例 | **33.3% ＝ €5,000** |
+| **M3 可复现 + 评分卡** | **T+5 → T+7 个月** | 两位独立复跑者按手册得到**逐字节一致**的数据集产物（或仅时间戳差异且已隔离）；质量评分卡时间序列首次发布；生态扩展 ≥1 个 | 16.7% ＝ €2,500 |
+| **M4 上游化 + 收尾** | **T+7 → T+9 个月** | 至少 1 个上游 PR 提交并公开可查（合并与否不影响验收）；最终数据集 Release；复现手册；项目自身 SBOM + 供应链自审报告 | 10% ＝ €1,500 |
+
+**前两个里程碑合计 73.3% ≥ 70%** ✅。M1 在 3 个月内可客观验收 ✅（不是"研究完成"，而是可 tag、可 CI、可下载）。
+
+## 2.5 预算：€12–18k 拆分
+
+**基准 €15,000（可按 €12k / €18k 等比缩放，比例不变）**
+
+| 用途 | 占比 | 金额 | 说明 |
+|---|---|---|---|
+| 开发：适配器 + 归一 + 校验引擎 | 60% | €9,000 | 主体工时 |
+| 测试与 CI：单测/集成/conformance 语料 | 15% | €2,250 | 含 fixture 维护 |
+| 数据集构建与发布（打包、校验和、复现脚本） | 10% | €1,500 | |
+| 文档与上游协作（README/手册/PR 往返） | 10% | €1,500 | |
+| 基础设施 | 5% | €750 | 尽量趋零：GitHub Actions 免费额度 + 极少量对象存储；NLnet 不资助托管/算力运营费，故不列服务器 |
+
+- **费率口径**：按 cost-recovery，**故意取 €55–60/小时，低于官方 €65/小时上限**，以保护 30% 性价比分（FAQ 明说用满上限会降低 cost effectiveness）。([Office Hour #amount](https://nlnet.nl/officehour/))
+- **工时校验**：€15,000 ÷ €55 ≈ **273 小时**；分摊到 9 个月 ≈ **30 小时/月 ≈ 0.19 FTE**，与"0.2 FTE 兼职、6–9 个月"体量吻合。
+- **€12k 版**：≈218h ≈ 0.15 FTE，建议砍 M3 生态扩展；**€18k 版**：≈327h ≈ 0.23 FTE，建议加 P3 生态扩展与更多语料。**首投建议报 €15,000**（既在框内，也不显得虚高，利于性价比）。
+- 官方约束已核：首投 **€5,000–€50,000**，同一第三方终身上限 €60,000；**€15k 完全合规**。([Guide](https://nlnet.nl/codesupply/guideforapplicants/))
+
+## 2.6 团队与 FOSS 承诺
+
+- **负责人结构（按 Joey 定调）**：
+  - **技术负责人（申请人 / 唯一对外联系人）**：**[姓名待定，0.2 FTE 占位]**，承担 M1–M4 全部交付与对外沟通。
+  - **Joey**：**评审与签字**，不领取任何资助；不计入工时与预算。
+  - 注意：NLnet 表单只收一个 lead + 可列其他 contributor，且**偏好把钱直接付给实际做工作的人**、不鼓励分包。([Office Hour #entities](https://nlnet.nl/officehour/))
+- **FOSS 承诺**：
+  - 代码 **Apache-2.0**（与 AboutCode 生态一致，便于上游合并）；数据 **CC-BY-4.0**（与 deps.dev 生成数据、CodeSupply 开放数据口径一致），规则文件与语料同样开放。
+  - **不依赖任何闭源环境**：校验器必须在无 Google Cloud 账号、无专有服务的前提下可完整运行；deps.dev/ClearlyDefined 仅作**可选对照源**，且必须支持离线快照回退。
+  - 科学/技术产出开源、文档公开、Release 可复现。
+
+## 2.7 风险与合规（逐条给官方原文依据）
+
+**A. AI 辅助声明（必须按官方口径修正，比原设想更严）**
+- FAQ 原文：*"If you do use generative AI to write (part of your) proposal, please put this in the text and explain why this was necessary. Failure to do so is likely to result in the proposal being rejected, and tarnishing your reputation."* ([FAQ #AI](https://nlnet.nl/codesupply/faq/))
+- GenAI 政策原文把范围写得比"代写"宽得多：*"applicants may use GenAI tools in preparing applications, but any such use must be disclosed. This includes drafting, translation, or summarisation."*，并要求 **prompt provenance log**：*"the model used, dates and times of prompts, the prompts themselves, the unedited output."* ([GenAI Policy](https://nlnet.nl/foundation/policies/generativeAI/))
+- **⚠️ 这意味着：本大纲本身（资料整理/摘要）也属于 "summarisation"，必须进 prompt log。** 正文即便全部人工主笔，也不能只写"仅用于资料整理和校对"而不交日志。表单有专门 AI disclosure 栏（可粘贴 prompt 与输出，8000 字符 / 50MB 上传）。
+- **⚠️ 政策正在修订**：官方新闻明说新版本"exceptions will no longer be possible for new projects"，并要求打算用 LLM 的人**等新版发布后再投**。截止 2026-11-03 前必须复查是否已换版。([20260903-call](https://nlnet.nl/news/2026/20260903-call.html))
+- 结论：**本轮只出大纲、正文人工主笔的纪律是对的，但"声明+日志"这一步不能省**。
+
+**B. 欧洲维度（唯一真正的 knock-out 风险）**
+- 资格页原文：要求 *"a strong 'European dimension'"*，通常需 Horizon Europe 合格国人员**拿走 ≥60% 资金**；例外口原文：*"if the project is of exceptional quality and the proposer holds unique technical expertise proposals from outside of those geographic areas can be taken into consideration."* ([Eligibility](https://nlnet.nl/codesupply/eligibility/))
+- 但 Office Hour 归档答复口径明显更紧：*"A majority (at least 60%) of the grant should go to European participants"*；被直接问到"没有欧洲共同申请人、仅靠让欧洲标准/技术栈更安全能否满足"时，答复是 **"Generally not."** ([Office Hour #european](https://nlnet.nl/officehour/))
+- 中国不在合格名单内。**例外口存在，但极窄，且与"唯一技术专长"强绑定。**
+- **对策（不改 Joey 定的方向）**：走 exceptional quality，但把筹码全部压在可见证据上——技术负责人的可验证履历、公开的历史产出、与本项目直接相关的成果；并在 10/28 office hour **只问规则、不问预审**。
+
+**C. 与联盟成员的重叠（比欧洲维度更可能致命的技术性风险）**
+- 二轮明确会问 "how does upstream project D feel about your application"。AboutCode 是联盟成员且是 CodeSupply 核心承担方。
+- **对策**：① 提案 "compare" 字段主动承认与 PurlDB/ClearlyDefined/deps.dev/OSV 的关系，明确只做**校验层**；② 提交前在 AboutCode 公开仓库开一个 issue 表达对齐/上游意愿（这也是最好的"upstream 认可"证据）；③ 全文避免任何"我们要建数据集/目录"的措辞，改为"我们要发布**校验结果**数据集"。
+
+**D. 数据源合规**
+- 只使用官方 API / 已发布开放数据；尊重 rate limit 与 ToS；缓存快照；不绕过验证；不抓取禁止抓取的内容。deps.dev 无 key、无官方配额数字，过载返 429，需指数退避。([deps.dev FAQ](https://docs.deps.dev/faq/))
+- 许可兼容：我们的数据集为**校验结论**（事实性判定），采用 CC-BY-4.0；对源数据的引用只存坐标与判定，不重新分发受限制内容。
+
+**E. a11y 与安全审计**
+- a11y 被官方称为"新常态"，且 >€50k 后续申请要求此前成果 **WCAG 合规**；可申请 HAN 无障碍审计。([FAQ #accessibility](https://nlnet.nl/codesupply/faq/)、[Services](https://nlnet.nl/NGI0/services/))
+- 我们的产物以 CLI + Markdown/HTML 报告为主，a11y 面小但**必须在提案里主动写**：报告页面按 **WCAG 2.2 AA** 设计，CLI 提供纯文本与非颜色依赖输出。
+- 我们 **<€50k 不触发强制独立安全审计**，但作为供应链安全项目应主动做：自身 SBOM、依赖锁定、Release 校验和（可选 Sigstore 签名）、负责任披露流程。
+
+## 2.8 二轮评审预置答案（写进提案或备答）
+
+| 二轮必问题（官方列出的样例） | 我们的答案要点 |
+|---|---|
+| 与 U/V/W 的差异 | 见第 1 节差异表：他们做采集/归一/漏洞，我们做**校验层**；唯一真空 |
+| 复杂因素 X 怎么处理 | 归一化边界用例（大小写/命名/版本 scheme）是主要不确定性 → M1 即用 conformance 语料固定 |
+| 如何验证 claim Y | 数据集带 SHA-256 清单、可复现构建、CI 复跑、两位独立复跑者 |
+| 是否考虑与 Z 合作/用标准 A | 用 **PURL** 作为统一标识；与 AboutCode/ClearlyDefined/OSV 对齐，不做私有格式 |
+| 任务 B 费率是否过高 | 已主动取 €55–60/h **低于 €65 上限**；工时按 0.19 FTE 可核算 |
+| 如何可持续 | 校验器与语料 upstream；数据集更新由 CI 定期跑，运营成本趋零 |
+| upstream 项目 D 怎么想 | 提交前开 issue 对齐；提案中列明可合并路径 |
+
+---
+
+## 【可直接转交 Joey 过目】
+
+**一句话结论**：方向可行，但**必须把提案从"包元数据采集—归一—校验工具＋开放数据集"收窄为"校验层＋校验结果开放数据集"**——因为 CodeSupply 核心自己就在做聚合与开放数据，且 **AboutCode 是联盟成员、ClearlyDefined 已由 AboutCode 接管**；不收窄就会在二轮被判为重复建设。我们的真实真空是：跨源字段一致性校验、版本存在性/撤包/改名/哈希漂移追踪、归一化边界语料、可离线数据集质检器。
+
+**需要 Joey 拍板/知情的 4 件事：**
+1. **选题收窄**：是否同意把"采集"写成"采集上游既有元数据与校验证据"、"开放数据集"写成"**校验结果**数据集"（不重发全量包元数据）？这是保住可行性的关键。
+2. **技术负责人是谁**：欧洲维度走 exceptional quality，**例外口与"唯一技术专长"强绑定**；没有具名、可验证履历的技术负责人，提案就无法定稿。0.2 FTE 占位需尽快落实。
+3. **AI 合规**：官方要求任何 GenAI 使用（含 drafting/translation/**summarisation**）都须声明并交 prompt provenance log。**本大纲也必须记入日志**；且政策正修订、新版取消例外。建议指定一人维护 prompt 日志。
+4. **金额**：建议首投 **€15,000**（比分 €12k/€18k 更利于性价比分），前两个里程碑占 73.3%。
+
+**10/28 office hour 建议问法（只问规则、不问预审）：**
+> "For a first-time CodeSupply applicant from a non-Horizon-Europe country, with **no European co-applicant**, how has the eligibility page's exceptional-quality clause — *'if the project is of exceptional quality and the proposer holds unique technical expertise'* — been applied in practice? What evidence of 'unique technical expertise' is typically expected?"
+
+**已核实的一手事实（供交叉验证）**：评分 **30/40/30**、阈值 **>5.0/7**、首投上限 **€50k**、终身上限 **€60k**、tasa 上限 **€65/h**、截止 **2026-11-03 12:00 CET**、结果 **10–14 周首轮 / 全程 3–6 个月**、里程碑**不预付、按里程碑报销**、默认 **12 个月**。全部出自 [Guide for Applicants](https://nlnet.nl/codesupply/guideforapplicants/)、[Eligibility](https://nlnet.nl/codesupply/eligibility/)、[FAQ](https://nlnet.nl/codesupply/faq/)、[GenAI Policy](https://nlnet.nl/foundation/policies/generativeAI/)、[Office Hour](https://nlnet.nl/officehour/)。
+
+**唯一未解决项**：技术负责人具名与履历证据缺失——这既是欧洲维度例外口的成败点，也是可行性 30% 的评分点，建议列为下一次汇报的第一优先。
+DSH_EXIT=0

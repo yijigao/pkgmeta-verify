@@ -1,0 +1,208 @@
+# NLnet CodeSupply · PMV 第二轮 Bug 修复与新基线复跑总结报告（Gemini）
+
+技术负责人：**Joey（Jigao Yi）个人申请**  
+工作目录：`~/workspace/nlnet-codesupply-council/pmv/`  
+审计依据：`ASTRA-REV3-2026-10-13.md`（第 1 节表格与第 2 节延迟案例口径要求）  
+**重要口径说明**：本轮起严格执行终审审查口径要求，"0 错误"收窄为"**现有测试零失败**"——测试通过仅代表符合现有测试用例规范，不等于判定绝对正确；不再宣称判定正确性，只报告客观测试结果。
+
+---
+
+## 一、Astra rev3 终审 5 个误判修复详情（逐项落盘）
+
+### 1. 同名文件、不同摘要、无证据绑定到同一制品误判 DIGEST_CONFLICT
+- **原错误行为**：只要输入具有相同文件名（`artifact_id`）且两边都有摘要，哈希不同时即直接判定为 `DIGEST_CONFLICT`。该逻辑误将“两边都有哈希”等同于“制品级身份证明”，但在无证据证明两份摘要源自同一制品时，仅同名文件无法证明属于同一制品。
+- **修复方案**：
+  - 在 `Verifier._evaluate_digest_constraints` 中实现 `_check_artifact_identity_provenance` 强约束。
+  - 必须具备以下三类制品身份关联证据之一：
+    1. **同一下载 URL**：`url` / `download_url` 相同，或一源的 `origin_url` 指向另一源的下载地址；
+    2. **同一包内文件清单**：两源具备相同的包内文件清单或 manifest（`file_list` / `files` / `manifest`）；
+    3. **同一制品发布记录**：两源显式绑定至同一发布记录（`release_record` / `release_id` / `package_release`）。
+  - 若缺乏上述身份关联证据，严禁判定为 `DIGEST_CONFLICT`，强制输出 `category: "INDETERMINATE"`（子状态码 `ARTIFACT_IDENTITY_UNPROVEN`，置信度 1.0）。
+- **回归测试**：
+  - `test_rev3_fix1_unproven_identity_different_digests_yields_artifact_identity_unproven`：仅同名文件、无关联证据时，验证输出 `ARTIFACT_IDENTITY_UNPROVEN`，拒绝 `DIGEST_CONFLICT`。
+  - `test_rev3_fix1_proven_identity_different_digests_yields_digest_conflict`：具备发布记录绑定时，不同摘要正确判定为 `DIGEST_CONFLICT`。
+
+### 2. 两个 Base64 摘要仅大小写不同转小写判匹配
+- **原错误行为**：在比对前对摘要执行无差别 `.strip().lower()` 字符串匹配。但 Base64 编码具有严格的大小写区分敏感度（如 `d` 与 `D` 代表完全不同的 6-bit 编码值），将其转为小写破坏了原始摘要含义，导致将不同的 Base64 摘要误判为一致。
+- **修复方案**：
+  - 引入编码感知解码器 `Verifier._decode_digest_bytes`，对摘要**解码为原始字节（raw bytes）后进行字节比对**；彻底禁止静默 `.lower()` 字符串匹配。
+  - 对于十六进制 Hex 编码，经解码后相同字节序列自然匹配，消除单纯大小写表象差异；
+  - 对于 Base64 编码，区分大小写解码为真实字节序列，大小写不同的字符串解码出不同字节，真实体现哈希差异；
+  - 若摘要编码未知或不支持（如非法的 Base64、或 `base58` 等未知编码），明确输出 `category: "INDETERMINATE"`（子状态码 `ENCODING_UNSUPPORTED`），并在审计轨迹与 details 中详细记录解码失败原因。
+- **回归测试**：
+  - `test_rev3_fix2_base64_case_difference_does_not_silently_match`：输入仅大小写不同的 Base64 摘要（`dGVzdDE=` vs `DGVzdDE=`），验证解码字节不一致，未被静默判定为匹配。
+  - `test_rev3_fix2_unsupported_encoding_yields_encoding_unsupported`：输入不支持的编码（如 `base58`），验证输出 `ENCODING_UNSUPPORTED`。
+  - `test_rev3_fix2_hex_case_difference_matches_at_byte_level`：十六进制 Hex 大小写差异在字节层级解码一致并正常匹配。
+
+### 3. 后续观察仍 404、缺时间、时间倒序误判 SYNC_DELAY
+- **原错误行为**：在 `_evaluate_sync_delay` 中，只要下游存在 `subsequent_observation` 字段即判定 `SYNC_DELAY`，未校验后续观察是否真正成功（如仍为 404）、后续观察是否具备有效时间戳、以及观测时间戳是否存在时间倒序。
+- **修复方案**：
+  - 严格要求**三要素同时满足**方可判定 `SYNC_DELAY`：
+    1. **HTTP 成功状态**：后续观察 HTTP 状态码必须为成功（`200 <= status < 300`），若仍为 404 或非成功，输出 `undecidable`；
+    2. **有效时间戳**：上游发布时间、初始 404 缺失观察时间、后续观察时间三者时间戳均有效且可解析；
+    3. **严格正向时间顺序**：必须满足 $t_{observed\_after} > t_{observed\_before} > t_{published}$（即后续观察必须晚于缺失观察，缺失观察必须晚于上游发布时间）；
+  - 任一条件不满足，强制输出 `category: "INDETERMINATE"`（子状态码 `undecidable`，疑似延迟，标注不确定性）。
+- **回归测试**：
+  - `test_rev3_fix3_subsequent_observation_404_yields_undecidable`：后续观察状态码仍为 404 时，拦截 `SYNC_DELAY`，输出 `undecidable`。
+  - `test_rev3_fix3_subsequent_observation_missing_time_yields_undecidable`：后续观察缺少时间戳时，拦截 `SYNC_DELAY`，输出 `undecidable`。
+  - `test_rev3_fix3_time_inversion_yields_undecidable`：后续观察时间早于缺失观察时间（时间倒序）时，拦截 `SYNC_DELAY`，输出 `undecidable`。
+
+### 4. 两源许可证 MIT vs Apache-2.0，或一源无可比字段误判 CONSISTENT
+- **原错误行为**：原一致性判定器 `_evaluate_consistent` 仅检查“是否存在非空数据”而未实际逐字段比对；且 `_evaluate_semantic_divergence` 仅检查了带 `AND`/`OR` 的复合表达式。导致简单的 `MIT` vs `Apache-2.0` 或一源缺少许可证字段时，被直接放行判定为 `CONSISTENT`（“无比较就判一致”）。
+- **修复方案**：
+  - 在 `_evaluate_semantic_divergence` 中加入通用多源许可证实际比对逻辑：当两源分别声明不同许可证（如 `MIT` vs `Apache-2.0`），明确属于语义不一致，判定为 `category: "SEMANTIC_DIVERGENCE"`（子状态码 `LICENSE_DECLARATION_DISCREPANCY`）；
+  - 在 `_evaluate_consistent` 中引入**可比字段完备性核验**：若一源提供许可证元数据而另一可用源缺少可比许可证字段，严禁默认一致，强制输出 `category: "INDETERMINATE"`（子状态码 `undecidable`，details 标明缺少可比字段）；
+  - 只有在至少 2 个可用源均提供可比字段且全部比对通过时，方可输出 `CONSISTENT`。
+- **回归测试**：
+  - `test_rev3_fix4_mit_vs_apache_yields_semantic_divergence_not_consistent`：验证 `MIT` vs `Apache-2.0` 判定为 `SEMANTIC_DIVERGENCE`，严禁判定为 `CONSISTENT`。
+  - `test_rev3_fix4_missing_comparable_license_field_yields_undecidable`：验证一源声明许可证而另一源为空时输出 `undecidable`，拒绝默认一致。
+  - `test_rev3_fix4_matching_licenses_across_sources_yields_consistent`：验证可比字段均存在且一致时正常输出 `CONSISTENT`。
+
+### 5. 未提供制品 LICENSE 原文误判 REAL_ERROR 且硬编码 PSF 许可证断言
+- **原错误行为**：当 `deps.dev` 报告 `non-standard` 时，代码在 details 中写死“`The artifact dist-info/LICENSE contains the standard Python Software Foundation License Version 2.`”，即使输入数据中根本没有提供制品 LICENSE 文本证据也直接下此断言并判定 `REAL_ERROR`。
+- **修复方案**：
+  - **删除一切硬编码事实断言**；
+  - 强制核验 `license_text_evidence` 及其 `text_snippet` 经验证据；若未提供对应经验证据，严禁判定 `REAL_ERROR`，强制输出 `category: "INDETERMINATE"`（子状态码 `undecidable`，标明缺乏经验证据）；
+  - 当且仅当提供制品 LICENSE 原文证据时，方可判定 `REAL_ERROR`，且 details 必须动态提取证据中的文件名与许可证标识（如 `The artifact {file_name} contains verified license text ({spdx_id})`），彻底杜绝无证据的事实断言。
+- **回归测试**：
+  - `test_rev3_fix5_missing_artifact_license_text_yields_undecidable_not_real_error`：未提供制品 LICENSE 文本证据时，验证拦截 `REAL_ERROR`，输出 `undecidable`，且 details 中绝无硬编码断言。
+  - `test_rev3_fix5_provided_artifact_license_text_yields_real_error_dynamically`：提供制品文本证据时，动态生成事实依据并输出 `REAL_ERROR`。
+
+---
+
+## 二、archgraph-layout 延迟案例降级落盘
+
+根据终审意见第 2 节要求，由于此前复跑报告执行时间（07:03:12Z）引用快照中 07:15:00Z 的观察时间存在时间逻辑矛盾，且缺乏原始 HTTP/采集日志支撑：
+1. **公开口径降级**：公开口径降级为“**疑似延迟，时间链待核验**”；
+2. **审计与状态标记**：在 `evidence/snapshots/pkg-pypi-archgraph-layout-2.3.0.json` 中明确加入：
+   ```json
+   "verification_status": "suspect",
+   "audit_status": "retracted"
+   ```
+3. **判定逻辑与报告降级**：
+   - `Verifier._evaluate_sync_delay` 检测到 `suspect` 或 `retracted` 标记时，强制输出 `category: "INDETERMINATE"`（子状态码 `undecidable`，置信度 0.4，summary 为“`疑似延迟，时间链待核验 (Suspected sync delay, temporal chain unproven)`”）；
+   - `rerun-report.md` 及统计中正式**从“已证明延迟案例”中撤下**，分类归入“无法判定（疑似延迟，时间链待核验，保留快照审计记录）”；
+   - 结果文件 `results/pkg-pypi-archgraph-layout-2.3.0.result.json` 同步更新为降级后判定。
+- **回归测试**：
+  - `test_rev3_archgraph_suspect_status_yields_undecidable`：验证标记为 `suspect`/`retracted` 的案例输出 `INDETERMINATE`（`undecidable`），置信度为 0.4，summary 准确包含“疑似延迟，时间链待核验”。
+
+---
+
+## 三、自动化回归测试结果
+
+本轮回归测试集总数扩展至 **25 个**（原 14 个扩展为 25 个），全部自动化运行并通过：
+
+```text
+Ran 25 tests in 0.077s
+
+OK
+```
+
+**测试用例覆盖清单 (25/25 PASS)**：
+1. `test_missing_published_at_yields_undecidable_not_sync_delay`: 缺少发布时间严禁判延迟 -> PASS
+2. `test_single_404_observation_yields_undecidable_not_proven_delay`: 仅单次 404 严禁判延迟 -> PASS
+3. `test_complete_temporal_chain_yields_proven_sync_delay`: 完整延迟链正常输出延迟范围 -> PASS
+4. `test_empty_evidence_yields_undecidable_not_consistent`: 空源严禁判一致 -> PASS
+5. `test_empty_metadata_fields_yield_undecidable`: 元数据全空严禁判一致 -> PASS
+6. `test_cross_algorithm_comparison_yields_undecidable`: 跨算法不可比输出 undecidable -> PASS
+7. `test_synthetic_flag_strictly_preserved`: synthetic 标记严格保真 -> PASS
+8. `test_rev3_fix1_unproven_identity_different_digests_yields_artifact_identity_unproven`: **[Fix 1]** 同名文件无身份关联证据不同摘要输出 ARTIFACT_IDENTITY_UNPROVEN，绝不判 DIGEST_CONFLICT -> PASS
+9. `test_rev3_fix1_proven_identity_different_digests_yields_digest_conflict`: **[Fix 1]** 身份关联已证明时不同摘要判 DIGEST_CONFLICT -> PASS
+10. `test_rev3_fix2_base64_case_difference_does_not_silently_match`: **[Fix 2]** Base64 大小写差异解码字节不同，绝不静默 .lower() 判匹配 -> PASS
+11. `test_rev3_fix2_unsupported_encoding_yields_encoding_unsupported`: **[Fix 2]** 不支持编码严格输出 ENCODING_UNSUPPORTED -> PASS
+12. `test_rev3_fix2_hex_case_difference_matches_at_byte_level`: **[Fix 2]** Hex 大小写差异字节解码一致正常匹配 -> PASS
+13. `test_rev3_fix3_subsequent_observation_404_yields_undecidable`: **[Fix 3]** 后续观察仍 404 绝不判 SYNC_DELAY -> PASS
+14. `test_rev3_fix3_subsequent_observation_missing_time_yields_undecidable`: **[Fix 3]** 后续观察缺时间戳输出 undecidable -> PASS
+15. `test_rev3_fix3_time_inversion_yields_undecidable`: **[Fix 3]** 观察时间倒序输出 undecidable -> PASS
+16. `test_rev3_fix4_mit_vs_apache_yields_semantic_divergence_not_consistent`: **[Fix 4]** MIT vs Apache-2.0 实际比对判 SEMANTIC_DIVERGENCE，绝不判 CONSISTENT -> PASS
+17. `test_rev3_fix4_missing_comparable_license_field_yields_undecidable`: **[Fix 4]** 一源缺少可比字段输出 undecidable，禁止无比较判一致 -> PASS
+18. `test_rev3_fix4_matching_licenses_across_sources_yields_consistent`: **[Fix 4]** 可比字段均存在且匹配时判 CONSISTENT -> PASS
+19. `test_rev3_fix5_missing_artifact_license_text_yields_undecidable_not_real_error`: **[Fix 5]** 缺制品 LICENSE 原文证据严禁判 REAL_ERROR，删除硬编码事实断言 -> PASS
+20. `test_rev3_fix5_provided_artifact_license_text_yields_real_error_dynamically`: **[Fix 5]** 存在制品证据时动态生成依据判 REAL_ERROR -> PASS
+21. `test_rev3_archgraph_suspect_status_yields_undecidable`: **[降级]** archgraph-layout suspect 标记输出 undecidable 疑似延迟 -> PASS
+22. `test_schema_itself_is_valid_draft202012`: Schema 自身符合 Draft 2020-12 标准 -> PASS
+23. `test_all_baseline_results_validate_against_schema`: 全部 5 个基线结果通过 Schema 校验 -> PASS
+24. `test_schema_rejects_invalid_verdict_category`: Schema 校验拦截非法判定类别 -> PASS
+25. `test_schema_rejects_missing_required_field`: Schema 校验拦截缺失必填字段 -> PASS
+
+---
+
+## 四、新基线重新冻结与脱网离线复跑（rerun.sh）结果
+
+在完成上述全部规则修改、证据快照更新与结果实例更新后，重新计算并冻结密码学基线清单 `evidence/MANIFEST.sha256`，完整执行 `./rerun.sh`。
+
+### 1. MANIFEST.sha256 离线哈希清单实际校验 (Phase 1)
+```text
+../rules/rules-v0.1.json: OK
+../schemas/pmv-output.schema.json: OK
+results/pkg-npm-debug-4.3.4.result.json: OK
+results/pkg-npm-esprima-4.0.1.result.json: OK
+results/pkg-npm-synthetic-fixture-1.0.0.result.json: OK
+results/pkg-pypi-archgraph-layout-2.3.0.result.json: OK
+results/pkg-pypi-typing-extensions-4.12.2.result.json: OK
+snapshots/pkg-npm-debug-4.3.4.json: OK
+snapshots/pkg-npm-esprima-4.0.1.json: OK
+snapshots/pkg-npm-synthetic-fixture-1.0.0.json: OK
+snapshots/pkg-pypi-archgraph-layout-2.3.0.json: OK
+snapshots/pkg-pypi-typing-extensions-4.12.2.json: OK
+```
+**校验结果**：全部 12/12 文件 SHA-256 匹配。
+
+### 2. JSON Schema 规范性校验 (Phase 2)
+```text
+SCHEMA_SELF_CHECK: PASS (Valid Draft 2020-12)
+BASELINE_VALIDATE [pkg-npm-debug-4.3.4.result.json]: PASS
+BASELINE_VALIDATE [pkg-npm-esprima-4.0.1.result.json]: PASS
+BASELINE_VALIDATE [pkg-npm-synthetic-fixture-1.0.0.result.json]: PASS
+BASELINE_VALIDATE [pkg-pypi-archgraph-layout-2.3.0.result.json]: PASS
+BASELINE_VALIDATE [pkg-pypi-typing-extensions-4.12.2.result.json]: PASS
+```
+**校验结果**：Schema 自检及全部 5 个基线结果实例 100% 通过 Draft 2020-12 校验。
+
+### 3. 脱网离线回放与逐字节比对 (Phase 4)
+```text
+Rerunning pkg:pypi/typing-extensions@4.12.2 ... PASS (0 diff, Schema VALID)
+Rerunning pkg:pypi/archgraph-layout@2.3.0 ... PASS (0 diff, Schema VALID)
+Rerunning pkg:npm/esprima@4.0.1 ... PASS (0 diff, Schema VALID)
+Rerunning pkg:npm/debug@4.3.4 ... PASS (0 diff, Schema VALID)
+Rerunning pkg:npm/synthetic-fixture@1.0.0 ... PASS (0 diff, Schema VALID)
+```
+
+| 案例 PURL | 判定类别 | 子状态码 | 置信度 | synthetic 标记 | 原始快照校验 | 逐字节比对状态 |
+|---|---|---|---|---|---|---|
+| `pkg:pypi/typing-extensions@4.12.2` | `REAL_ERROR` | `STANDARDS_CONTRADICTION` | 1.0 | `False` | SHA-256 VERIFIED | **PASS** (0 diff) |
+| `pkg:pypi/archgraph-layout@2.3.0` | `INDETERMINATE` | `undecidable` | 0.4 | `False` | SHA-256 VERIFIED | **PASS** (0 diff) |
+| `pkg:npm/esprima@4.0.1` | `SEMANTIC_DIVERGENCE` | `LICENSE_EXPRESSION_CONJUNCTION_MISMATCH` | 0.95 | `False` | SHA-256 VERIFIED | **PASS** (0 diff) |
+| `pkg:npm/debug@4.3.4` | `INDETERMINATE` | `undecidable` | 1.0 | `True` | SHA-256 VERIFIED | **PASS** (0 diff) |
+| `pkg:npm/synthetic-fixture@1.0.0` | `DIGEST_CONFLICT` | `ARTIFACT_DIGEST_MISMATCH` | 1.0 | `True` | SHA-256 VERIFIED | **PASS** (0 diff) |
+
+### 4. 统计与审计结论 (Phase 5)
+- **总案例数**: 5
+- **通过案例数**: 5
+- **失败案例数**: 0
+- **分类统计**:
+  - **真实软件包案例 (3个)**:
+    - `typing-extensions@4.12.2`: `REAL_ERROR` (subcode: `STANDARDS_CONTRADICTION`)
+    - `archgraph-layout@2.3.0`: `INDETERMINATE` (subcode: `undecidable`, 疑似延迟，时间链待核验；已标记 suspect/retracted，从已证明延迟案例撤下)
+    - `esprima@4.0.1`: `SEMANTIC_DIVERGENCE` (subcode: `LICENSE_EXPRESSION_CONJUNCTION_MISMATCH`)
+  - **真实包跨算法构造测试 (1个, synthetic=true)**: `debug@4.3.4` (`INDETERMINATE`, subcode: `undecidable`)
+  - **构造基准用例 (1个, synthetic=true)**: `synthetic-fixture@1.0.0` (`DIGEST_CONFLICT`, subcode: `ARTIFACT_DIGEST_MISMATCH`)
+- **复跑综合结论**: **现有测试零失败 (100% 字节级一致、Schema 校验通过、清单哈希全匹配)**
+
+---
+
+## 五、交付物落盘清单
+
+1. `pmv/pmv/verifier.py`: 5 个误判核心决策引擎修复、解码器实现、身份关联核验；
+2. `pmv/pmv/normalizer.py`: 提取并传递 `release_record`、`origin_url`、`files` 及 `verification_status`/`audit_status`；
+3. `pmv/schemas/pmv-output.schema.json`: 支持可选 `verification_status` 与 `audit_status` 审计标记；
+4. `pmv/rules/rules-v0.1.json`: 更新硬约束规则配置（字节级比对、禁止静默 lower、身份关联强约束、延迟三要素、经验证据要求）；
+5. `pmv/tests/test_verifier_rules.py`: 新增 11 个针对性测试，全套回归测试扩展至 25 个；
+6. `pmv/evidence/snapshots/pkg-pypi-archgraph-layout-2.3.0.json`: 降级标记 `verification_status: "suspect"` 与 `audit_status: "retracted"`；
+7. `pmv/evidence/snapshots/pkg-npm-synthetic-fixture-1.0.0.json`: 补齐制品身份关联证据；
+8. `pmv/evidence/results/*.json`: 5 个案例依据新规则重新生成的标准基线结果；
+9. `pmv/evidence/MANIFEST.sha256`: 重新计算冻结的 12/12 文件哈希基线；
+10. `pmv/rerun.sh` & `pmv/rerun-report.md`: 落实新规则说明，口径统一采用“现有测试零失败”；
+11. `pmv/README.md`: 同步更新规则描述、archgraph 降级说明及 25 项回归测试结果；
+12. `pmv-fix2-gemini.txt`: 本报告全文持久化归档。
+DSH_EXIT=0

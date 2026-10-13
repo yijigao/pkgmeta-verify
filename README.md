@@ -9,7 +9,7 @@
 
 在开源软件包供应链元数据聚合中，简单字段比对（Naive Field Diff）极易导致大量误判：例如将下游索引尚未同步的近期发布武断判定为“包丢失或镜像损坏”；将不同构建制品（Wheel vs Sdist）或不同算法（SHA-1 vs SHA-256）的哈希差异误判为“恶意篡改”；或将许可证复合表达式（AND / OR）强行单值化。
 
-**PMV（Package Metadata Verifier）** 是为 NLnet CodeSupply 提案打造的可运行最小原型组件，旨在实现**“带来源（Provenance）、时间戳（Timestamps）与离线可复现证据的跨源差异判定与生命周期追踪”**。通过版本化质检规则（`rules v0.1`），PMV 提供了结构化仲裁证据链，彻底避免普通字段比对的误判。
+**PMV（Package Metadata Verifier）** 是为 NLnet CodeSupply 提案打造的可运行最小原型组件，旨在实现**“带来源（Provenance）、时间戳（Timestamps）与离线可复现证据的跨源差异判定与生命周期追踪”**。通过版本化质检规则（`rules v0.1`），PMV 提供了结构化仲裁证据链，减少特定类别的误判（以回归测试为准）。
 
 ---
 
@@ -67,23 +67,25 @@ PMV 锁定 **npm** 与 **PyPI** 双生态，每个生态均包含权威注册表
 根据终审意见原文（ASTRA-REV2 与 ASTRA-REV3 终审意见），PMV 在 `rules/rules-v0.1.json` 与 `verifier.py` 中严格落实了各项判定硬约束：
 
 1. **制品身份关联核验 (同名文件不同摘要)**：
-   - 摘要比对**必须验证制品身份关联**（证明 digest 绑定到同一下载 URL / 同一包内文件清单 / 同一制品发布记录之一）。
-   - 仅“两边都有摘要”不足以证明同一制品，未证明身份关联时严格输出 `INDETERMINATE`（子状态码 `ARTIFACT_IDENTITY_UNPROVEN`），**严禁判定为 `DIGEST_CONFLICT`**。
+   - 摘要比对**必须验证制品身份关联**（证明 digest 绑定到同一制品发布记录、同一下载 URL、或包内文件清单含 hash 其一）。
+   - 单纯的文件名清单（如 `["README", "LICENSE"]`）**不得**作为制品身份证据；未证明身份关联时严格输出 `INDETERMINATE`（子状态码 `ARTIFACT_IDENTITY_UNPROVEN`），**严禁判定为 `DIGEST_CONFLICT`**。
    - 对于同一制品、同一算法且身份已证明的哈希冲突，判定为 `DIGEST_CONFLICT`，结论严格限定为“摘要冲突”，**严禁断言镜像损坏或恶意篡改**。
-2. **编码感知字节级解码 (禁止静默 `.lower()` 判匹配)**：
+2. **编码感知字节级解码与长度校验**：
    - 摘要比对统一按编码**解码为原始字节后比对**（十六进制 hex 经解码比对消除大小写差异；Base64 区分大小写比对）。
    - 禁止对 Base64 等区分大小写的编码静默 `.lower()` 判匹配。若编码未知或不支持，明确输出 `INDETERMINATE`（子状态码 `ENCODING_UNSUPPORTED`）。
-3. **延迟时间链与观测有效性校验 (`SYNC_DELAY`)**：
-   - 必须同时满足：**后续观察 HTTP 成功状态 (200)**、**有效发布时间**、**严格正向观察时间顺序**（`t_observed_after > t_observed_before > t_published`）。
-   - 任一不满足均判定为 `INDETERMINATE`（子状态码 `undecidable`，疑似延迟，标注不确定性）。
+   - 增加摘要长度校验：声明算法 SHA-256 则解码后必须为 32 字节，否则明确输出 `INDETERMINATE`（子状态码 `DIGEST_LENGTH_MISMATCH`）。
+3. **延迟时间链与容差校验 (`SYNC_DELAY`)**：
+   - 必须同时满足：**后续观察 HTTP 成功状态 (200)**、**有效发布时间**、**严格正向观察时间顺序**（`t_observed_after > t_observed_before > t_published`）且**后续观察时间必须 ≤ 当前时间**（拒绝未来时间）。
+   - 延迟容差具有明确定义的阈值常量（`DEFAULT_SYNC_DELAY_TOLERANCE_SECONDS = 86400`，即 24 小时）；超出容差如实报告观测时长（例如 42 天延迟如实报告为 42 天，明确注明超出容差，严禁压缩表述或妄称“在容差内”）。
    - 包含发布时间、下游缺失观察（404）、后续出现观察（200）的完整可信三段链，方可输出可证明的延迟范围。
 4. **跨源许可证主动比对与可比性检查 (`SEMANTIC_DIVERGENCE`)**：
-   - 实际进行字段比较；两源许可证为 MIT vs Apache-2.0 属于**明确不一致**，判定为 `SEMANTIC_DIVERGENCE`（子状态码 `LICENSE_DECLARATION_DISCREPANCY`）。
-   - 当许可证出现逻辑运算符（`AND` / `OR`）时，判定为 `SEMANTIC_DIVERGENCE`（`LICENSE_EXPRESSION_CONJUNCTION_MISMATCH`），严禁自动采信单方。
-   - 一源缺少可比字段时，严格判定为 `INDETERMINATE`（`undecidable`），**坚决禁止“无比较就判一致”**。
+   - 实际进行字段比较；两源许可证为 MIT vs Apache-2.0 或 MIT vs non-standard 属于**明确不一致**，判定为 `SEMANTIC_DIVERGENCE`（子状态码 `LICENSE_DECLARATION_DISCREPANCY`）。
+   - 当许可证出现逻辑运算符时，按 SPDX 语义如实描述：`OR` 表达式描述为许可选择（alternative choice），`AND` 表达式描述为双重义务（dual obligations），严禁将 OR 描述为 AND 双重义务。
+   - 一源缺少可比字段或双方均无许可证时，严格判定为 `INDETERMINATE`（`undecidable`，无可比证据），**坚决禁止“无比较就判一致”**。
+   - `CONSISTENT` 仅在实际比较且一致时输出，置信度按证据强度动态计算（严格 < 1.0），不得恒为 1.0。
 5. **真实错误经验证据要求 (`REAL_ERROR`)**：
-   - 必须依赖制品内实际 LICENSE 原文等经验证据（如 wheel 包内 `dist-info/LICENSE`）。未提供对应证据时不得判定 `REAL_ERROR`（输出 `undecidable` 并注明缺证据）。
-   - **删除一切硬编码事实断言**；在无法区分字段缺失 vs 解析器故障的情况下，删除 `DOWNSTREAM_PARSING_ERROR` 及其单边责任断言，客观判定为 `STANDARDS_CONTRADICTION`。
+   - 必须有许可证原文与标准文本的匹配证据（如 wheel 包内 `dist-info/LICENSE` 文本与已知标准文本模式匹配），否则不得断言 `REAL_ERROR`（输出 `undecidable` 并注明缺少标准文本匹配证据）。
+   - **删除一切硬编码事实断言**：删除硬编码“缺少 PEP 639 License-Expression”表述；在无法区分字段缺失 vs 解析器故障的情况下，删除 `DOWNSTREAM_PARSING_ERROR` 及其单边责任断言，客观判定为 `STANDARDS_CONTRADICTION`。
 6. **archgraph-layout 延迟案例降级**：
    - 该公开案例降级为“**疑似延迟，时间链待核验**”，在证据与结果中标记 `verification_status: "suspect"` 与 `audit_status: "retracted"`，不再列为已证明的延迟。
 7. **空证据严禁默认一致**：

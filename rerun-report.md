@@ -1,6 +1,6 @@
 # CodeSupply PMV 独立复跑审计报告 (Independent Rerun Audit Report)
 
-- **执行时间 (Run Timestamp)**: 2026-10-13T07:40:34Z
+- **执行时间 (Run Timestamp)**: 2026-10-13T08:09:36Z
 - **执行环境 (Environment)**: Linux 7.0.0-39-generic / Python 3.12.3
 - **技术负责人 (Technical Lead)**: Joey (Jigao Yi) 个人申请
 - **规则集版本 (Ruleset Version)**: `rules v0.1` (`rules/rules-v0.1.json`)
@@ -46,9 +46,9 @@ BASELINE_VALIDATE [pkg-pypi-typing-extensions-4.12.2.result.json]: PASS
 **状态: 现有测试零失败 (ALL TESTS PASSED)**
 
 ```
-.........................
+....................................
 ----------------------------------------------------------------------
-Ran 25 tests in 0.074s
+Ran 36 tests in 0.091s
 
 OK
 ```
@@ -84,11 +84,11 @@ OK
 > **重要口径说明**：本轮起严格遵照 Astra rev3 审查要求，\"0 错误\"收窄为\"现有测试零失败\"——测试通过仅代表符合当前测试集规范，不等于判定绝对正确。本报告仅陈述客观测试结果。
 
 ### Astra rev3 终审修复规则落实情况
-1. **制品身份关联核验 (同名文件不同摘要)**: 必须验证制品身份关联（绑定同一下载 URL / 文件清单 / 发布记录之一）；未证明身份关联严格判定为 `undecidable` (子码 `ARTIFACT_IDENTITY_UNPROVEN`)，严禁判定为 `DIGEST_CONFLICT`。
-2. **编码感知字节级解码 (Base64 大小写区分与不支持编码拦截)**: 摘要统一按编码解码为原始字节后比对，严禁静默 `.lower()` 后判匹配；不支持或未知编码明确输出 `undecidable` (子码 `ENCODING_UNSUPPORTED`)。
-3. **延迟观测链严苛校验**: 必须同时满足后续观测 HTTP 成功 (200)、有效发布时间与严格正向观测顺序 (`t_observed_after > t_observed_before > t_published`)；任一不满足判定 `undecidable` (疑似延迟，标注不确定性)。
-4. **跨源许可证主动比对与可比性检查**: 实际比对元数据字段，MIT vs Apache-2.0 判定为明确不一致 (`SEMANTIC_DIVERGENCE`)；缺少可比字段严格判定为 `undecidable`，坚决杜绝\"无比较就判一致\"。
-5. **真实错误严禁硬编码断言**: 必须依赖制品内实际 LICENSE 文本等经验证据；未提供原文证据不得判定 `REAL_ERROR`，彻底删除硬编码事实断言。
+1. **制品身份关联核验 (同名文件不同摘要)**: 必须验证制品身份关联（绑定同一下载 URL / 包内文件清单含 hash / 发布记录之一）；单纯文件名清单不得作为身份证据，未证明身份关联严格判定为 `undecidable` (子码 `ARTIFACT_IDENTITY_UNPROVEN`)，严禁判定为 `DIGEST_CONFLICT`。
+2. **编码感知字节级解码与摘要长度校验**: 摘要统一按编码解码为原始字节后比对，严禁静默 `.lower()` 后判匹配；增加长度校验（SHA-256 解码后必须为 32 字节，否则判 `undecidable` / `DIGEST_LENGTH_MISMATCH`）。
+3. **延迟观测链严苛校验与容差如实报告**: 后续观察时间必须 ≤ 当前时间（拒绝未来时间）；延迟容差设为明确常量，超出容差不得称\"在容差内\"；42 天延迟如实报告为 42 天，严禁压缩表述。
+4. **跨源许可证主动比对与置信度动态计算**: MIT vs non-standard 判定为不一致 (`SEMANTIC_DIVERGENCE`)；双方均无许可证严格判定为无可比证据 (`undecidable`)；CONSISTENT 仅在实际比对一致时输出，置信度按证据强度动态计算（严格 < 1.0），不得恒为 1.0。
+5. **真实错误严禁硬编码断言与 SPDX 语义**: 必须有许可证原文与标准文本匹配证据方可断言；彻底删除\"缺少 PEP 639 License-Expression\"硬编码表述；OR 表达式按 SPDX 语义如实描述为许可选择，严禁描述为 AND 双重义务。
 6. **archgraph-layout 延迟案例降级**: 公开口径降级为\"疑似延迟，时间链待核验\"，证据中标记 `verification_status: suspect` 与 `audit_status: retracted`，撤出已证明延迟案例名单。
 
 ## 4. Diff 详细说明

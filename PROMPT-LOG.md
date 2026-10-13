@@ -26,8 +26,8 @@
 ## 条目 4 — Astra 终审建议
 - 日期：2026-10-13（主聊发起，本机读取）
 - 模型：Astra Max（gpt-6-astra，reasoning effort max；主聊发起的终审咨询）
-- Prompt：由主聊下达，本机未存档 prompt 原文（主聊侧发起的终审咨询，孔明侧无该 prompt 副本）；以输出为准。如后续从主聊取得原文，将补入本条。
-- 未编辑输出：~/workspace/nlnet-codesupply-council/ASTRA-ADJUDICATION-2026-10-13.md（全文存档，未编辑）
+- Prompt：**重建件，非逐字节原件**——原文件（/tmp）已被清理，主聊 2026-10-13 从执行记录重建，内容与当时发给 Astra 的一致。重建原文：~/workspace/nlnet-codesupply-council/PROMPT-LOG-ENTRY4-RECONSTRUCTED.md（公开副本：docs/evidence/prompts/PROMPT-ENTRY4-RECONSTRUCTED.md）。
+- 未编辑输出：~/workspace/nlnet-codesupply-council/ASTRA-ADJUDICATION-2026-10-13.md（全文存档，未编辑；公开副本：docs/evidence/outputs/ASTRA-ADJUDICATION-2026-10-13.md）
 - 用途：终审建议（选题/金额/AI 合规三项"修改后通过"）。本轮大纲与 demo 修改即按此执行。
 
 ## 后续要求
@@ -89,3 +89,13 @@
 - Prompt：~/workspace/nlnet-codesupply-council/TASK-PMV-FIX2-gemini.md（原文存档）
 - 未编辑输出：~/workspace/nlnet-codesupply-council/pmv-fix2-gemini.txt（DSH_EXIT=0）
 - 用途：修复 5 个误判（制品身份关联、base64 解码比较、延迟三条件、许可证实际比较、删硬编码断言）＋25 项回归测试；archgraph-layout 降级 suspect/retracted；新基线冻结。口径统一为"现有测试零失败"。
+
+## 条目 12 — PMV 第三轮 bug 修复（按 Astra rev3fix 第1节）
+- 日期：2026-10-13 15:52 CST（启动）
+- 模型：Gemini（dsh --profile gemini-sub，订阅版）
+- Prompt：~/workspace/nlnet-codesupply-council/TASK-PMV-FIX3-gemini.md（原文存档）
+- 未编辑输出：~/workspace/nlnet-codesupply-council/pmv-fix3-gemini.txt（待完成）
+- 用途：修复 5 组新反例（制品身份文件名清单、摘要长度校验、延迟未来时间/容差表述、许可证实际比较、硬编码断言）＋README 口径收窄＋回归测试＋新基线冻结。口径统一为"现有测试零失败"。
+
+## 条目 4 补记（已补入重建件）
+- 2026-10-13 主聊提供重建件（非逐字节原件，已如实标注）。"完整日志"一项待本轮所有附件推送公开后关闭。

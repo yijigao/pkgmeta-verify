@@ -120,7 +120,7 @@
     "avoided_false_positive": "Avoided discarding or flagging a legitimate package as license-incompatible while avoiding unverified attribution of parser fault.",
     "category": "REAL_ERROR",
     "confidence": 1.0,
-    "details": "deps.dev reports licenses: ['non-standard']. In contrast, PyPI registry classifiers contain '['License :: OSI Approved :: Python Software Foundation License']' and ClearlyDefined confirms 'Python-2.0.1'. The artifact typing_extensions-4.12.2.dist-info/LICENSE contains verified license text (PSF-2.0). Because upstream core metadata omits an explicit PEP 639 License-Expression header, authoring field omission versus downstream classifier parsing fault cannot be separated. Enforcing hard constraint: deleted DOWNSTREAM_PARSING_ERROR and removed unilateral parser responsibility assertion; recorded verifiable metadata contradiction.",
+    "details": "deps.dev reports licenses: ['non-standard']. In contrast, PyPI registry classifiers contain '['License :: OSI Approved :: Python Software Foundation License']' and ClearlyDefined confirms 'Python-2.0.1'. The artifact typing_extensions-4.12.2.dist-info/LICENSE contains verified license text (PSF-2.0). Because authoring field omission versus downstream classifier parsing fault cannot be separated, unilateral parser responsibility assertion is removed; recorded verifiable metadata contradiction.",
     "subcode": "STANDARDS_CONTRADICTION",
     "summary": "Downstream index license classification contradicts upstream and curated standards"
   },

