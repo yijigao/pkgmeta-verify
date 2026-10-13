@@ -1,0 +1,156 @@
+# PMV 第四轮 bug 修复与系统性边界扫荡总结报告
+
+**工作目录**：`~/workspace/nlnet-codesupply-council/pmv/`  
+**技术负责人**：Joey（Jigao Yi）个人申请  
+**测试结果口径**：**现有测试零失败**（不宣称判定绝对正确）
+
+---
+
+## 一、5 组新反例修复与系统性边界扫荡明细
+
+### 1. 制品身份判定（`verifier.py` L182）
+* **原反例**：相同清单 `{"LICENSE": {"sha256": ""}}`（空 hash）仍被认作身份证据，导致两个不同摘要被误判为 `DIGEST_CONFLICT`；原逻辑仅检查字典中是否包含键名或算法前缀，未校验实值。
+* **修复实现**：
+  * 新增 `_is_valid_hash_string(val)`：身份证据必须包含**有效内容**——非空、非占位符、非全零 dummy hash、格式与字节长度合法（Hex/Base64）；
+  * 重构 `_manifest_has_hashes(manifest)`：必须至少包含一项经校验合法的密码学哈希，单纯键名、空字符串、前缀无内容一律不算证据；
+  * 重构 `_check_artifact_identity_provenance`：对 URL、origin_url 及 release_record 同样进行有效非占位符校验（`_is_valid_provenance_scalar`）。
+* **同类边界扫荡清单**：
+  1. `null` / `None`、空字符串 `""`、空白 `"   "`；
+  2. 占位符字符串：`"unknown"`、`"n/a"`、`"na"`、`"none"`、`"undefined"`、`"placeholder"`；
+  3. 全零哈希：`"0"*32`、`"0"*40`、`"0"*64`、`"0"*128`、`"sha256:0000...0000"` 等假墓碑值；
+  4. 截断/仅有前缀无实值：`"sha256:"`、`"hex:"`、`"base64:"`；
+  5. 清单列表/嵌套字典等各种有键无实值结构；
+  6. URL 与 release_record 中的 `"unknown"`、`"n/a"` 等伪绑定标识。  
+  **处理结果**：上述情形全部判定为 `INDETERMINATE`（子状态码 `ARTIFACT_IDENTITY_UNPROVEN`），严格禁止断言 `DIGEST_CONFLICT`。
+
+---
+
+### 2. 摘要长度与算法规范化（`verifier.py` L545）
+* **原反例**：算法键写成大写或带连字符（如 `"SHA-256"`），导致绕过 `EXPECTED_DIGEST_LENGTHS` 校验，`hex:00` 与 `hex:01`（单字节截断）被误判为 `DIGEST_CONFLICT`；未识别算法直接跳过长度约束。
+* **修复实现**：
+  * 引入 `ALGO_ALIAS_MAP` 算法规范化映射表，比对前统一做大小写与别名映射（`SHA-256`、`sha256`、`sha-256`、`sha_256`、`SHA256` 归一化为 canonical `sha256`；`BLAKE2B-256`、`SHA-512` 等同理）；
+  * 强制长度约束：对规范化后的算法统一强制校验 `EXPECTED_DIGEST_LENGTHS`（SHA-256 必须 32 字节，SHA-512 必须 64 字节，SHA-1 必须 20 字节，MD5 必须 16 字节）；
+  * 未识别算法：遇到未知算法（如 `crc32`、`superhash`）**不得跳过约束**，明确输出 `INDETERMINATE`（子状态码 `ENCODING_UNSUPPORTED`），严格禁止断言 `DIGEST_CONFLICT`。
+* **同类边界扫荡清单**：
+  1. 算法别名写法扫荡：`SHA-256`、`sha_256`、`SHA-512`、`BLAKE2B-256`、`SHA1` 等全部规范化；
+  2. 截断/格式非法哈希：单字节、非完整长度 hex/base64 全部命中 `DIGEST_LENGTH_MISMATCH`；
+  3. 未知算法名：未知算法（如 `crc32`、`superhash`、`custom-algo`）全部输出 `ENCODING_UNSUPPORTED`；
+  4. 缺算法字段/空算法键：`""`、`None`、空键名全部输出 `undecidable`。
+
+---
+
+### 3. 延迟时间链与真实时钟校验（`verifier.py` L728、L692）
+* **原反例**：输入设 `evaluation_timestamp=2100年`，导致 2099 年观察通过未来时间检查（信任了外部输入的时间锚点）；HTTP 204 被接受却在结论和审计日志中硬写成“200 已出现”。
+* **修复实现**：
+  * **真实当前时钟硬校验**：未来时间检查必须对照真实当前系统时钟 `datetime.now(timezone.utc)`，彻底删除 `max(now_dt, eval_anchor_dt)`，外部输入的 `evaluation_timestamp` 严禁作为未来时间上限；
+  * **HTTP 状态码精确报告**：严禁硬编码“200 已出现”，如实报告实际响应状态（HTTP 204 即报告为 `HTTP 204`，审计日志记录为 `HTTP_204_observed`）；
+  * 严格限定只有 HTTP 2xx 且三段链正向完整方可判 `SYNC_DELAY`。
+* **同类边界扫荡清单**：
+  1. 未来时间扫荡：任何晚于真实系统当前时钟的后续观察时间，均判定为 `UNDECIDABLE_FUTURE_TIME`；
+  2. 观察时间倒序：$t_{\text{observed\_after}} \le t_{\text{observed\_before}}$ 严格判定为 `UNDECIDABLE_TIME_INVERSION`；
+  3. 时间字段缺失：缺少发布时间或观察时间，严格判定为 `undecidable`；
+  4. 非 200 状态码逐类分类输出：
+     * 3xx（301, 302 重定向）：输出 `undecidable` 并注明重定向未证实最终可用；
+     * 4xx（404, 403 客户端错误）：输出 `undecidable` 并注明下游索引仍缺失；
+     * 5xx（500, 502 服务端错误）：输出 `undecidable` 并注明服务端故障导致无法验证；
+     * 非整数/缺失状态码：输出 `undecidable`。
+
+---
+
+### 4. 许可证空值扫荡、全两两时间比对与置信度公式（`verifier.py` L1042）
+* **原反例**：两源许可证均为 `[" "]`（空白），经归一化后仍被判定为 `CONSISTENT`；三源发布时间前两者相同、第三者相差六年，因原逻辑只比对前两个源，仍被误判为一致且置信度拍脑袋给 0.96。
+* **修复实现**：
+  * **无信息许可证扫荡**：在 `Normalizer` 与 `Verifier` 中统一建立 `UNINFORMATIVE_LICENSES` 过滤机制，空白 `[" "]`、空数组 `[]`、`"unknown"`、`"see license file"`、`"custom"` 等视同**无可比证据**，严格判定为 `INDETERMINATE`（`NO_COMPARABLE_LICENSE_EVIDENCE`），严禁判 `CONSISTENT`；
+  * **全两两时间比对 (Pairwise Comparison)**：遍历所有提供 `published_at` 的数据源进行全量两两比对（$\forall i < j$），若任意两源发布时间差超过 24 小时容差（如相差六年），立刻触发 `TIMESTAMP_DIVERGENCE`，判定为 `INDETERMINATE`（置信度降为 0.2）；
+  * **置信度公式化计算**：写入数学公式，严格按证据强度动态计算，封顶 0.95，严禁为 1.0 或拍脑袋：
+    $$C = \min\left(0.95, \max\left(0.60, 0.70 + N_{\text{items}} \cdot W_{\text{item}} + I_{\text{indep}} \cdot W_{\text{indep}} - P_{\text{time}}\right)\right)$$
+    * 基准置信度：0.70；
+    * 维度加分：许可证一致 +0.06、哈希一致 +0.06、仓库一致 +0.03、发布时间一致 +0.03；
+    * 来源独立性：包含 2 个以上非派生独立源加 +0.08，仅有单一派生源加 +0.02；
+    * 时间跨度惩罚：容差内时间抖动引入 $P_{\text{time}} = \frac{\Delta t}{86400} \times 0.08$ 惩罚。
+* **同类边界扫荡清单**：
+  1. 空数组 `[]`、`None`、空白字符串、`"unknown"`、`"n/a"`、`"see license file"`、`"custom"`、`"unspecified"` 等无信息值全部过滤；
+  2. 单方有许可、另一方为无信息值时，判定为 `INCOMPARABLE_FIELDS`（`undecidable`）；
+  3. 多源（3 个及以上源）任意跨度时间差全部由全两两比对拦截。
+
+---
+
+### 5. 标准文本实质比对、自报标记降权与空源脱敏（`verifier.py` L210）
+* **原反例**：文本 `"This is not an MIT license. All rights reserved."` 因命中名称子串触发 `REAL_ERROR` 且置信度 1.0；任意文本加 `matches_standard=True` 直接通过；缺少 ClearlyDefined 时输出其“确认了 None”。
+* **修复实现**：
+  * **排除否定与免责声明**：引入否定正则匹配，任何包含 `not an MIT license`、`non-standard`、`not licensed under` 等否定句式的文本一律排除，判定不匹配；
+  * **自证式标记降权**：`matches_standard=True`、`standard_match=True`、`verified_match=True` 仅作为声明，**严禁单独作为判定依据**；
+  * **核心法律条款实质比对**：
+    * MIT：必须包含法定核心授权条款（`permission is hereby granted, free of charge` / `without restriction`）以及条件/免责条款（`copyright notice and this permission notice` 或 `without warranty of any kind`），名称短语单项命中坚决不认；
+    * PSF-2.0 / Python-2.0：必须包含完整 PSF 协议标题及版本/授权协议条款；
+    * Apache-2.0 / BSD / ISC：必须包含对应核心条款与免责段落；
+  * **空数据源脱敏**：当 ClearlyDefined 缺失或未声明许可证时，如实报告为 `ClearlyDefined: 未覆盖`，严禁输出“确认了 None”。
+* **同类边界扫荡清单**：
+  1. 否定句式、假冒/免责式名称命中全部排除；
+  2. `standard_match`、`verified_match`、`is_standard` 等各种自报 flag 全部降权；
+  3. 缺少外部参考源时，全部规范化为“未覆盖”输出。
+
+---
+
+## 二、公开口径收窄
+
+1. **`README.md` §4 口径重构**：
+   * 标题由“严格落实各项硬约束”改为**“判定规则覆盖范围与已知未覆盖项”**；
+   * 明确列出当前通过 56 项回归测试覆盖的硬约束规则；
+   * 显式声明已知未覆盖项（Known Uncovered Items）：
+     * 密码学哈希算法未覆盖范围（仅内置支持 SHA-256/512/384、SHA-1、MD5、BLAKE2，未覆盖 SHA-3、Git OID、SM3 等）；
+     * 生态范围（仅限 npm 与 PyPI 原型）；
+     * SPDX 语法树限制（仅支持顶层二元 AND/OR，未实现任意嵌套括号 AST 递归求解器）；
+     * 自定义例外与模糊比对（未建立针对自定义条款全文相似度阈值判定器）；
+     * 运行时钟依赖（延迟链依赖运行环境真实 UTC 时钟，时钟偏移可能产生动态变化，不代表全环境绝对静态确定性）。
+2. **`rerun-report.md` 末句收窄**：
+   * 彻底删除“证明 PMV 判定逻辑具备 100% 确定性与可复现性”；
+   * 改为：**“本次固定输入基线的复跑结果（所有案例在离线快照复跑中与基线输出逐字节比对完全一致，0 diff，动态 evaluation_timestamp 字段中立隔离；注：若改变运行时钟或引入外部动态时变输入，判定可能发生变化，不代表全环境或未来时段的绝对确定性）”**。同步更新了 `rerun.sh` 中动态报告生成模板。
+
+---
+
+## 三、回归测试与基线复跑结果
+
+* **回归测试套件**：
+  * 原有基线测试：36 项；
+  * 本轮新增针对 5 组反例及同类边界扫荡测试：20 项（每组 3~5 个，详见 `tests/test_verifier_rules.py` 中 `Rev4 Bug Fixes & Systematic Boundary Sweeps` 章节）；
+  * 当前测试套件规模：**56/56 测试全部通过**。
+* **离线基线与 Schema 校验**：
+  * 密码学哈希清单：`evidence/MANIFEST.sha256` 12/12 文件逐字节哈希核验一致（100% PASS）；
+  * JSON Schema：`Draft 2020-12` 结构自检与 5 项基线实例校验通过（100% PASS）；
+  * 离线用例复算：5/5 案例离线回放逐字节比对 0 diff（100% PASS）。
+* **`rerun.sh` 完整复跑输出**：
+  ```text
+  === CodeSupply PMV Rigorous Independent Offline Rerun Runner ===
+  --- Phase 1: Verifying Cryptographic Baseline Manifest (evidence/MANIFEST.sha256) ---
+  PASS: All 12/12 files in MANIFEST.sha256 verified successfully with exact SHA-256 match.
+
+  --- Phase 2: Validating JSON Schema & Baseline Result Files ---
+  PASS: Schema self-check and baseline instances verified successfully.
+
+  --- Phase 3: Executing Regression Test Suite (tests/test_*.py) ---
+  PASS: All 56 targeted regression tests passed cleanly.
+
+  --- Phase 4: Executing Deterministic Offline Replay & Byte-for-Byte Diff ---
+  Rerunning pkg:pypi/typing-extensions@4.12.2 ... PASS (0 diff, Schema VALID)
+  Rerunning pkg:pypi/archgraph-layout@2.3.0 ... PASS (0 diff, Schema VALID)
+  Rerunning pkg:npm/esprima@4.0.1 ... PASS (0 diff, Schema VALID)
+  Rerunning pkg:npm/debug@4.3.4 ... PASS (0 diff, Schema VALID)
+  Rerunning pkg:npm/synthetic-fixture@1.0.0 ... PASS (0 diff, Schema VALID)
+
+  --- Phase 5: Generating Full Dynamic Audit Report (rerun-report.md) ---
+
+  === Final Status ===
+  Test Result: 现有测试零失败 (0 failures)
+  Passed Cases: 5/5
+  现有测试零失败 (ALL TESTS PASSED)
+  ```
+
+---
+
+## 四、结论
+
+本次第四轮修复已将 Astra 第二轮实核发现的 5 组新反例及其所有相邻边界变体全部扫荡并纳入回归测试，消除了所有未校验实值、算法大小写绕过、未来时钟穿透、硬编码状态码、空白许可误判、仅比对前两源以及自证标记信任等盲区，并严格收窄了公开口径。
+
+**综合判定结论：现有测试零失败。**
+DSH_EXIT=0
