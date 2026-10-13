@@ -1,0 +1,107 @@
+{
+  "decision_audit_trail": [
+    {
+      "condition_evaluated": "normalize_hex_digest(algo='sha256')",
+      "normalized_values": {
+        "source_a": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_b": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "original_values": {
+        "source_a": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_b": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "outcome": "NORMALIZED",
+      "rationale": "Hex digest comparison restricted to identical algorithm 'sha256'. Case and whitespace normalization recorded: source_a 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' -> 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', source_b 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' -> 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'.",
+      "rule_id": "DIGEST_03_NORMALIZATION"
+    },
+    {
+      "condition_evaluated": "digests_match([('sha256', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')])",
+      "outcome": "DIGEST_CONFLICT",
+      "rationale": "Different hashes for identical artifact & algorithm prove digest conflict. Strictly prohibited from asserting mirror tampering or corruption.",
+      "rule_id": "DIGEST_03_VALUE_COMPARISON"
+    }
+  ],
+  "ecosystem": "npm",
+  "evaluation_timestamp": "2026-10-13T07:00:07Z",
+  "name": "synthetic-fixture",
+  "normalized_evidence": {
+    "registry": {
+      "artifacts": [
+        {
+          "artifact_id": "synthetic-fixture-1.0.0.tgz",
+          "artifact_type": "npm_tarball",
+          "digests": {
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "url": "https://registry.npmjs.org/synthetic-fixture/-/synthetic-fixture-1.0.0.tgz"
+        }
+      ],
+      "available": true,
+      "derived_from": null,
+      "endpoint": "https://registry.npmjs.org/synthetic-fixture/1.0.0",
+      "license_classifiers": [],
+      "license_text_evidence": null,
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "published_at": null,
+      "repository": null,
+      "role": "upstream_registry",
+      "source_id": "npm_registry",
+      "status": 200
+    },
+    "synthetic": {
+      "artifacts": [
+        {
+          "artifact_id": "synthetic-fixture-1.0.0.tgz",
+          "artifact_type": "npm_tarball",
+          "digests": {
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "url": "https://mirror.example.org/synthetic-fixture-1.0.0.tgz"
+        }
+      ],
+      "available": true,
+      "derived_from": null,
+      "endpoint": "https://mirror.example.org/synthetic-fixture-1.0.0.tgz",
+      "licenses": [],
+      "published_at": null,
+      "role": "synthetic_mirror",
+      "source_id": "mirror_b",
+      "status": 200
+    }
+  },
+  "provenance_and_dependencies": {
+    "dependency_relations": [],
+    "sources_consulted": [
+      {
+        "derived_from": null,
+        "endpoint": "https://registry.npmjs.org/synthetic-fixture/1.0.0",
+        "fetch_timestamp": "2026-10-13T06:00:00Z",
+        "role": "upstream_registry",
+        "source_id": "npm_registry",
+        "status": 200
+      },
+      {
+        "derived_from": null,
+        "endpoint": "https://mirror.example.org/synthetic-fixture-1.0.0.tgz",
+        "fetch_timestamp": "2026-10-13T06:00:00Z",
+        "role": "synthetic_mirror",
+        "source_id": "mirror_b",
+        "status": 200
+      }
+    ]
+  },
+  "purl": "pkg:npm/synthetic-fixture@1.0.0",
+  "ruleset_version": "v0.1",
+  "synthetic": true,
+  "verdict": {
+    "avoided_false_positive": "Avoided defamatory or premature assertion of 'mirror tampered / compromised'; accurately scoped factual claim to verifiable 'digest conflict'.",
+    "category": "DIGEST_CONFLICT",
+    "confidence": 1.0,
+    "details": "Digest discrepancy on artifact 'synthetic-fixture-1.0.0.tgz' for algorithm(s): sha256. Evidence proves conflicting digests across sources. Enforcing hard constraint: strictly prohibited from asserting mirror corruption or malicious tampering.",
+    "subcode": "ARTIFACT_DIGEST_MISMATCH",
+    "summary": "Digest conflict observed between sources for identical artifact and algorithm"
+  },
+  "version": "1.0.0"
+}

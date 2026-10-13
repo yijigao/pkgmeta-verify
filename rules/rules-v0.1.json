@@ -1,0 +1,49 @@
+{
+  "ruleset_version": "v0.1",
+  "name": "CodeSupply Package Metadata Verification Rules",
+  "author": "Joey (Jigao Yi)",
+  "description": "Ruleset for cross-source metadata verification and lifecycle tracking across npm and PyPI ecosystems",
+  "hard_constraints": {
+    "digest_comparison": {
+      "require_identical_artifact": true,
+      "require_identical_algorithm": true,
+      "require_artifact_level_evidence": true,
+      "require_case_normalization_logging": true,
+      "cross_incomparable_verdict": "INDETERMINATE",
+      "cross_incomparable_subcode": "undecidable",
+      "conflict_verdict": "DIGEST_CONFLICT",
+      "conflict_prohibition": "MUST_NOT_ASSERT_CORRUPTION_OR_TAMPERING"
+    },
+    "sync_delay": {
+      "tolerance_window_seconds": 86400,
+      "evaluation": "TIME_SKEW_UNCERTAINTY",
+      "require_temporal_chain": true,
+      "missing_timestamp_verdict": "INDETERMINATE",
+      "single_observation_verdict": "INDETERMINATE",
+      "verdict": "SYNC_DELAY",
+      "base_confidence": 0.95
+    },
+    "semantic_divergence": {
+      "verdict": "SEMANTIC_DIVERGENCE",
+      "prohibit_auto_acceptance": true,
+      "flag_boolean_logic_disparity": true,
+      "require_field_and_scope_provenance": true
+    },
+    "real_error": {
+      "verdict": "REAL_ERROR",
+      "require_irrefutable_evidence": true,
+      "prohibit_unilateral_parser_blame_without_proof": true,
+      "recognized_standards": ["SPDX-2.3", "OSI-Approved"]
+    },
+    "consistency": {
+      "prohibit_empty_evidence_default": true,
+      "min_available_sources": 2,
+      "empty_evidence_verdict": "INDETERMINATE"
+    },
+    "source_dependency": {
+      "record_derivation_dag": true,
+      "deps_dev_derives_from_registry": true,
+      "disallow_dependent_as_independent_ground_truth": true
+    }
+  }
+}

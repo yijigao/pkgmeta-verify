@@ -1,0 +1,51 @@
+{
+  "ecosystem": "npm",
+  "fetch_timestamp": "2026-10-13T06:00:00Z",
+  "name": "synthetic-fixture",
+  "purl": "pkg:npm/synthetic-fixture@1.0.0",
+  "sources": {
+    "registry": {
+      "artifacts": [
+        {
+          "artifact_id": "synthetic-fixture-1.0.0.tgz",
+          "artifact_type": "npm_tarball",
+          "digests": {
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "url": "https://registry.npmjs.org/synthetic-fixture/-/synthetic-fixture-1.0.0.tgz"
+        }
+      ],
+      "data": {
+        "dist": {
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "tarball": "https://registry.npmjs.org/synthetic-fixture/-/synthetic-fixture-1.0.0.tgz"
+        },
+        "license": "Apache-2.0",
+        "name": "synthetic-fixture",
+        "version": "1.0.0"
+      },
+      "endpoint": "https://registry.npmjs.org/synthetic-fixture/1.0.0",
+      "role": "upstream_registry",
+      "source_id": "npm_registry",
+      "status": 200
+    },
+    "synthetic": {
+      "artifacts": [
+        {
+          "artifact_id": "synthetic-fixture-1.0.0.tgz",
+          "artifact_type": "npm_tarball",
+          "digests": {
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "url": "https://mirror.example.org/synthetic-fixture-1.0.0.tgz"
+        }
+      ],
+      "endpoint": "https://mirror.example.org/synthetic-fixture-1.0.0.tgz",
+      "role": "synthetic_mirror",
+      "source_id": "mirror_b",
+      "status": 200
+    }
+  },
+  "synthetic": true,
+  "version": "1.0.0"
+}

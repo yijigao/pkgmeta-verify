@@ -1,0 +1,80 @@
+{
+  "ecosystem": "npm",
+  "fetch_timestamp": "2026-10-13T06:31:27Z",
+  "name": "debug",
+  "purl": "pkg:npm/debug@4.3.4",
+  "sources": {
+    "clearlydefined": {
+      "data": {
+        "error": "Network exception: HTTPSConnectionPool(host='api.clearlydefined.io', port=443): Read timed out. (read timeout=4)"
+      },
+      "derived_from": null,
+      "endpoint": "https://api.clearlydefined.io/definitions/npm/npmjs/-/debug/4.3.4",
+      "role": "supplemental_license_analyzer",
+      "source_id": "clearlydefined",
+      "status": 0
+    },
+    "deps_dev": {
+      "data": {
+        "isDefault": false,
+        "licenses": [
+          "MIT"
+        ],
+        "links": [
+          {
+            "label": "HOMEPAGE",
+            "url": "https://github.com/debug-js/debug#readme"
+          },
+          {
+            "label": "ISSUE_TRACKER",
+            "url": "https://github.com/debug-js/debug/issues"
+          },
+          {
+            "label": "ORIGIN",
+            "url": "https://registry.npmjs.org/debug/4.3.4"
+          },
+          {
+            "label": "SOURCE_REPO",
+            "url": "git://github.com/debug-js/debug.git"
+          }
+        ],
+        "publishedAt": "2022-03-17T13:38:47Z",
+        "versionKey": {
+          "name": "debug",
+          "system": "NPM",
+          "version": "4.3.4"
+        }
+      },
+      "derived_from": "npm_registry",
+      "endpoint": "https://api.deps.dev/v3/systems/npm/packages/debug/versions/4.3.4",
+      "role": "derived_indexer",
+      "source_id": "deps_dev",
+      "status": 200
+    },
+    "registry": {
+      "data": {
+        "dist": {
+          "integrity": "sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==",
+          "shasum": "1319f6579357f2338d3337d2cdd4914bb5dcc865",
+          "tarball": "https://registry.npmjs.org/debug/-/debug-4.3.4.tgz"
+        },
+        "license": "MIT",
+        "licenses": null,
+        "name": "debug",
+        "publish_time": null,
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/debug-js/debug.git"
+        },
+        "version": "4.3.4"
+      },
+      "derived_from": null,
+      "endpoint": "https://registry.npmjs.org/debug/4.3.4",
+      "role": "upstream_registry",
+      "source_id": "npm_registry",
+      "status": 200
+    }
+  },
+  "synthetic": false,
+  "version": "4.3.4"
+}

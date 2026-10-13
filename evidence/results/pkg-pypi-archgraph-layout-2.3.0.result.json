@@ -1,0 +1,116 @@
+{
+  "decision_audit_trail": [
+    {
+      "condition_evaluated": "temporal_chain_complete(upstream='2026-10-13T06:16:05.856416Z', 404_observed='2026-10-13T06:31:25Z', 200_observed='2026-10-13T07:15:00Z')",
+      "outcome": "SYNC_DELAY",
+      "rationale": "Three-stage temporal observation chain confirmed (published -> 404 missing -> 200 resolved). Provable delay range [919s, 3534s] is within tolerance window 86400s.",
+      "rule_id": "SYNC_02_OBSERVATION_CHAIN"
+    }
+  ],
+  "ecosystem": "pypi",
+  "evaluation_timestamp": "2026-10-13T07:00:07Z",
+  "name": "archgraph-layout",
+  "normalized_evidence": {
+    "clearlydefined": {
+      "available": true,
+      "declared_license": null,
+      "derived_from": null,
+      "discovered_licenses": [],
+      "endpoint": "https://api.clearlydefined.io/definitions/pypi/pypi/-/archgraph-layout/2.3.0",
+      "role": "supplemental_license_analyzer",
+      "source_id": "clearlydefined",
+      "status": 200
+    },
+    "deps_dev": {
+      "available": false,
+      "derived_from": "pypi_json",
+      "endpoint": "https://api.deps.dev/v3/systems/pypi/packages/archgraph-layout/versions/2.3.0",
+      "licenses": [],
+      "published_at": null,
+      "repository": null,
+      "role": "derived_indexer",
+      "source_id": "deps_dev",
+      "status": 404,
+      "subsequent_observation": {
+        "licenses": [
+          "MIT"
+        ],
+        "observed_at": "2026-10-13T07:15:00Z",
+        "published_at": "2026-10-13T06:16:05Z",
+        "status": 200
+      }
+    },
+    "registry": {
+      "artifacts": [
+        {
+          "artifact_id": "archgraph_layout-2.3.0-py3-none-any.whl",
+          "artifact_type": "bdist_wheel",
+          "digests": {
+            "sha256": "2e63832e5ac22720d63d43b999ed463523f08c57b8414964890d235eadfe8bc6"
+          },
+          "upload_time": "2026-10-13T06:16:05.856416Z",
+          "url": "https://files.pythonhosted.org/packages/65/22/af24cc7b5fb7391166cf4fc5191e30933bc7b041e8bd5d7e3069f8183eef/archgraph_layout-2.3.0-py3-none-any.whl"
+        }
+      ],
+      "available": true,
+      "derived_from": null,
+      "endpoint": "https://pypi.org/pypi/archgraph-layout/2.3.0/json",
+      "license_classifiers": [],
+      "license_text_evidence": null,
+      "licenses": [],
+      "published_at": "2026-10-13T06:16:05.856416Z",
+      "repository": null,
+      "role": "upstream_registry",
+      "source_id": "pypi_json",
+      "status": 200
+    }
+  },
+  "provenance_and_dependencies": {
+    "dependency_relations": [
+      {
+        "independent_truth_valid": false,
+        "nature": "Downstream ingestion of upstream registry metadata; consistency represents ingestion propagation, NOT independent ground-truth verification.",
+        "subject": "deps_dev",
+        "upstream": "pypi_json"
+      }
+    ],
+    "sources_consulted": [
+      {
+        "derived_from": null,
+        "endpoint": "https://api.clearlydefined.io/definitions/pypi/pypi/-/archgraph-layout/2.3.0",
+        "fetch_timestamp": "2026-10-13T06:31:25Z",
+        "role": "supplemental_license_analyzer",
+        "source_id": "clearlydefined",
+        "status": 200
+      },
+      {
+        "derived_from": "pypi_json",
+        "endpoint": "https://api.deps.dev/v3/systems/pypi/packages/archgraph-layout/versions/2.3.0",
+        "fetch_timestamp": "2026-10-13T06:31:25Z",
+        "role": "derived_indexer",
+        "source_id": "deps_dev",
+        "status": 404
+      },
+      {
+        "derived_from": null,
+        "endpoint": "https://pypi.org/pypi/archgraph-layout/2.3.0/json",
+        "fetch_timestamp": "2026-10-13T06:31:25Z",
+        "role": "upstream_registry",
+        "source_id": "pypi_json",
+        "status": 200
+      }
+    ]
+  },
+  "purl": "pkg:pypi/archgraph-layout@2.3.0",
+  "ruleset_version": "v0.1",
+  "synthetic": false,
+  "verdict": {
+    "avoided_false_positive": "Avoided misclassifying normal downstream indexing latency as upstream publication failure or missing package integrity fault.",
+    "category": "SYNC_DELAY",
+    "confidence": 0.978,
+    "details": "Upstream registry reports release published at '2026-10-13T06:16:05.856416Z'. Temporal observation chain verified: downstream missing (404) observed at '2026-10-13T06:31:25Z' (delta 919s), subsequent appearance (200) observed at '2026-10-13T07:15:00Z'. Provable delay range is [919s, 3534s], within sync tolerance window (86400s). Preserving uncertainty; not judged as missing package or mirror defect.",
+    "subcode": "DOWNSTREAM_INGESTION_LAG",
+    "summary": "Downstream index ingested release with verified temporal delay chain"
+  },
+  "version": "2.3.0"
+}

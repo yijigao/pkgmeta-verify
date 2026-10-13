@@ -1,0 +1,125 @@
+{
+  "decision_audit_trail": [
+    {
+      "condition_evaluated": "deps.dev reported 'non-standard' vs (osi_classifier=True, cd_standard=True)",
+      "outcome": "REAL_ERROR",
+      "rationale": "Cross-source license classification contradiction: PyPI classifiers, ClearlyDefined, and artifact license text confirm standard OSI/PSF license, while downstream indexer classifies it as non-standard. Because authoring field omission vs parser fault cannot be definitively proven, unilateral parser blame assertion is removed.",
+      "rule_id": "ERROR_01_STANDARDS_CONTRADICTION"
+    }
+  ],
+  "ecosystem": "pypi",
+  "evaluation_timestamp": "2026-10-13T07:00:07Z",
+  "name": "typing-extensions",
+  "normalized_evidence": {
+    "clearlydefined": {
+      "available": true,
+      "declared_license": "Python-2.0.1",
+      "derived_from": null,
+      "discovered_licenses": [
+        "(Python-2.0 AND GPL-1.0-or-later AND BSD-3-Clause AND 0BSD) AND Python-2.0",
+        "LicenseRef-scancode-unknown-license-reference",
+        "Python-2.0",
+        "Python-2.0 AND GPL-1.0-or-later AND (Python-2.0 AND BSD-3-Clause) AND (Python-2.0 AND BSD-3-Clause AND 0BSD)"
+      ],
+      "endpoint": "https://api.clearlydefined.io/definitions/pypi/pypi/-/typing-extensions/4.12.2",
+      "role": "supplemental_license_analyzer",
+      "source_id": "clearlydefined",
+      "status": 200
+    },
+    "deps_dev": {
+      "available": true,
+      "derived_from": "pypi_json",
+      "endpoint": "https://api.deps.dev/v3/systems/pypi/packages/typing-extensions/versions/4.12.2",
+      "licenses": [
+        "non-standard"
+      ],
+      "published_at": "2024-06-07T18:52:13Z",
+      "repository": "https://github.com/python/typing_extensions",
+      "role": "derived_indexer",
+      "source_id": "deps_dev",
+      "status": 200,
+      "subsequent_observation": null
+    },
+    "registry": {
+      "artifacts": [
+        {
+          "artifact_id": "typing_extensions-4.12.2-py3-none-any.whl",
+          "artifact_type": "bdist_wheel",
+          "digests": {
+            "blake2b_256": "ad267f0412853761c5a93902f2be2eeb38a8e1e75529f7cf7c7c00e19485b035",
+            "md5": "b3e34bca86e2474ec80026e6fa5a065f",
+            "sha256": "269fad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0"
+          },
+          "upload_time": "2024-06-07T18:52:13.626461Z",
+          "url": "https://files.pythonhosted.org/packages/26/9f/ad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0/typing_extensions-4.12.2-py3-none-any.whl"
+        }
+      ],
+      "available": true,
+      "derived_from": null,
+      "endpoint": "https://pypi.org/pypi/typing-extensions/4.12.2/json",
+      "license_classifiers": [
+        "License :: OSI Approved :: Python Software Foundation License"
+      ],
+      "license_text_evidence": {
+        "artifact": "typing_extensions-4.12.2-py3-none-any.whl",
+        "file": "typing_extensions-4.12.2.dist-info/LICENSE",
+        "spdx_identifier": "PSF-2.0",
+        "text_snippet": "PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2\n\n1. This LICENSE AGREEMENT is between the Python Software Foundation (\"PSF\"), and the Individual or Organization (\"Licensee\") accessing and otherwise using this software (\"Python\") in source or binary form and its associated documentation."
+      },
+      "licenses": [],
+      "published_at": "2024-06-07T18:52:13.626461Z",
+      "repository": "https://github.com/python/typing_extensions",
+      "role": "upstream_registry",
+      "source_id": "pypi_json",
+      "status": 200
+    }
+  },
+  "provenance_and_dependencies": {
+    "dependency_relations": [
+      {
+        "independent_truth_valid": false,
+        "nature": "Downstream ingestion of upstream registry metadata; consistency represents ingestion propagation, NOT independent ground-truth verification.",
+        "subject": "deps_dev",
+        "upstream": "pypi_json"
+      }
+    ],
+    "sources_consulted": [
+      {
+        "derived_from": null,
+        "endpoint": "https://api.clearlydefined.io/definitions/pypi/pypi/-/typing-extensions/4.12.2",
+        "fetch_timestamp": "2026-10-13T06:31:23Z",
+        "role": "supplemental_license_analyzer",
+        "source_id": "clearlydefined",
+        "status": 200
+      },
+      {
+        "derived_from": "pypi_json",
+        "endpoint": "https://api.deps.dev/v3/systems/pypi/packages/typing-extensions/versions/4.12.2",
+        "fetch_timestamp": "2026-10-13T06:31:23Z",
+        "role": "derived_indexer",
+        "source_id": "deps_dev",
+        "status": 200
+      },
+      {
+        "derived_from": null,
+        "endpoint": "https://pypi.org/pypi/typing-extensions/4.12.2/json",
+        "fetch_timestamp": "2026-10-13T06:31:23Z",
+        "role": "upstream_registry",
+        "source_id": "pypi_json",
+        "status": 200
+      }
+    ]
+  },
+  "purl": "pkg:pypi/typing-extensions@4.12.2",
+  "ruleset_version": "v0.1",
+  "synthetic": false,
+  "verdict": {
+    "avoided_false_positive": "Avoided discarding or flagging a legitimate package as license-incompatible while avoiding unverified attribution of parser fault.",
+    "category": "REAL_ERROR",
+    "confidence": 1.0,
+    "details": "deps.dev reports licenses: ['non-standard']. In contrast, PyPI registry classifiers contain '['License :: OSI Approved :: Python Software Foundation License']' and ClearlyDefined confirms 'Python-2.0.1'. The artifact dist-info/LICENSE contains the standard Python Software Foundation License Version 2. Because upstream core metadata omits an explicit PEP 639 License-Expression header, authoring field omission versus downstream classifier parsing fault cannot be separated. Enforcing hard constraint: deleted DOWNSTREAM_PARSING_ERROR and removed unilateral parser responsibility assertion; recorded verifiable metadata contradiction.",
+    "subcode": "STANDARDS_CONTRADICTION",
+    "summary": "Downstream index license classification contradicts upstream and curated standards"
+  },
+  "version": "4.12.2"
+}

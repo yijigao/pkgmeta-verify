@@ -1,0 +1,127 @@
+{
+  "ecosystem": "pypi",
+  "fetch_timestamp": "2026-10-13T06:31:23Z",
+  "name": "typing-extensions",
+  "purl": "pkg:pypi/typing-extensions@4.12.2",
+  "sources": {
+    "clearlydefined": {
+      "data": {
+        "described": {
+          "releaseDate": "2024-06-07",
+          "urls": {
+            "download": "https://files.pythonhosted.org/packages/df/db/f35a00659bc03fec321ba8bce9420de607a1d37f8342eee1863174c69557/typing_extensions-4.12.2.tar.gz",
+            "registry": "https://pypi.org/project/typing-extensions",
+            "version": "https://pypi.org/project/typing-extensions/4.12.2"
+          }
+        },
+        "licensed": {
+          "declared": "Python-2.0.1",
+          "facets": {
+            "core": {
+              "discovered": {
+                "expressions": [
+                  "(Python-2.0 AND GPL-1.0-or-later AND BSD-3-Clause AND 0BSD) AND Python-2.0",
+                  "LicenseRef-scancode-unknown-license-reference",
+                  "Python-2.0",
+                  "Python-2.0 AND GPL-1.0-or-later AND (Python-2.0 AND BSD-3-Clause) AND (Python-2.0 AND BSD-3-Clause AND 0BSD)"
+                ],
+                "unknown": 5
+              }
+            }
+          }
+        }
+      },
+      "derived_from": null,
+      "endpoint": "https://api.clearlydefined.io/definitions/pypi/pypi/-/typing-extensions/4.12.2",
+      "role": "supplemental_license_analyzer",
+      "source_id": "clearlydefined",
+      "status": 200
+    },
+    "deps_dev": {
+      "data": {
+        "isDefault": false,
+        "licenses": [
+          "non-standard"
+        ],
+        "links": [
+          {
+            "label": "ISSUE_TRACKER",
+            "url": "https://github.com/python/typing_extensions/issues"
+          },
+          {
+            "label": "DOCUMENTATION",
+            "url": "https://typing-extensions.readthedocs.io/"
+          },
+          {
+            "label": "SOURCE_REPO",
+            "url": "https://github.com/python/typing_extensions"
+          }
+        ],
+        "publishedAt": "2024-06-07T18:52:13Z",
+        "versionKey": {
+          "name": "typing-extensions",
+          "system": "PYPI",
+          "version": "4.12.2"
+        }
+      },
+      "derived_from": "pypi_json",
+      "endpoint": "https://api.deps.dev/v3/systems/pypi/packages/typing-extensions/versions/4.12.2",
+      "role": "derived_indexer",
+      "source_id": "deps_dev",
+      "status": 200
+    },
+    "registry": {
+      "data": {
+        "info": {
+          "classifiers": [
+            "Development Status :: 5 - Production/Stable",
+            "License :: OSI Approved :: Python Software Foundation License"
+          ],
+          "home_page": null,
+          "license": null,
+          "name": "typing-extensions",
+          "project_urls": {
+            "Bug Tracker": "https://github.com/python/typing_extensions/issues",
+            "Changes": "https://github.com/python/typing_extensions/blob/main/CHANGELOG.md",
+            "Documentation": "https://typing-extensions.readthedocs.io/",
+            "Home": "https://github.com/python/typing_extensions",
+            "Q & A": "https://github.com/python/typing/discussions",
+            "Repository": "https://github.com/python/typing_extensions"
+          },
+          "version": "4.12.2"
+        },
+        "releases": {
+          "4.12.2": [
+            {
+              "digests": {
+                "blake2b_256": "ad267f0412853761c5a93902f2be2eeb38a8e1e75529f7cf7c7c00e19485b035",
+                "md5": "b3e34bca86e2474ec80026e6fa5a065f",
+                "sha256": "269fad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0"
+              },
+              "filename": "typing_extensions-4.12.2-py3-none-any.whl",
+              "md5_digest": "b3e34bca86e2474ec80026e6fa5a065f",
+              "packagetype": "bdist_wheel",
+              "upload_time": "2024-06-07T18:52:13",
+              "upload_time_iso_8601": "2024-06-07T18:52:13.626461Z",
+              "url": "https://files.pythonhosted.org/packages/26/9f/ad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0/typing_extensions-4.12.2-py3-none-any.whl"
+            }
+          ]
+        }
+      },
+      "derived_from": null,
+      "endpoint": "https://pypi.org/pypi/typing-extensions/4.12.2/json",
+      "license_text_evidence": {
+        "artifact": "typing_extensions-4.12.2-py3-none-any.whl",
+        "file": "typing_extensions-4.12.2.dist-info/LICENSE",
+        "spdx_identifier": "PSF-2.0",
+        "text_snippet": "PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2\n\n1. This LICENSE AGREEMENT is between the Python Software Foundation (\"PSF\"), and the Individual or Organization (\"Licensee\") accessing and otherwise using this software (\"Python\") in source or binary form and its associated documentation."
+      },
+      "registry_interface_note": "PyPI JSON API shares warehouse backend with PEP 503/691 Simple repository",
+      "role": "upstream_registry",
+      "source_id": "pypi_json",
+      "status": 200
+    }
+  },
+  "synthetic": false,
+  "version": "4.12.2"
+}

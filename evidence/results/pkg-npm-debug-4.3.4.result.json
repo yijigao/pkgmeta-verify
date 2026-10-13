@@ -1,0 +1,113 @@
+{
+  "decision_audit_trail": [
+    {
+      "condition_evaluated": "shared_algorithms(['sha1'], ['sha256'])",
+      "outcome": "FAIL_CROSS_ALGORITHM",
+      "rationale": "Cross-algorithm hash comparison (e.g. sha1 vs sha256 or sha512) is mathematically incomparable.",
+      "rule_id": "DIGEST_02_ALGORITHM_IDENTITY"
+    }
+  ],
+  "ecosystem": "npm",
+  "evaluation_timestamp": "2026-10-13T07:00:07Z",
+  "name": "debug",
+  "normalized_evidence": {
+    "clearlydefined": {
+      "available": false,
+      "declared_license": null,
+      "derived_from": null,
+      "discovered_licenses": [],
+      "endpoint": "https://api.clearlydefined.io/definitions/npm/npmjs/-/debug/4.3.4",
+      "role": "supplemental_license_analyzer",
+      "source_id": "clearlydefined",
+      "status": 0
+    },
+    "deps_dev": {
+      "available": true,
+      "derived_from": "npm_registry",
+      "endpoint": "https://api.deps.dev/v3/systems/npm/packages/debug/versions/4.3.4",
+      "licenses": [
+        "MIT"
+      ],
+      "published_at": "2022-03-17T13:38:47Z",
+      "repository": "git://github.com/debug-js/debug.git",
+      "role": "derived_indexer",
+      "source_id": "deps_dev",
+      "status": 200,
+      "subsequent_observation": null
+    },
+    "registry": {
+      "artifacts": [
+        {
+          "artifact_id": "debug-4.3.4.tgz",
+          "artifact_type": "npm_tarball",
+          "digests": {
+            "sha1": "1319f6579357f2338d3337d2cdd4914bb5dcc865",
+            "sha512": "sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ=="
+          },
+          "url": "https://registry.npmjs.org/debug/-/debug-4.3.4.tgz"
+        }
+      ],
+      "available": true,
+      "derived_from": null,
+      "endpoint": "https://registry.npmjs.org/debug/4.3.4",
+      "license_classifiers": [],
+      "license_text_evidence": null,
+      "licenses": [
+        "MIT"
+      ],
+      "published_at": null,
+      "repository": "git://github.com/debug-js/debug.git",
+      "role": "upstream_registry",
+      "source_id": "npm_registry",
+      "status": 200
+    }
+  },
+  "provenance_and_dependencies": {
+    "dependency_relations": [
+      {
+        "independent_truth_valid": false,
+        "nature": "Downstream ingestion of upstream registry metadata; consistency represents ingestion propagation, NOT independent ground-truth verification.",
+        "subject": "deps_dev",
+        "upstream": "npm_registry"
+      }
+    ],
+    "sources_consulted": [
+      {
+        "derived_from": null,
+        "endpoint": "https://api.clearlydefined.io/definitions/npm/npmjs/-/debug/4.3.4",
+        "fetch_timestamp": "2026-10-13T06:31:27Z",
+        "role": "supplemental_license_analyzer",
+        "source_id": "clearlydefined",
+        "status": 0
+      },
+      {
+        "derived_from": "npm_registry",
+        "endpoint": "https://api.deps.dev/v3/systems/npm/packages/debug/versions/4.3.4",
+        "fetch_timestamp": "2026-10-13T06:31:27Z",
+        "role": "derived_indexer",
+        "source_id": "deps_dev",
+        "status": 200
+      },
+      {
+        "derived_from": null,
+        "endpoint": "https://registry.npmjs.org/debug/4.3.4",
+        "fetch_timestamp": "2026-10-13T06:31:27Z",
+        "role": "upstream_registry",
+        "source_id": "npm_registry",
+        "status": 200
+      }
+    ]
+  },
+  "purl": "pkg:npm/debug@4.3.4",
+  "ruleset_version": "v0.1",
+  "synthetic": true,
+  "verdict": {
+    "avoided_false_positive": "Avoided crash/exception or false mismatch alert when one source only provides sha1/md5 and another provides sha256/sha512.",
+    "category": "INDETERMINATE",
+    "confidence": 1.0,
+    "details": "Artifact 'debug-4.3.4.tgz' has algorithms ['sha1'] vs ['sha256']. No shared algorithm available. Enforcing hard constraint: cross-algorithm input yields 'undecidable' without unhandled exception.",
+    "subcode": "undecidable",
+    "summary": "Hash comparison across different algorithms is undecidable"
+  },
+  "version": "4.3.4"
+}

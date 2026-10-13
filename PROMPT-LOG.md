@@ -1,0 +1,78 @@
+# GenAI 使用日志（Prompt Provenance Log）— NLnet CodeSupply 提案准备
+
+按官方 GenAI Policy（https://nlnet.nl/foundation/policies/generativeAI/）要求：任何 GenAI 使用（含 drafting/translation/summarisation）须声明并保留 prompt provenance log（model、日期、prompt、未编辑输出）。
+
+## 条目 1 — 差异点分析＋提案大纲
+- 日期：2026-10-13 13:31 CST
+- 模型：DeepSeek（经 ~/workspace/tools/dsh-deepseek-valley.sh 调 dsh --profile headless）
+- Prompt：~/workspace/nlnet-codesupply-council/TASK-A-deepseek.md（原文存档）
+- 未编辑输出：~/workspace/nlnet-codesupply-council/taskA-deepseek.txt（DSH_EXIT=0，27,111 字节）
+- 用途：资料整理与摘要（summarisation）+ 提案大纲结构建议。提案正文将人工主笔。
+
+## 条目 2 — 最小样例 demo 设计方案
+- 日期：2026-10-13 13:32 CST
+- 模型：Gemini（dsh --profile gemini-sub，订阅版）
+- Prompt：~/workspace/nlnet-codesupply-council/TASK-B-gemini.md（原文存档）
+- 未编辑输出：~/workspace/nlnet-codesupply-council/taskB-gemini.txt（DSH_EXIT=0，21,033 字节）
+- 用途：demo 技术设计建议。后续 PMV 原型代码实际由 Gemini（agent）按 TASK-PMV-gemini.md 实现（见条目 7），此处"人工/工程师实现"的原描述不准确，特此纠正。
+
+## 条目 3 — 三席初审独立投票（专家会）
+- 日期：2026-10-13 09:00–12:07 CST
+- 模型：DeepSeek（谷时席 12:05 经 gate 调 dsh --profile headless；输出 deepseek-draft.txt，DSH_EXIT=0）、Gemini（dsh --profile gemini-sub；输出 gemini-draft.txt，DSH_EXIT=0）、Astra Max（gpt-6-astra，effort max，本机 codex；输出 astra-draft.txt，CODEX_EXIT=0）
+- Prompt：~/workspace/nlnet-codesupply-council/TASK.md（原文存档）
+- 未编辑输出：~/workspace/nlnet-codesupply-council/{deepseek,gemini,astra}-draft.txt
+- 用途：选题评估（条件投/不投独立意见）。合成稿 ~/workspace/nlnet-codesupply-council/SYNTHESIS.md 由阿析人工编写。
+
+## 条目 4 — Astra 终审建议
+- 日期：2026-10-13（主聊发起，本机读取）
+- 模型：Astra Max（gpt-6-astra，reasoning effort max；主聊发起的终审咨询）
+- Prompt：由主聊下达，本机未存档 prompt 原文（主聊侧发起的终审咨询，孔明侧无该 prompt 副本）；以输出为准。如后续从主聊取得原文，将补入本条。
+- 未编辑输出：~/workspace/nlnet-codesupply-council/ASTRA-ADJUDICATION-2026-10-13.md（全文存档，未编辑）
+- 用途：终审建议（选题/金额/AI 合规三项"修改后通过"）。本轮大纲与 demo 修改即按此执行。
+
+## 后续要求
+- 提案正文须人工主笔；任何后续 AI 辅助（翻译、校对、摘要）继续追加本日志。
+- 政策正在修订：建议等待新版发布后再投（公告不是强制停投令；"取消例外"指 GenAI 政策例外、非地域资格例外）。2026-11-03 提交前须复查政策页最新版并存档版本。
+- 提交时打包：本日志＋所有引用的 prompt 原文＋未编辑输出（含评审可访问的副本，不能只给本机路径）。
+
+## 条目 5 — 大纲修改（按 Astra 终审意见）
+- 日期：2026-10-13 13:51 CST
+- 模型：DeepSeek（谷时经 ~/workspace/tools/dsh-deepseek-valley.sh 调 dsh --profile headless）
+- Prompt：~/workspace/nlnet-codesupply-council/TASK-A2-revise.md（原文存档）
+- 未编辑输出：~/workspace/nlnet-codesupply-council/outline-rev1-deepseek.txt（DSH_EXIT=0）
+- 用途：大纲修改（选题收窄为独立质检组件、竞品差异表、真实冲突样例设计、里程碑 M1–M4 新验收表、预算 €55/h≈273h 或 €60/h≈250h 二选一）。后续由阿析人工代填负责人（Joey/Jigao Yi 个人申请，按主聊 13:53 指令）。
+
+## 条目 6 — demo 设计修改（按 Astra 终审意见）
+- 日期：2026-10-13 13:54 CST
+- 模型：Gemini（dsh --profile gemini-sub，订阅版）
+- Prompt：~/workspace/nlnet-codesupply-council/TASK-B2-revise.md（原文存档）
+- 未编辑输出：~/workspace/nlnet-codesupply-council/demo-rev1-gemini.txt（DSH_EXIT=0）
+- 用途：demo 设计修改（输入/输出/接入示例、四类冲突样例、同一制品同一算法哈希硬约束、npm+PyPI 双生态锁定）。后续由阿析人工代填负责人（Joey/Jigao Yi 个人申请，按主聊 13:53 指令）。
+
+## 条目 7 — PMV 原型实现（按 Astra rev1 终审 item 8）
+- 日期：2026-10-13 14:12 CST（启动）
+- 模型：Gemini（dsh --profile gemini-sub，订阅版）
+- Prompt：~/workspace/nlnet-codesupply-council/TASK-PMV-gemini.md（原文存档）
+- 未编辑输出：~/workspace/nlnet-codesupply-council/pmv-gemini.txt（DSH_EXIT=0，已完成）；代码落盘 ~/workspace/nlnet-codesupply-council/pmv/（含 evidence/、rerun-report.md）
+- 用途：技术设计＋代码实现（小型 PMV 原型、四类实测证据包、一次独立复跑）。提案正文人工主笔。
+
+## 条目 8 — rev2 大纲改由 Sol 6.1 执行（替代 DeepSeek 席）
+- 日期：2026-10-13 14:28 CST（Joey 指令）；原排期 18:05，14:33 Joey 改为直接跑
+- 模型：Sol 6.1（gpt-6.1-sol；本机 codex exec，--sandbox read-only；stdin 关闭）
+- Prompt：~/workspace/nlnet-codesupply-council/TASK-REV2-deepseek.md（原文存档，复用）
+- 未编辑输出：~/workspace/nlnet-codesupply-council/outline-rev2-sol.txt（直接跑，待完成）
+- 用途：rev2 大纲（按 Astra rev1 终审 8 项清单）。原 DeepSeek 谷时跑席已按指令取消。提案正文人工主笔。
+
+## 条目 9 — PMV bug 修复（按 Astra rev2 终审第4节）
+- 日期：2026-10-13 14:47 CST（启动）
+- 模型：Gemini（dsh --profile gemini-sub，订阅版）
+- Prompt：~/workspace/nlnet-codesupply-council/TASK-PMV-FIX-gemini.md（原文存档）
+- 未编辑输出：~/workspace/nlnet-codesupply-council/pmv-fix-gemini.txt（待完成）
+- 用途：修复 verifier.py 判定规则、Schema 小写类型、synthetic 标注、typing-extensions 证据、延迟时间链、rerun.sh 实际检查、新基线冻结复跑。提案正文人工主笔。
+
+## 条目 10 — rev3 大纲（按 Astra rev2 终审 10 项 checklist）
+- 日期：2026-10-13 15:04 CST（启动）
+- 模型：Sol 6.1（gpt-6.1-sol；本机 codex exec，--sandbox read-only；stdin 关闭）
+- Prompt：~/workspace/nlnet-codesupply-council/TASK-REV3-sol.md（原文存档）
+- 未编辑输出：~/workspace/nlnet-codesupply-council/outline-rev3-sol.txt（待完成）
+- 用途：rev3 大纲（10 项 checklist 逐项落实）。提案正文人工主笔。

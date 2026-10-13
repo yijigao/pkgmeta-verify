@@ -1,0 +1,101 @@
+{
+  "ecosystem": "npm",
+  "fetch_timestamp": "2026-10-13T06:31:25Z",
+  "name": "esprima",
+  "purl": "pkg:npm/esprima@4.0.1",
+  "sources": {
+    "clearlydefined": {
+      "data": {
+        "described": {
+          "releaseDate": "2018-07-13",
+          "urls": {
+            "download": "https://registry.npmjs.com/esprima/-/esprima-4.0.1.tgz",
+            "registry": "https://npmjs.com/package/esprima",
+            "version": "https://npmjs.com/package/esprima/v/4.0.1"
+          }
+        },
+        "licensed": {
+          "declared": "BSD-2-Clause AND BSD-3-Clause",
+          "facets": {
+            "core": {
+              "discovered": {
+                "expressions": [
+                  "BSD-2-Clause",
+                  "BSD-3-Clause"
+                ],
+                "unknown": 1
+              }
+            }
+          }
+        }
+      },
+      "derived_from": null,
+      "endpoint": "https://api.clearlydefined.io/definitions/npm/npmjs/-/esprima/4.0.1",
+      "role": "supplemental_license_analyzer",
+      "source_id": "clearlydefined",
+      "status": 200
+    },
+    "deps_dev": {
+      "data": {
+        "isDefault": true,
+        "licenses": [
+          "BSD-2-Clause"
+        ],
+        "links": [
+          {
+            "label": "HOMEPAGE",
+            "url": "http://esprima.org"
+          },
+          {
+            "label": "ISSUE_TRACKER",
+            "url": "https://github.com/jquery/esprima/issues"
+          },
+          {
+            "label": "ORIGIN",
+            "url": "https://registry.npmjs.org/esprima/4.0.1"
+          },
+          {
+            "label": "SOURCE_REPO",
+            "url": "git+https://github.com/jquery/esprima.git"
+          }
+        ],
+        "publishedAt": "2018-07-13T08:39:14Z",
+        "versionKey": {
+          "name": "esprima",
+          "system": "NPM",
+          "version": "4.0.1"
+        }
+      },
+      "derived_from": "npm_registry",
+      "endpoint": "https://api.deps.dev/v3/systems/npm/packages/esprima/versions/4.0.1",
+      "role": "derived_indexer",
+      "source_id": "deps_dev",
+      "status": 200
+    },
+    "registry": {
+      "data": {
+        "dist": {
+          "integrity": "sha512-eGuFFw7Upda+g4p+QHvnW0RyTX/SVeJBDM/gCtMARO0cLuT2HcEKnTPvhjV6aGeqrCB/sbNop0Kszm0jsaWU4A==",
+          "shasum": "13b04cdb3e6c5d19df91ab6987a8695619b0aa71",
+          "tarball": "https://registry.npmjs.org/esprima/-/esprima-4.0.1.tgz"
+        },
+        "license": "BSD-2-Clause",
+        "licenses": null,
+        "name": "esprima",
+        "publish_time": null,
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/jquery/esprima.git"
+        },
+        "version": "4.0.1"
+      },
+      "derived_from": null,
+      "endpoint": "https://registry.npmjs.org/esprima/4.0.1",
+      "role": "upstream_registry",
+      "source_id": "npm_registry",
+      "status": 200
+    }
+  },
+  "synthetic": false,
+  "version": "4.0.1"
+}

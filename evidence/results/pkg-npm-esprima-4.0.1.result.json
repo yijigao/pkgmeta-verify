@@ -1,0 +1,116 @@
+{
+  "decision_audit_trail": [
+    {
+      "condition_evaluated": "registry.license='BSD-2-Clause' != clearlydefined.licensed.declared='BSD-2-Clause AND BSD-3-Clause'",
+      "outcome": "SEMANTIC_DIVERGENCE",
+      "rationale": "Declared package license differs from scanned deep license conjunction. Sources consulted: npm_registry (field: license), clearlydefined (fields: licensed.declared, licensed.facets.core.discovered.expressions), deps_dev (field: licenses). Scan scope: ClearlyDefined full-repo core facet file scan vs npm top-level packument declaration. Hard constraint strictly disallows automatic acceptance of either side.",
+      "rule_id": "SEMANTIC_01_BOOLEAN_OPERATOR_DISPARITY"
+    }
+  ],
+  "ecosystem": "npm",
+  "evaluation_timestamp": "2026-10-13T07:00:07Z",
+  "name": "esprima",
+  "normalized_evidence": {
+    "clearlydefined": {
+      "available": true,
+      "declared_license": "BSD-2-Clause AND BSD-3-Clause",
+      "derived_from": null,
+      "discovered_licenses": [
+        "BSD-2-Clause",
+        "BSD-3-Clause"
+      ],
+      "endpoint": "https://api.clearlydefined.io/definitions/npm/npmjs/-/esprima/4.0.1",
+      "role": "supplemental_license_analyzer",
+      "source_id": "clearlydefined",
+      "status": 200
+    },
+    "deps_dev": {
+      "available": true,
+      "derived_from": "npm_registry",
+      "endpoint": "https://api.deps.dev/v3/systems/npm/packages/esprima/versions/4.0.1",
+      "licenses": [
+        "BSD-2-Clause"
+      ],
+      "published_at": "2018-07-13T08:39:14Z",
+      "repository": "git+https://github.com/jquery/esprima.git",
+      "role": "derived_indexer",
+      "source_id": "deps_dev",
+      "status": 200,
+      "subsequent_observation": null
+    },
+    "registry": {
+      "artifacts": [
+        {
+          "artifact_id": "esprima-4.0.1.tgz",
+          "artifact_type": "npm_tarball",
+          "digests": {
+            "sha1": "13b04cdb3e6c5d19df91ab6987a8695619b0aa71",
+            "sha512": "sha512-eGuFFw7Upda+g4p+QHvnW0RyTX/SVeJBDM/gCtMARO0cLuT2HcEKnTPvhjV6aGeqrCB/sbNop0Kszm0jsaWU4A=="
+          },
+          "url": "https://registry.npmjs.org/esprima/-/esprima-4.0.1.tgz"
+        }
+      ],
+      "available": true,
+      "derived_from": null,
+      "endpoint": "https://registry.npmjs.org/esprima/4.0.1",
+      "license_classifiers": [],
+      "license_text_evidence": null,
+      "licenses": [
+        "BSD-2-Clause"
+      ],
+      "published_at": null,
+      "repository": "git+https://github.com/jquery/esprima.git",
+      "role": "upstream_registry",
+      "source_id": "npm_registry",
+      "status": 200
+    }
+  },
+  "provenance_and_dependencies": {
+    "dependency_relations": [
+      {
+        "independent_truth_valid": false,
+        "nature": "Downstream ingestion of upstream registry metadata; consistency represents ingestion propagation, NOT independent ground-truth verification.",
+        "subject": "deps_dev",
+        "upstream": "npm_registry"
+      }
+    ],
+    "sources_consulted": [
+      {
+        "derived_from": null,
+        "endpoint": "https://api.clearlydefined.io/definitions/npm/npmjs/-/esprima/4.0.1",
+        "fetch_timestamp": "2026-10-13T06:31:25Z",
+        "role": "supplemental_license_analyzer",
+        "source_id": "clearlydefined",
+        "status": 200
+      },
+      {
+        "derived_from": "npm_registry",
+        "endpoint": "https://api.deps.dev/v3/systems/npm/packages/esprima/versions/4.0.1",
+        "fetch_timestamp": "2026-10-13T06:31:25Z",
+        "role": "derived_indexer",
+        "source_id": "deps_dev",
+        "status": 200
+      },
+      {
+        "derived_from": null,
+        "endpoint": "https://registry.npmjs.org/esprima/4.0.1",
+        "fetch_timestamp": "2026-10-13T06:31:25Z",
+        "role": "upstream_registry",
+        "source_id": "npm_registry",
+        "status": 200
+      }
+    ]
+  },
+  "purl": "pkg:npm/esprima@4.0.1",
+  "ruleset_version": "v0.1",
+  "synthetic": false,
+  "verdict": {
+    "avoided_false_positive": "Avoided naive diff failure that blindly accepts the simple top-level declaration while ignoring dual-clause compliance obligations discovered in repository files.",
+    "category": "SEMANTIC_DIVERGENCE",
+    "confidence": 0.95,
+    "details": "Evaluated sources and fields: (1) npm_registry (field: 'license' -> 'BSD-2-Clause'), (2) clearlydefined (field: 'licensed.declared' -> 'BSD-2-Clause AND BSD-3-Clause', field: 'licensed.facets.core.discovered.expressions' -> ['BSD-2-Clause', 'BSD-3-Clause']), (3) deps_dev (field: 'licenses' -> ['BSD-2-Clause']). Scan scope: ClearlyDefined core facet file-level source tree scan discovered dual licenses, whereas npm registry and deps.dev reflect top-level package.json declaration. The presence of compound AND conjunction imposes distinct dual compliance obligations that cannot be reconciled by simple equality. Enforcing hard constraint: neither side is automatically assumed as the sole truth.",
+    "subcode": "LICENSE_EXPRESSION_CONJUNCTION_MISMATCH",
+    "summary": "Declared package license diverges from deeply discovered multi-license AND conjunction"
+  },
+  "version": "4.0.1"
+}

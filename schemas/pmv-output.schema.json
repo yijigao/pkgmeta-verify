@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pmv.codesupply.org/schemas/pmv-output/v0.1.json",
+  "title": "PMVVerificationOutput",
+  "description": "Standardized output schema for CodeSupply Package Metadata Verification (PMV)",
+  "type": "object",
+  "required": [
+    "purl",
+    "ecosystem",
+    "name",
+    "version",
+    "ruleset_version",
+    "verdict",
+    "provenance_and_dependencies",
+    "decision_audit_trail"
+  ],
+  "properties": {
+    "purl": {
+      "type": "string",
+      "description": "Package URL (PURL) coordinates (e.g. pkg:npm/esprima@4.0.1)"
+    },
+    "ecosystem": {
+      "type": "string",
+      "enum": ["npm", "pypi"]
+    },
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "evaluation_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ruleset_version": {
+      "type": "string"
+    },
+    "synthetic": {
+      "type": "boolean",
+      "default": false
+    },
+    "verdict": {
+      "type": "object",
+      "required": ["category", "subcode", "confidence", "summary", "details"],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": [
+            "REAL_ERROR",
+            "SYNC_DELAY",
+            "SEMANTIC_DIVERGENCE",
+            "INDETERMINATE",
+            "DIGEST_CONFLICT",
+            "CONSISTENT"
+          ]
+        },
+        "subcode": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "summary": {
+          "type": "string"
+        },
+        "details": {
+          "type": "string"
+        },
+        "avoided_false_positive": {
+          "type": "string",
+          "description": "Explains why standard naive field diff would yield a false positive or misleading result"
+        }
+      }
+    },
+    "provenance_and_dependencies": {
+      "type": "object",
+      "required": ["sources_consulted", "dependency_relations"],
+      "properties": {
+        "sources_consulted": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["source_id", "role", "endpoint", "status"],
+            "properties": {
+              "source_id": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "upstream_registry",
+                  "derived_indexer",
+                  "supplemental_license_analyzer",
+                  "synthetic_mirror"
+                ]
+              },
+              "endpoint": {
+                "type": "string"
+              },
+              "fetch_timestamp": {
+                "type": "string"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "derived_from": {
+                "type": ["string", "null"]
+              }
+            }
+          }
+        },
+        "dependency_relations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["subject", "upstream", "nature", "independent_truth_valid"],
+            "properties": {
+              "subject": { "type": "string" },
+              "upstream": { "type": "string" },
+              "nature": { "type": "string" },
+              "independent_truth_valid": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "normalized_evidence": {
+      "type": "object"
+    },
+    "decision_audit_trail": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule_id", "condition_evaluated", "outcome", "rationale"],
+        "properties": {
+          "rule_id": { "type": "string" },
+          "condition_evaluated": { "type": "string" },
+          "outcome": { "type": "string" },
+          "rationale": { "type": "string" }
+        }
+      }
+    }
+  }
+}

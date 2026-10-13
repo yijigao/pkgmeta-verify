@@ -1,0 +1,82 @@
+{
+  "ecosystem": "pypi",
+  "fetch_timestamp": "2026-10-13T06:31:25Z",
+  "name": "archgraph-layout",
+  "purl": "pkg:pypi/archgraph-layout@2.3.0",
+  "sources": {
+    "clearlydefined": {
+      "data": {
+        "described": {
+          "releaseDate": null,
+          "urls": null
+        },
+        "licensed": {
+          "declared": null,
+          "facets": {
+            "core": {
+              "discovered": {}
+            }
+          }
+        }
+      },
+      "derived_from": null,
+      "endpoint": "https://api.clearlydefined.io/definitions/pypi/pypi/-/archgraph-layout/2.3.0",
+      "role": "supplemental_license_analyzer",
+      "source_id": "clearlydefined",
+      "status": 200
+    },
+    "deps_dev": {
+      "data": {
+        "body": "version not found",
+        "error": "HTTP status 404"
+      },
+      "derived_from": "pypi_json",
+      "endpoint": "https://api.deps.dev/v3/systems/pypi/packages/archgraph-layout/versions/2.3.0",
+      "role": "derived_indexer",
+      "source_id": "deps_dev",
+      "status": 404,
+      "subsequent_observation": {
+        "licenses": [
+          "MIT"
+        ],
+        "observed_at": "2026-10-13T07:15:00Z",
+        "published_at": "2026-10-13T06:16:05Z",
+        "status": 200
+      }
+    },
+    "registry": {
+      "data": {
+        "info": {
+          "classifiers": [],
+          "home_page": null,
+          "license": null,
+          "name": "archgraph-layout",
+          "project_urls": null,
+          "version": "2.3.0"
+        },
+        "releases": {
+          "2.3.0": [
+            {
+              "digests": {
+                "sha256": "2e63832e5ac22720d63d43b999ed463523f08c57b8414964890d235eadfe8bc6"
+              },
+              "filename": "archgraph_layout-2.3.0-py3-none-any.whl",
+              "packagetype": "bdist_wheel",
+              "upload_time": "2026-10-13T06:16:05",
+              "upload_time_iso_8601": "2026-10-13T06:16:05.856416Z",
+              "url": "https://files.pythonhosted.org/packages/65/22/af24cc7b5fb7391166cf4fc5191e30933bc7b041e8bd5d7e3069f8183eef/archgraph_layout-2.3.0-py3-none-any.whl"
+            }
+          ]
+        }
+      },
+      "derived_from": null,
+      "endpoint": "https://pypi.org/pypi/archgraph-layout/2.3.0/json",
+      "registry_interface_note": "PyPI JSON API shares warehouse backend with PEP 503/691 Simple repository",
+      "role": "upstream_registry",
+      "source_id": "pypi_json",
+      "status": 200
+    }
+  },
+  "synthetic": false,
+  "version": "2.3.0"
+}
