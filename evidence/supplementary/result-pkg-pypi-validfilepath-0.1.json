@@ -1,0 +1,132 @@
+{
+  "decision_audit_trail": [
+    {
+      "condition_evaluated": "all_sources_have_comparable_licenses(with=['pypi_json', 'deps_dev'], without=['clearlydefined'])",
+      "outcome": "INCOMPARABLE_FIELDS",
+      "rationale": "One source provides license fields (['pypi_json', 'deps_dev']) while another lacks comparable fields (['clearlydefined']). Lacking comparable fields, consistency cannot be determined.",
+      "rule_id": "CONSISTENCY_01_COMPARABLE_FIELDS"
+    }
+  ],
+  "ecosystem": "pypi",
+  "evaluation_timestamp": "2026-10-13T12:42:42Z",
+  "name": "validfilepath",
+  "normalized_evidence": {
+    "clearlydefined": {
+      "available": true,
+      "declared_license": null,
+      "derived_from": null,
+      "discovered_licenses": [],
+      "endpoint": "https://api.clearlydefined.io/definitions/pypi/pypi/-/validfilepath/0.1",
+      "role": "supplemental_license_analyzer",
+      "source_id": "clearlydefined",
+      "status": 200
+    },
+    "deps_dev": {
+      "available": true,
+      "derived_from": "pypi_json",
+      "endpoint": "https://api.deps.dev/v3/systems/pypi/packages/validfilepath/versions/0.1",
+      "licenses": [
+        "MIT"
+      ],
+      "published_at": "2026-10-13T09:59:55Z",
+      "repository": null,
+      "role": "derived_indexer",
+      "source_id": "deps_dev",
+      "status": 200,
+      "subsequent_observation": null
+    },
+    "registry": {
+      "artifacts": [
+        {
+          "artifact_id": "validfilepath-0.1-py3-none-any.whl",
+          "artifact_type": "bdist_wheel",
+          "digests": {
+            "blake2b_256": "c587cab5ed1587055a8391b809d12faa0df0695378fd947ee2726506b2a0e28f",
+            "md5": "c8f58d331dfdd5a3c901f928eaa08f2c",
+            "sha256": "dcd8e247a37be8299483b5f3a0b46cb9d5a136a4ccf05dea46c37ab184c876b8"
+          },
+          "files": null,
+          "origin_url": null,
+          "release_record": "pkg:pypi/validfilepath@0.1",
+          "upload_time": "2026-10-13T09:59:55.901785Z",
+          "url": "https://files.pythonhosted.org/packages/c5/87/cab5ed1587055a8391b809d12faa0df0695378fd947ee2726506b2a0e28f/validfilepath-0.1-py3-none-any.whl"
+        },
+        {
+          "artifact_id": "validfilepath-0.1.tar.gz",
+          "artifact_type": "sdist",
+          "digests": {
+            "blake2b_256": "0b4398664475da64e789fcd0e9d51b1a0e13ddc6c9f604dbafb3e059ac0d0a6e",
+            "md5": "edee83869b8bcb61486c1583d7e513a8",
+            "sha256": "eabffba45c22e6fb852b5879b4f1d96785393a40379dcb763bec9c0ac7827958"
+          },
+          "files": null,
+          "origin_url": null,
+          "release_record": "pkg:pypi/validfilepath@0.1",
+          "upload_time": "2026-10-13T09:59:56.983615Z",
+          "url": "https://files.pythonhosted.org/packages/0b/43/98664475da64e789fcd0e9d51b1a0e13ddc6c9f604dbafb3e059ac0d0a6e/validfilepath-0.1.tar.gz"
+        }
+      ],
+      "available": true,
+      "derived_from": null,
+      "endpoint": "https://pypi.org/pypi/validfilepath/0.1/json",
+      "license_classifiers": [],
+      "license_text_evidence": null,
+      "licenses": [
+        "MIT"
+      ],
+      "published_at": "2026-10-13T09:59:55.901785Z",
+      "repository": null,
+      "role": "upstream_registry",
+      "source_id": "pypi_json",
+      "status": 200
+    }
+  },
+  "provenance_and_dependencies": {
+    "dependency_relations": [
+      {
+        "independent_truth_valid": false,
+        "nature": "Downstream ingestion of upstream registry metadata; consistency represents ingestion propagation, NOT independent ground-truth verification.",
+        "subject": "deps_dev",
+        "upstream": "pypi_json"
+      }
+    ],
+    "sources_consulted": [
+      {
+        "derived_from": null,
+        "endpoint": "https://api.clearlydefined.io/definitions/pypi/pypi/-/validfilepath/0.1",
+        "fetch_timestamp": "2026-10-13T12:42:40Z",
+        "role": "supplemental_license_analyzer",
+        "source_id": "clearlydefined",
+        "status": 200
+      },
+      {
+        "derived_from": "pypi_json",
+        "endpoint": "https://api.deps.dev/v3/systems/pypi/packages/validfilepath/versions/0.1",
+        "fetch_timestamp": "2026-10-13T12:42:40Z",
+        "role": "derived_indexer",
+        "source_id": "deps_dev",
+        "status": 200
+      },
+      {
+        "derived_from": null,
+        "endpoint": "https://pypi.org/pypi/validfilepath/0.1/json",
+        "fetch_timestamp": "2026-10-13T12:42:40Z",
+        "role": "upstream_registry",
+        "source_id": "pypi_json",
+        "status": 200
+      }
+    ]
+  },
+  "purl": "pkg:pypi/validfilepath@0.1",
+  "ruleset_version": "v0.1",
+  "synthetic": false,
+  "verdict": {
+    "avoided_false_positive": "Avoided false-positive 'CONSISTENT' verdict when one source lacks comparable fields to verify against.",
+    "category": "INDETERMINATE",
+    "confidence": 0.0,
+    "details": "Source(s) ['pypi_json', 'deps_dev'] provide license declarations, but source(s) ['clearlydefined'] lack comparable license metadata. Enforcing hard constraint: missing comparable fields strictly outputs 'undecidable', NEVER defaults to CONSISTENT.",
+    "subcode": "undecidable",
+    "summary": "Cannot determine consistency due to missing comparable license fields across sources"
+  },
+  "version": "0.1"
+}

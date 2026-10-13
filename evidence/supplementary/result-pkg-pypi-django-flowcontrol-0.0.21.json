@@ -1,0 +1,128 @@
+{
+  "decision_audit_trail": [
+    {
+      "condition_evaluated": "has_comparable_license_declarations(sources)",
+      "outcome": "NO_COMPARABLE_LICENSE_EVIDENCE",
+      "rationale": "Neither source provides a substantive license declaration (all empty, missing, or placeholder values). Without comparable license evidence, metadata consistency cannot be determined.",
+      "rule_id": "CONSISTENCY_01_COMPARABLE_LICENSE"
+    }
+  ],
+  "ecosystem": "pypi",
+  "evaluation_timestamp": "2026-10-13T12:42:42Z",
+  "name": "django-flowcontrol",
+  "normalized_evidence": {
+    "clearlydefined": {
+      "available": true,
+      "declared_license": null,
+      "derived_from": null,
+      "discovered_licenses": [],
+      "endpoint": "https://api.clearlydefined.io/definitions/pypi/pypi/-/django-flowcontrol/0.0.21",
+      "role": "supplemental_license_analyzer",
+      "source_id": "clearlydefined",
+      "status": 200
+    },
+    "deps_dev": {
+      "available": true,
+      "derived_from": "pypi_json",
+      "endpoint": "https://api.deps.dev/v3/systems/pypi/packages/django-flowcontrol/versions/0.0.21",
+      "licenses": [],
+      "published_at": "2026-10-13T09:57:53Z",
+      "repository": null,
+      "role": "derived_indexer",
+      "source_id": "deps_dev",
+      "status": 200,
+      "subsequent_observation": null
+    },
+    "registry": {
+      "artifacts": [
+        {
+          "artifact_id": "django_flowcontrol-0.0.21-py3-none-any.whl",
+          "artifact_type": "bdist_wheel",
+          "digests": {
+            "blake2b_256": "c9fac3e0cff06af64241e4dc9a8b74fa91544ad9332b2d3ba2aa6e9fcc1e6fd4",
+            "md5": "aa2802fa55a259621b98713723b70a20",
+            "sha256": "1b922b3ba7f040c6fa0fe37cf95360e5be9c66b7908a46de8055cf95e568f967"
+          },
+          "files": null,
+          "origin_url": null,
+          "release_record": "pkg:pypi/django-flowcontrol@0.0.21",
+          "upload_time": "2026-10-13T09:57:53.256727Z",
+          "url": "https://files.pythonhosted.org/packages/c9/fa/c3e0cff06af64241e4dc9a8b74fa91544ad9332b2d3ba2aa6e9fcc1e6fd4/django_flowcontrol-0.0.21-py3-none-any.whl"
+        },
+        {
+          "artifact_id": "django_flowcontrol-0.0.21.tar.gz",
+          "artifact_type": "sdist",
+          "digests": {
+            "blake2b_256": "366ff081c368861f52172af2eaca9e5350cb3b7d66b2b9f034058119369b2e53",
+            "md5": "52d4b640c4678c8b064d29d5788e9f13",
+            "sha256": "12f92728ce0a736e45bb4148b5fc2a73ad10adad7f3c5d1af05d2eaede536ee3"
+          },
+          "files": null,
+          "origin_url": null,
+          "release_record": "pkg:pypi/django-flowcontrol@0.0.21",
+          "upload_time": "2026-10-13T09:57:54.346403Z",
+          "url": "https://files.pythonhosted.org/packages/36/6f/f081c368861f52172af2eaca9e5350cb3b7d66b2b9f034058119369b2e53/django_flowcontrol-0.0.21.tar.gz"
+        }
+      ],
+      "available": true,
+      "derived_from": null,
+      "endpoint": "https://pypi.org/pypi/django-flowcontrol/0.0.21/json",
+      "license_classifiers": [],
+      "license_text_evidence": null,
+      "licenses": [],
+      "published_at": "2026-10-13T09:57:53.256727Z",
+      "repository": null,
+      "role": "upstream_registry",
+      "source_id": "pypi_json",
+      "status": 200
+    }
+  },
+  "provenance_and_dependencies": {
+    "dependency_relations": [
+      {
+        "independent_truth_valid": false,
+        "nature": "Downstream ingestion of upstream registry metadata; consistency represents ingestion propagation, NOT independent ground-truth verification.",
+        "subject": "deps_dev",
+        "upstream": "pypi_json"
+      }
+    ],
+    "sources_consulted": [
+      {
+        "derived_from": null,
+        "endpoint": "https://api.clearlydefined.io/definitions/pypi/pypi/-/django-flowcontrol/0.0.21",
+        "fetch_timestamp": "2026-10-13T12:42:42Z",
+        "role": "supplemental_license_analyzer",
+        "source_id": "clearlydefined",
+        "status": 200
+      },
+      {
+        "derived_from": "pypi_json",
+        "endpoint": "https://api.deps.dev/v3/systems/pypi/packages/django-flowcontrol/versions/0.0.21",
+        "fetch_timestamp": "2026-10-13T12:42:42Z",
+        "role": "derived_indexer",
+        "source_id": "deps_dev",
+        "status": 200
+      },
+      {
+        "derived_from": null,
+        "endpoint": "https://pypi.org/pypi/django-flowcontrol/0.0.21/json",
+        "fetch_timestamp": "2026-10-13T12:42:42Z",
+        "role": "upstream_registry",
+        "source_id": "pypi_json",
+        "status": 200
+      }
+    ]
+  },
+  "purl": "pkg:pypi/django-flowcontrol@0.0.21",
+  "ruleset_version": "v0.1",
+  "synthetic": false,
+  "verdict": {
+    "avoided_false_positive": "Avoided false-positive CONSISTENT verdict when sources lack substantive license declarations entirely.",
+    "category": "INDETERMINATE",
+    "confidence": 0.0,
+    "details": "None of the available sources provide verifiable license declarations (found only empty arrays, whitespace, or placeholder values such as 'unknown' or 'see license file'). Lacking comparable license evidence, metadata consistency is undecidable. Enforcing hard constraint: absent license evidence strictly yields 'undecidable', NEVER defaults to CONSISTENT.",
+    "subcode": "undecidable",
+    "summary": "Cannot determine consistency: no comparable license evidence across sources"
+  },
+  "version": "0.0.21"
+}

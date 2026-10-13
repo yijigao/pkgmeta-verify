@@ -197,3 +197,10 @@
   - 已修（本机）：① MANIFEST 重生成（$id 变更后）＋pmv.codesupply.org 残留清理＋提交检查纪律；② hatch-vcs 表述撤回（"官方确认"→"公开报告、机制未确认"）＋0.4.0 日期纠正（2023-11-06）＋坐标补全；③ §5 表头拆分（冻结基线 5 案例 vs 补充文档 3 案例）＋evaluation_timestamp 隔离声明；④ §6 去绝对化（披露 confidence 1.0 硬编码＋PSF 标题触发局限）；⑤ §8/§13 归属矛盾修正＋复跑归属明确；⑧ §10 M3 复跑者安排澄清；⑥ §11 专家链重写（贡献—判断—证据映射，删除 OKX）。
   - Gemini 执行中（TASK-EVIDENCE-gemini.md）：③ 补充案例原始采集记录；⑦ 快照再分发索引；⑥ 接入示例。
 - 日志补齐：ASTRA-REV3FIX3、ASTRA-FINAL、ASTRA-PROPOSAL-FINAL 输出文件已公开；条目 25 补正文生成 prompt。
+
+## 条目 27 — 终审 8 项之证据采集完成（Gemini，2026-10-13 20:50）
+- 模型：Gemini（dsh --profile gemini-sub）；Prompt：TASK-EVIDENCE-gemini.md；输出：evidence-gemini.txt（DSH_EXIT=0）
+- 任务 A：evidence/supplementary/ —— 3 个补充案例的原始采集记录（raw API 响应、snapshot、result＋README 说明）；明确标注补充证据，不在冻结 12 文件基线内。
+- 任务 B：evidence/redistribution-index.md —— 快照逐项再分发索引；拿不到的如实标"待办"（23 处）。
+- 任务 C：examples/integration/ —— 接入示例（pipeline_demo.py＋README＋实跑审计日志）；孔明独立运行验证通过。
+- verifier.py/测试/MANIFEST 均未动；rerun.sh 12/12、56/56 不受影响。

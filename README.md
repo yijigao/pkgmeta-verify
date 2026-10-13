@@ -195,3 +195,14 @@ cd evidence && sha256sum -c MANIFEST.sha256
   - `provenance_and_dependencies`: `sources_consulted`, `dependency_relations`
   - `normalized_evidence`: 各源规范化数据
   - `decision_audit_trail`: 规则审计判定轨迹（含大小写归一化动作与原始值记录）
+
+---
+
+## 维护者提交检查（Commit Checklist，2026-10-13 定）
+
+任何改动 `evidence/`、`schemas/`、`rules/`、`results/`、`snapshots/` 下文件的提交，必须：
+1. 同步重新生成 `evidence/MANIFEST.sha256`；
+2. 跑一遍 `cd evidence && sha256sum -c MANIFEST.sha256` 确认 12/12 通过；
+3. 跑一遍 `python3 -m unittest discover -s tests` 确认 56/56 通过。
+
+（教训：连续两次因改动文件未同步清单导致 manifest 过期被独立复跑抓到。）

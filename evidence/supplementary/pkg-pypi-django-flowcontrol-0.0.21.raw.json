@@ -1,0 +1,298 @@
+{
+  "baseline_status": "SUPPLEMENTARY_EVIDENCE_NOT_IN_FROZEN_12_FILE_MANIFEST",
+  "case": "pkg:pypi/django-flowcontrol@0.0.21",
+  "ecosystem": "pypi",
+  "endpoints_harvested": [
+    {
+      "data": {
+        "info": {
+          "author": null,
+          "author_email": null,
+          "bugtrack_url": null,
+          "classifiers": [],
+          "description": "# django-flowcontrol\n\nDjango Flowcontrol is a Django app that allows creating and running flows of actions including branching and looping logic.\n\n- Actions are defined in Python code and can have optional per-instance configuration. The app provides built-in actions for conditional logic, loops, and state management.\n- Flows with their actions and triggers are defined in the Django admin.\n- A running instance of a flow \u2013 a flow run \u2013 has persistent state and can have an optional model object associated with it.\n\n## Run tests\n\n```\npytest\n```\n\n## Build documentation\n\n```pip install -e .[docs]\ncd docs\nmkdocs serve\n```\n",
+          "description_content_type": "text/markdown",
+          "docs_url": null,
+          "download_url": null,
+          "downloads": {
+            "last_day": -1,
+            "last_month": -1,
+            "last_week": -1
+          },
+          "dynamic": null,
+          "home_page": null,
+          "keywords": null,
+          "license": null,
+          "license_expression": null,
+          "license_files": [
+            "LICENSE"
+          ],
+          "maintainer": null,
+          "maintainer_email": null,
+          "name": "django-flowcontrol",
+          "package_url": "https://pypi.org/project/django-flowcontrol/",
+          "platform": null,
+          "project_url": "https://pypi.org/project/django-flowcontrol/",
+          "project_urls": null,
+          "provides_extra": null,
+          "release_url": "https://pypi.org/project/django-flowcontrol/0.0.21/",
+          "requires_dist": [
+            "django-treebeard<6,>5",
+            "django>=5.2",
+            "python-dateutil"
+          ],
+          "requires_python": ">=3.10",
+          "summary": "Design and run workflows in Django",
+          "version": "0.0.21",
+          "yanked": false,
+          "yanked_reason": null
+        },
+        "last_serial": 42172479,
+        "ownership": {
+          "organization": null,
+          "roles": [
+            {
+              "role": "Owner",
+              "user": "stwe"
+            }
+          ]
+        },
+        "urls": [
+          {
+            "comment_text": null,
+            "core-metadata": {
+              "sha256": "5601bb33b2421c37438928601476b2d7f180105744591dfb8633e76aed402c5b"
+            },
+            "digests": {
+              "blake2b_256": "c9fac3e0cff06af64241e4dc9a8b74fa91544ad9332b2d3ba2aa6e9fcc1e6fd4",
+              "md5": "aa2802fa55a259621b98713723b70a20",
+              "sha256": "1b922b3ba7f040c6fa0fe37cf95360e5be9c66b7908a46de8055cf95e568f967"
+            },
+            "downloads": -1,
+            "filename": "django_flowcontrol-0.0.21-py3-none-any.whl",
+            "has_sig": false,
+            "md5_digest": "aa2802fa55a259621b98713723b70a20",
+            "packagetype": "bdist_wheel",
+            "python_version": "py3",
+            "requires_python": ">=3.10",
+            "size": 46166,
+            "upload_time": "2026-10-13T09:57:53",
+            "upload_time_iso_8601": "2026-10-13T09:57:53.256727Z",
+            "url": "https://files.pythonhosted.org/packages/c9/fa/c3e0cff06af64241e4dc9a8b74fa91544ad9332b2d3ba2aa6e9fcc1e6fd4/django_flowcontrol-0.0.21-py3-none-any.whl",
+            "yanked": false,
+            "yanked_reason": null
+          },
+          {
+            "comment_text": null,
+            "core-metadata": false,
+            "digests": {
+              "blake2b_256": "366ff081c368861f52172af2eaca9e5350cb3b7d66b2b9f034058119369b2e53",
+              "md5": "52d4b640c4678c8b064d29d5788e9f13",
+              "sha256": "12f92728ce0a736e45bb4148b5fc2a73ad10adad7f3c5d1af05d2eaede536ee3"
+            },
+            "downloads": -1,
+            "filename": "django_flowcontrol-0.0.21.tar.gz",
+            "has_sig": false,
+            "md5_digest": "52d4b640c4678c8b064d29d5788e9f13",
+            "packagetype": "sdist",
+            "python_version": "source",
+            "requires_python": ">=3.10",
+            "size": 32798,
+            "upload_time": "2026-10-13T09:57:54",
+            "upload_time_iso_8601": "2026-10-13T09:57:54.346403Z",
+            "url": "https://files.pythonhosted.org/packages/36/6f/f081c368861f52172af2eaca9e5350cb3b7d66b2b9f034058119369b2e53/django_flowcontrol-0.0.21.tar.gz",
+            "yanked": false,
+            "yanked_reason": null
+          }
+        ],
+        "vulnerabilities": []
+      },
+      "endpoint": "https://pypi.org/pypi/django-flowcontrol/0.0.21/json",
+      "fetch_timestamp_utc": "2026-10-13T12:42:40Z",
+      "http_headers": {
+        "Accept-Ranges": "bytes",
+        "Connection": "close",
+        "Content-Length": "3226",
+        "Date": "Tue, 13 Oct 2026 12:42:42 GMT",
+        "Permissions-Policy": "publickey-credentials-create=(self),publickey-credentials-get=(self),accelerometer=(),ambient-light-sensor=(),autoplay=(),battery=(),camera=(),display-capture=(),document-domain=(),encrypted-media=(),execution-while-not-rendered=(),execution-while-out-of-viewport=(),fullscreen=(),gamepad=(),geolocation=(),gyroscope=(),hid=(),identity-credentials-get=(),idle-detection=(),local-fonts=(),magnetometer=(),microphone=(),midi=(),otp-credentials=(),payment=(),picture-in-picture=(),screen-wake-lock=(),serial=(),speaker-selection=(),storage-access=(),usb=(),web-share=(),xr-spatial-tracking=()",
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+        "Vary": "Accept-Encoding",
+        "X-Cache": "MISS, HIT, HIT",
+        "X-Cache-Hits": "0, 12, 0",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "deny",
+        "X-Permitted-Cross-Domain-Policies": "none",
+        "X-Served-By": "cache-iad-kcgs7200178-IAD, cache-iad-kcgs7200083-IAD, cache-bur-kbur8200057-BUR",
+        "X-Timer": "S1791895362.463847,VS0,VE1",
+        "X-XSS-Protection": "1; mode=block",
+        "access-control-allow-headers": "Content-Type, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since",
+        "access-control-allow-methods": "GET",
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "X-PyPI-Last-Serial",
+        "access-control-max-age": "86400",
+        "cache-control": "max-age=900, public",
+        "content-security-policy": "base-uri 'self'; connect-src 'self' https://api.github.com/repos/ https://api.github.com/search/issues https://gitlab.com/api/ https://analytics.python.org *.ethicalads.io https://api.pwnedpasswords.com https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/sre/mathmaps/ https://2p66nmmycsj3.statuspage.io; default-src 'none'; font-src 'self'; form-action 'self' https://checkout.stripe.com https://billing.stripe.com; frame-ancestors 'none'; frame-src 'none'; img-src 'self' https://pypi-camo.freetls.fastly.net/ *.ethicalads.io ethicalads.blob.core.windows.net; script-src 'self' https://analytics.python.org *.ethicalads.io 'sha256-U3hKDidudIaxBDEzwGJApJgPEf2mWk6cfMWghrAa6i0=' https://cdn.jsdelivr.net/npm/mathjax@3.2.2/ 'sha256-1CldwzdEg2k1wTmf7s5RWVd7NMXI/7nxxjJM2C4DqII='; style-src 'self' *.ethicalads.io 'sha256-2YHqZokjiizkHi1Zt+6ar0XJ0OeEy/egBnlm+MDMtrM=' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=' 'sha256-JLEjeN9e5dGsz5475WyRaoA4eQOdNPxDIeUhclnJDCE=' 'sha256-mQyxHEuwZJqpxCw3SLmc4YOySNKXunyu2Oiz1r3/wAE=' 'sha256-OCf+kv5Asiwp++8PIevKBYSgnNLNUZvxAp4a7wMLuKA=' 'sha256-h5LOiLhk6wiJrGsG5ItM0KimwzWQH/yAcmoJDJL//bY='",
+        "content-type": "application/json",
+        "etag": "\"uw43loasgNAfL2iRKwb8LA\"",
+        "referrer-policy": "origin-when-cross-origin",
+        "server": "gunicorn",
+        "x-pypi-last-serial": "42172479"
+      },
+      "http_status": 200,
+      "raw_body_sha256": "c1d3687a5433cea0043a9f4e8b4d3d483c6f67abca709edaf14ffd39fbf50f07",
+      "raw_text_length_bytes": 3226,
+      "role": "upstream_registry"
+    },
+    {
+      "data": {
+        "advisoryKeys": [],
+        "attestations": [],
+        "deprecatedReason": "",
+        "isDefault": true,
+        "isDeprecated": false,
+        "licenses": [],
+        "links": [],
+        "projectStatus": {
+          "reason": "",
+          "status": "active"
+        },
+        "publishedAt": "2026-10-13T09:57:53Z",
+        "registries": [
+          "https://pypi.org/simple"
+        ],
+        "relatedProjects": [],
+        "slsaProvenances": [],
+        "versionKey": {
+          "name": "django-flowcontrol",
+          "system": "PYPI",
+          "version": "0.0.21"
+        }
+      },
+      "endpoint": "https://api.deps.dev/v3/systems/pypi/packages/django-flowcontrol/versions/0.0.21",
+      "fetch_timestamp_utc": "2026-10-13T12:42:41Z",
+      "http_headers": {
+        "Alt-Svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+        "Content-Length": "383",
+        "access-control-allow-origin": "*",
+        "cache-control": "public, max-age=3600",
+        "connection": "close",
+        "content-type": "application/json; charset=utf-8",
+        "date": "Tue, 13 Oct 2026 12:42:43 GMT",
+        "strict-transport-security": "max-age=2592000; includeSubDomains",
+        "vary": "Accept-Encoding",
+        "via": "1.1 google"
+      },
+      "http_status": 200,
+      "raw_body_sha256": "00c5fa6649195a6bcd1dc0226d2944750ed591e0b40ce4b756ef3c5d3ec0ca67",
+      "raw_text_length_bytes": 383,
+      "role": "derived_indexer"
+    },
+    {
+      "data": {
+        "_meta": {
+          "schemaVersion": "1.7.0",
+          "updated": "2026-10-13T10:11:45.780Z"
+        },
+        "coordinates": {
+          "name": "django-flowcontrol",
+          "provider": "pypi",
+          "revision": "0.0.21",
+          "type": "pypi"
+        },
+        "described": {
+          "score": {
+            "date": 0,
+            "source": 70,
+            "total": 70
+          },
+          "sourceLocation": {
+            "name": "django-flowcontrol",
+            "provider": "pypi",
+            "revision": "0.0.21",
+            "type": "pypi",
+            "url": "https://pypi.org/project/django-flowcontrol/0.0.21/"
+          },
+          "toolScore": {
+            "date": 0,
+            "source": 70,
+            "total": 70
+          }
+        },
+        "licensed": {
+          "score": {
+            "consistency": 0,
+            "declared": 0,
+            "discovered": 0,
+            "spdx": 0,
+            "texts": 0,
+            "total": 0
+          },
+          "toolScore": {
+            "consistency": 0,
+            "declared": 0,
+            "discovered": 0,
+            "spdx": 0,
+            "texts": 0,
+            "total": 0
+          }
+        },
+        "scores": {
+          "effective": 35,
+          "tool": 35
+        }
+      },
+      "endpoint": "https://api.clearlydefined.io/definitions/pypi/pypi/-/django-flowcontrol/0.0.21",
+      "fetch_timestamp_utc": "2026-10-13T12:42:42Z",
+      "http_headers": {
+        "Accept-Ranges": "bytes",
+        "Access-Control-Allow-Origin": "*",
+        "Age": "232",
+        "CF-RAY": "a49e6d069b37c333-EWR",
+        "Cache-Control": "max-age=1800",
+        "Connection": "close",
+        "Content-Length": "648",
+        "Content-Security-Policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+        "Content-Type": "application/json; charset=utf-8",
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Resource-Policy": "same-origin",
+        "Date": "Tue, 13 Oct 2026 12:42:43 GMT",
+        "ETag": "W/\"288-gcN0HhsgKGABzV2C3EeWTXrfW5w\"",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+        "Origin-Agent-Cluster": "?1",
+        "RateLimit-Limit": "2000",
+        "RateLimit-Policy": "2000;w=60",
+        "RateLimit-Remaining": "1999",
+        "RateLimit-Reset": "60",
+        "Referrer-Policy": "no-referrer",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=K0STm82vdTul0OinarXjctLRWIb0VaibfUAGapys5fvTI2UMzpGoLPwZQg8mesIuK5coBqrBfbKNAAssb7ynw3GeU6K9RS13fGqPPFtP2aowQ%2FGiAeLYNz8uRDXRqDj0P%2BAZr0KGe4ORaETHY0VxN57o7Vk%3D\"}]}",
+        "Server": "cloudflare",
+        "Server-Timing": "cfEdge;dur=12,cfOrigin;dur=0",
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "X-Content-Type-Options": "nosniff",
+        "X-DNS-Prefetch-Control": "off",
+        "X-Download-Options": "noopen",
+        "X-Frame-Options": "SAMEORIGIN",
+        "X-Permitted-Cross-Domain-Policies": "none",
+        "X-Request-ID": "234f15e2-3aa6-4000-92a3-d29357672e4c",
+        "X-XSS-Protection": "0",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "cf-cache-status": "HIT"
+      },
+      "http_status": 200,
+      "raw_body_sha256": "98fa7919620bfbac199f6fdf60e36a0d4874dc1b921efb6babb30dd1c04b5358",
+      "raw_text_length_bytes": 648,
+      "role": "supplemental_license_analyzer"
+    }
+  ],
+  "harvest_session_utc": "2026-10-13T12:42:42Z",
+  "license_vacuum_audit": {
+    "clearlydefined_licensed_score": 0,
+    "conclusion": "NATURAL_UNDECIDABLE_EVIDENCE_VACUUM",
+    "depsdev_licenses": [],
+    "pypi_info_license": null,
+    "pypi_license_classifiers": []
+  },
+  "name": "django-flowcontrol",
+  "purl": "pkg:pypi/django-flowcontrol@0.0.21",
+  "version": "0.0.21"
+}

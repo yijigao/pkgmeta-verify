@@ -1,0 +1,144 @@
+{
+  "ecosystem": "pypi",
+  "fetch_timestamp": "2026-10-13T12:42:38Z",
+  "name": "hatch-vcs",
+  "purl": "pkg:pypi/hatch-vcs@0.4.0",
+  "sources": {
+    "clearlydefined": {
+      "data": {
+        "described": {
+          "releaseDate": null,
+          "urls": {
+            "download": "https://files.pythonhosted.org/packages/f5/c9/54bb4fa27b4e4a014ef3bb17710cdf692b3aa2cbc7953da885f1bf7e06ea/hatch_vcs-0.4.0.tar.gz",
+            "registry": "https://pypi.org/project/hatch-vcs",
+            "version": "https://pypi.org/project/hatch-vcs/0.4.0"
+          }
+        },
+        "licensed": {
+          "declared": null,
+          "facets": {
+            "core": {
+              "discovered": {
+                "unknown": 25
+              }
+            }
+          }
+        }
+      },
+      "derived_from": null,
+      "endpoint": "https://api.clearlydefined.io/definitions/pypi/pypi/-/hatch-vcs/0.4.0",
+      "role": "supplemental_license_analyzer",
+      "source_id": "clearlydefined",
+      "status": 200
+    },
+    "deps_dev": {
+      "data": {
+        "isDefault": false,
+        "licenses": [
+          "MIT"
+        ],
+        "links": [
+          {
+            "label": "ISSUE_TRACKER",
+            "url": "https://github.com/ofek/hatch-vcs/issues"
+          },
+          {
+            "label": "SOURCE_REPO",
+            "url": "https://github.com/sponsors/ofek"
+          }
+        ],
+        "publishedAt": "2023-11-06T06:24:55Z",
+        "versionKey": {
+          "name": "hatch-vcs",
+          "system": "PYPI",
+          "version": "0.4.0"
+        }
+      },
+      "derived_from": "pypi_json",
+      "endpoint": "https://api.deps.dev/v3/systems/pypi/packages/hatch-vcs/versions/0.4.0",
+      "role": "derived_indexer",
+      "source_id": "deps_dev",
+      "status": 200
+    },
+    "registry": {
+      "data": {
+        "info": {
+          "classifiers": [
+            "Development Status :: 4 - Beta"
+          ],
+          "home_page": "",
+          "license": "MIT",
+          "name": "hatch-vcs",
+          "project_urls": {
+            "Funding": "https://github.com/sponsors/ofek",
+            "History": "https://github.com/ofek/hatch-vcs/blob/master/HISTORY.md",
+            "Issues": "https://github.com/ofek/hatch-vcs/issues",
+            "Source": "https://github.com/ofek/hatch-vcs"
+          },
+          "version": "0.4.0"
+        },
+        "releases": {
+          "0.4.0": [
+            {
+              "digests": {
+                "blake2b_256": "820f6cbd9976160bc334add63bc2e7a58b1433a31b34b7cda6c5de6dd983d9a7",
+                "md5": "82bee9889b95170e550c98f8dd11bc61",
+                "sha256": "b8a2b6bee54cf6f9fc93762db73890017ae59c9081d1038a41f16235ceaf8b2c"
+              },
+              "filename": "hatch_vcs-0.4.0-py3-none-any.whl",
+              "md5_digest": "82bee9889b95170e550c98f8dd11bc61",
+              "packagetype": "bdist_wheel",
+              "upload_time_iso_8601": "2023-11-06T06:24:55.389793Z",
+              "url": "https://files.pythonhosted.org/packages/82/0f/6cbd9976160bc334add63bc2e7a58b1433a31b34b7cda6c5de6dd983d9a7/hatch_vcs-0.4.0-py3-none-any.whl"
+            },
+            {
+              "digests": {
+                "blake2b_256": "f5c954bb4fa27b4e4a014ef3bb17710cdf692b3aa2cbc7953da885f1bf7e06ea",
+                "md5": "d801fe7c3e5955307748f2790bbb3488",
+                "sha256": "093810748fe01db0d451fabcf2c1ac2688caefd232d4ede967090b1c1b07d9f7"
+              },
+              "filename": "hatch_vcs-0.4.0.tar.gz",
+              "md5_digest": "d801fe7c3e5955307748f2790bbb3488",
+              "packagetype": "sdist",
+              "upload_time_iso_8601": "2023-11-06T06:24:57.228892Z",
+              "url": "https://files.pythonhosted.org/packages/f5/c9/54bb4fa27b4e4a014ef3bb17710cdf692b3aa2cbc7953da885f1bf7e06ea/hatch_vcs-0.4.0.tar.gz"
+            }
+          ]
+        },
+        "urls": [
+          {
+            "digests": {
+              "blake2b_256": "820f6cbd9976160bc334add63bc2e7a58b1433a31b34b7cda6c5de6dd983d9a7",
+              "md5": "82bee9889b95170e550c98f8dd11bc61",
+              "sha256": "b8a2b6bee54cf6f9fc93762db73890017ae59c9081d1038a41f16235ceaf8b2c"
+            },
+            "filename": "hatch_vcs-0.4.0-py3-none-any.whl",
+            "md5_digest": "82bee9889b95170e550c98f8dd11bc61",
+            "packagetype": "bdist_wheel",
+            "upload_time_iso_8601": "2023-11-06T06:24:55.389793Z",
+            "url": "https://files.pythonhosted.org/packages/82/0f/6cbd9976160bc334add63bc2e7a58b1433a31b34b7cda6c5de6dd983d9a7/hatch_vcs-0.4.0-py3-none-any.whl"
+          },
+          {
+            "digests": {
+              "blake2b_256": "f5c954bb4fa27b4e4a014ef3bb17710cdf692b3aa2cbc7953da885f1bf7e06ea",
+              "md5": "d801fe7c3e5955307748f2790bbb3488",
+              "sha256": "093810748fe01db0d451fabcf2c1ac2688caefd232d4ede967090b1c1b07d9f7"
+            },
+            "filename": "hatch_vcs-0.4.0.tar.gz",
+            "md5_digest": "d801fe7c3e5955307748f2790bbb3488",
+            "packagetype": "sdist",
+            "upload_time_iso_8601": "2023-11-06T06:24:57.228892Z",
+            "url": "https://files.pythonhosted.org/packages/f5/c9/54bb4fa27b4e4a014ef3bb17710cdf692b3aa2cbc7953da885f1bf7e06ea/hatch_vcs-0.4.0.tar.gz"
+          }
+        ]
+      },
+      "derived_from": null,
+      "endpoint": "https://pypi.org/pypi/hatch-vcs/0.4.0/json",
+      "role": "upstream_registry",
+      "source_id": "pypi_json",
+      "status": 200
+    }
+  },
+  "synthetic": false,
+  "version": "0.4.0"
+}

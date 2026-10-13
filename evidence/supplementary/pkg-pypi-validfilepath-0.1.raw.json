@@ -1,0 +1,314 @@
+{
+  "baseline_status": "SUPPLEMENTARY_EVIDENCE_NOT_IN_FROZEN_12_FILE_MANIFEST",
+  "case": "pkg:pypi/validfilepath@0.1",
+  "ecosystem": "pypi",
+  "endpoints_harvested": [
+    {
+      "data": {
+        "info": {
+          "author": null,
+          "author_email": "Mariusz Radon <mariusz.radon@gmail.com>",
+          "bugtrack_url": null,
+          "classifiers": [],
+          "description": "# validfilepath\n\nPath validators to be used with argparse.\n\n## Usage\n```python\nimport argparse\nfrom validfilepath import valid_filepath_input, valid_filepath_output\nap = argparse.ArgumentParser()\nap.add_argument('--infile', type=valid_filepath_input)\nap.add_argument('--outfile', type=valid_filepath_output)\n```\n",
+          "description_content_type": "text/markdown",
+          "docs_url": null,
+          "download_url": null,
+          "downloads": {
+            "last_day": -1,
+            "last_month": -1,
+            "last_week": -1
+          },
+          "dynamic": null,
+          "home_page": null,
+          "keywords": null,
+          "license": "MIT",
+          "license_expression": null,
+          "license_files": null,
+          "maintainer": null,
+          "maintainer_email": null,
+          "name": "validfilepath",
+          "package_url": "https://pypi.org/project/validfilepath/",
+          "platform": null,
+          "project_url": "https://pypi.org/project/validfilepath/",
+          "project_urls": null,
+          "provides_extra": null,
+          "release_url": "https://pypi.org/project/validfilepath/0.1/",
+          "requires_dist": null,
+          "requires_python": ">=3.8",
+          "summary": "Path validators to be used with argparse",
+          "version": "0.1",
+          "yanked": false,
+          "yanked_reason": null
+        },
+        "last_serial": 42172538,
+        "ownership": {
+          "organization": null,
+          "roles": [
+            {
+              "role": "Owner",
+              "user": "mradon"
+            }
+          ]
+        },
+        "urls": [
+          {
+            "comment_text": null,
+            "core-metadata": {
+              "sha256": "e1120ead72a43a4ab5886d0389c4d7799168e07be9a88ddc0e657847f1083e53"
+            },
+            "digests": {
+              "blake2b_256": "c587cab5ed1587055a8391b809d12faa0df0695378fd947ee2726506b2a0e28f",
+              "md5": "c8f58d331dfdd5a3c901f928eaa08f2c",
+              "sha256": "dcd8e247a37be8299483b5f3a0b46cb9d5a136a4ccf05dea46c37ab184c876b8"
+            },
+            "downloads": -1,
+            "filename": "validfilepath-0.1-py3-none-any.whl",
+            "has_sig": false,
+            "md5_digest": "c8f58d331dfdd5a3c901f928eaa08f2c",
+            "packagetype": "bdist_wheel",
+            "python_version": "py3",
+            "requires_python": ">=3.8",
+            "size": 2967,
+            "upload_time": "2026-10-13T09:59:55",
+            "upload_time_iso_8601": "2026-10-13T09:59:55.901785Z",
+            "url": "https://files.pythonhosted.org/packages/c5/87/cab5ed1587055a8391b809d12faa0df0695378fd947ee2726506b2a0e28f/validfilepath-0.1-py3-none-any.whl",
+            "yanked": false,
+            "yanked_reason": null
+          },
+          {
+            "comment_text": null,
+            "core-metadata": false,
+            "digests": {
+              "blake2b_256": "0b4398664475da64e789fcd0e9d51b1a0e13ddc6c9f604dbafb3e059ac0d0a6e",
+              "md5": "edee83869b8bcb61486c1583d7e513a8",
+              "sha256": "eabffba45c22e6fb852b5879b4f1d96785393a40379dcb763bec9c0ac7827958"
+            },
+            "downloads": -1,
+            "filename": "validfilepath-0.1.tar.gz",
+            "has_sig": false,
+            "md5_digest": "edee83869b8bcb61486c1583d7e513a8",
+            "packagetype": "sdist",
+            "python_version": "source",
+            "requires_python": ">=3.8",
+            "size": 2034,
+            "upload_time": "2026-10-13T09:59:56",
+            "upload_time_iso_8601": "2026-10-13T09:59:56.983615Z",
+            "url": "https://files.pythonhosted.org/packages/0b/43/98664475da64e789fcd0e9d51b1a0e13ddc6c9f604dbafb3e059ac0d0a6e/validfilepath-0.1.tar.gz",
+            "yanked": false,
+            "yanked_reason": null
+          }
+        ],
+        "vulnerabilities": []
+      },
+      "endpoint": "https://pypi.org/pypi/validfilepath/0.1/json",
+      "fetch_timestamp_utc": "2026-10-13T12:42:38Z",
+      "http_headers": {
+        "Accept-Ranges": "bytes",
+        "Connection": "close",
+        "Content-Length": "2825",
+        "Date": "Tue, 13 Oct 2026 12:42:40 GMT",
+        "Permissions-Policy": "publickey-credentials-create=(self),publickey-credentials-get=(self),accelerometer=(),ambient-light-sensor=(),autoplay=(),battery=(),camera=(),display-capture=(),document-domain=(),encrypted-media=(),execution-while-not-rendered=(),execution-while-out-of-viewport=(),fullscreen=(),gamepad=(),geolocation=(),gyroscope=(),hid=(),identity-credentials-get=(),idle-detection=(),local-fonts=(),magnetometer=(),microphone=(),midi=(),otp-credentials=(),payment=(),picture-in-picture=(),screen-wake-lock=(),serial=(),speaker-selection=(),storage-access=(),usb=(),web-share=(),xr-spatial-tracking=()",
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+        "Vary": "Accept-Encoding",
+        "X-Cache": "MISS, HIT, MISS",
+        "X-Cache-Hits": "0, 15, 0",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "deny",
+        "X-Permitted-Cross-Domain-Policies": "none",
+        "X-Served-By": "cache-iad-khef600073-IAD, cache-iad-khef600085-IAD, cache-pdk-kfty8610036-PDK",
+        "X-Timer": "S1791895360.168310,VS0,VE17",
+        "X-XSS-Protection": "1; mode=block",
+        "access-control-allow-headers": "Content-Type, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since",
+        "access-control-allow-methods": "GET",
+        "access-control-allow-origin": "*",
+        "access-control-expose-headers": "X-PyPI-Last-Serial",
+        "access-control-max-age": "86400",
+        "cache-control": "max-age=900, public",
+        "content-security-policy": "base-uri 'self'; connect-src 'self' https://api.github.com/repos/ https://api.github.com/search/issues https://gitlab.com/api/ https://analytics.python.org *.ethicalads.io https://api.pwnedpasswords.com https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/sre/mathmaps/ https://2p66nmmycsj3.statuspage.io; default-src 'none'; font-src 'self'; form-action 'self' https://checkout.stripe.com https://billing.stripe.com; frame-ancestors 'none'; frame-src 'none'; img-src 'self' https://pypi-camo.freetls.fastly.net/ *.ethicalads.io ethicalads.blob.core.windows.net; script-src 'self' https://analytics.python.org *.ethicalads.io 'sha256-U3hKDidudIaxBDEzwGJApJgPEf2mWk6cfMWghrAa6i0=' https://cdn.jsdelivr.net/npm/mathjax@3.2.2/ 'sha256-1CldwzdEg2k1wTmf7s5RWVd7NMXI/7nxxjJM2C4DqII='; style-src 'self' *.ethicalads.io 'sha256-2YHqZokjiizkHi1Zt+6ar0XJ0OeEy/egBnlm+MDMtrM=' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=' 'sha256-JLEjeN9e5dGsz5475WyRaoA4eQOdNPxDIeUhclnJDCE=' 'sha256-mQyxHEuwZJqpxCw3SLmc4YOySNKXunyu2Oiz1r3/wAE=' 'sha256-OCf+kv5Asiwp++8PIevKBYSgnNLNUZvxAp4a7wMLuKA=' 'sha256-h5LOiLhk6wiJrGsG5ItM0KimwzWQH/yAcmoJDJL//bY='",
+        "content-type": "application/json",
+        "etag": "\"b2qgndEtEN602X+WrbHEKA\"",
+        "referrer-policy": "origin-when-cross-origin",
+        "server": "gunicorn",
+        "x-pypi-last-serial": "42172538"
+      },
+      "http_status": 200,
+      "raw_body_sha256": "992d56c889869ad1fa0b82cae8e77a8c0d521dee01c218ff2ae99cb5fc44b799",
+      "raw_text_length_bytes": 2825,
+      "role": "upstream_registry"
+    },
+    {
+      "data": {
+        "advisoryKeys": [],
+        "attestations": [],
+        "deprecatedReason": "",
+        "isDefault": true,
+        "isDeprecated": false,
+        "licenses": [
+          "MIT"
+        ],
+        "links": [],
+        "projectStatus": {
+          "reason": "",
+          "status": "active"
+        },
+        "publishedAt": "2026-10-13T09:59:55Z",
+        "registries": [
+          "https://pypi.org/simple"
+        ],
+        "relatedProjects": [],
+        "slsaProvenances": [],
+        "versionKey": {
+          "name": "validfilepath",
+          "system": "PYPI",
+          "version": "0.1.0"
+        }
+      },
+      "endpoint": "https://api.deps.dev/v3/systems/pypi/packages/validfilepath/versions/0.1",
+      "fetch_timestamp_utc": "2026-10-13T12:42:39Z",
+      "http_headers": {
+        "Alt-Svc": "h3=\":443\"; ma=2592000",
+        "Content-Length": "382",
+        "access-control-allow-origin": "*",
+        "cache-control": "public, max-age=3600",
+        "connection": "close",
+        "content-type": "application/json; charset=utf-8",
+        "date": "Tue, 13 Oct 2026 12:42:40 GMT",
+        "strict-transport-security": "max-age=2592000; includeSubDomains",
+        "vary": "Accept-Encoding",
+        "via": "1.1 google"
+      },
+      "http_status": 200,
+      "raw_body_sha256": "a5b88d4767bfbcc02fbd6a60e45ff5cbfc778fd52664731277d69fc0d186ae0e",
+      "raw_text_length_bytes": 382,
+      "role": "derived_indexer"
+    },
+    {
+      "data": {
+        "_meta": {
+          "schemaVersion": "1.7.0",
+          "updated": "2026-10-13T12:38:45.106Z"
+        },
+        "coordinates": {
+          "name": "validfilepath",
+          "provider": "pypi",
+          "revision": "0.1",
+          "type": "pypi"
+        },
+        "described": {
+          "score": {
+            "date": 0,
+            "source": 70,
+            "total": 70
+          },
+          "sourceLocation": {
+            "name": "validfilepath",
+            "provider": "pypi",
+            "revision": "0.1",
+            "type": "pypi",
+            "url": "https://pypi.org/project/validfilepath/0.1/"
+          },
+          "toolScore": {
+            "date": 0,
+            "source": 70,
+            "total": 70
+          }
+        },
+        "licensed": {
+          "score": {
+            "consistency": 0,
+            "declared": 0,
+            "discovered": 0,
+            "spdx": 0,
+            "texts": 0,
+            "total": 0
+          },
+          "toolScore": {
+            "consistency": 0,
+            "declared": 0,
+            "discovered": 0,
+            "spdx": 0,
+            "texts": 0,
+            "total": 0
+          }
+        },
+        "scores": {
+          "effective": 35,
+          "tool": 35
+        }
+      },
+      "endpoint": "https://api.clearlydefined.io/definitions/pypi/pypi/-/validfilepath/0.1",
+      "fetch_timestamp_utc": "2026-10-13T12:42:40Z",
+      "http_headers": {
+        "Accept-Ranges": "bytes",
+        "Access-Control-Allow-Origin": "*",
+        "CF-RAY": "a49e6cf9cfbb5f14-DEN",
+        "Cache-Control": "max-age=1800",
+        "Connection": "close",
+        "Content-Length": "624",
+        "Content-Security-Policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+        "Content-Type": "application/json; charset=utf-8",
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Resource-Policy": "same-origin",
+        "Date": "Tue, 13 Oct 2026 12:42:41 GMT",
+        "ETag": "W/\"270-Bkfb6N/XA0nJ2640c5ZN5GQqSuM\"",
+        "Nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+        "Origin-Agent-Cluster": "?1",
+        "RateLimit-Limit": "2000",
+        "RateLimit-Policy": "2000;w=60",
+        "RateLimit-Remaining": "1999",
+        "RateLimit-Reset": "60",
+        "Referrer-Policy": "no-referrer",
+        "Report-To": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=LUvCZ0SH6W8rj6tnyUnUXuAsDL4WAiK0L5%2FiB9zgDJbPVSB9bvdxVTLEFwPbN7oVr9RC3nUf7IocHgYPiEbz4ykP2q%2BugooSZs2TakGnsjLphg2KzyVud6d1skF0bB7oX8zLsXm5ltl4Fy2qCjW4Rxqd5C8%3D\"}]}",
+        "Server": "cloudflare",
+        "Server-Timing": "cfEdge;dur=111,cfOrigin;dur=209",
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "X-Content-Type-Options": "nosniff",
+        "X-DNS-Prefetch-Control": "off",
+        "X-Download-Options": "noopen",
+        "X-Frame-Options": "SAMEORIGIN",
+        "X-Permitted-Cross-Domain-Policies": "none",
+        "X-Request-ID": "ab5c6dde-3b18-4259-a8d5-1013a5c75788",
+        "X-XSS-Protection": "0",
+        "alt-svc": "h3=\":443\"; ma=86400",
+        "cf-cache-status": "MISS"
+      },
+      "http_status": 200,
+      "raw_body_sha256": "eaaf48c12535c065d9d811f4f635e98e144f651e7c3ada8e6e23aeed0b875c9b",
+      "raw_text_length_bytes": 624,
+      "role": "supplemental_license_analyzer"
+    }
+  ],
+  "harvest_session_utc": "2026-10-13T12:42:40Z",
+  "historical_lag_observation": {
+    "limitation_disclosure": "Transient HTTP 404 occurred during downstream initial indexing on 2026-10-13 10:07:26 GMT. Live requests today return HTTP 200 OK because deps.dev indexing is now complete. The historical 404 wire payload cannot be re-fetched live from the remote endpoint; the provenance relies on documented transition logs.",
+    "t1_upstream_pypi_upload": "2026-10-13T09:59:55.901785Z",
+    "t2_transient_lag_depsdev_404": {
+      "delta_seconds_from_t1": 450.1,
+      "endpoint": "https://api.deps.dev/v3/systems/pypi/packages/validfilepath/versions/0.1",
+      "http_headers_excerpt": {
+        "Content-Length": "17",
+        "content-type": "text/plain; charset=utf-8",
+        "date": "Tue, 13 Oct 2026 10:07:26 GMT",
+        "via": "1.1 google"
+      },
+      "http_status": 404,
+      "observed_at_http_date": "Tue, 13 Oct 2026 10:07:26 GMT",
+      "raw_text": "version not found\n"
+    },
+    "t3_resolved_depsdev_200": {
+      "delta_seconds_from_t1": 679.1,
+      "endpoint": "https://api.deps.dev/v3/systems/pypi/packages/validfilepath/versions/0.1",
+      "http_headers_excerpt": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Tue, 13 Oct 2026 10:11:15 GMT",
+        "via": "1.1 google"
+      },
+      "http_status": 200,
+      "observed_at_http_date": "Tue, 13 Oct 2026 10:11:15 GMT"
+    }
+  },
+  "name": "validfilepath",
+  "purl": "pkg:pypi/validfilepath@0.1",
+  "version": "0.1"
+}

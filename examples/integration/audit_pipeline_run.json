@@ -1,0 +1,86 @@
+[
+  {
+    "final_action": "APPROVE",
+    "initial_action": "APPROVE",
+    "initial_verdict": {
+      "avoided_false_positive": "Verified consistent metadata across sources without false alarm.",
+      "category": "CONSISTENT",
+      "confidence": 0.78,
+      "details": "All verified coordinates, release timestamps, and license declarations match across 2 available sources (evaluated confidence: 0.78 based on evidence strength).",
+      "subcode": "MUTUALLY_CONSISTENT",
+      "summary": "Package metadata is consistent across consulted sources"
+    },
+    "purl": "pkg:npm/example-clean@1.0.0",
+    "recheck_executed": false
+  },
+  {
+    "final_action": "COMPLIANCE_TRIAGE",
+    "initial_action": "COMPLIANCE_TRIAGE",
+    "initial_verdict": {
+      "avoided_false_positive": "Avoided naive diff failure that blindly accepts the simple top-level declaration while ignoring dual-clause compliance obligations discovered in repository files.",
+      "category": "SEMANTIC_DIVERGENCE",
+      "confidence": 0.95,
+      "details": "Evaluated sources and fields: (1) npm_registry (field: 'license' -> 'BSD-2-Clause'), (2) clearlydefined (field: 'licensed.declared' -> 'BSD-2-Clause AND BSD-3-Clause', field: 'licensed.facets.core.discovered.expressions' -> ['BSD-2-Clause', 'BSD-3-Clause']), (3) deps_dev (field: 'licenses' -> ['BSD-2-Clause']). Scan scope: ClearlyDefined core facet file-level source tree scan discovered dual licenses, whereas npm registry and deps.dev reflect top-level package.json declaration. The presence of compound AND conjunction imposes distinct dual compliance obligations that cannot be reconciled by simple equality. Enforcing hard constraint: neither side is automatically assumed as the sole truth.",
+      "subcode": "LICENSE_EXPRESSION_CONJUNCTION_MISMATCH",
+      "summary": "Declared package license diverges from deeply discovered multi-license AND conjunction"
+    },
+    "purl": "pkg:npm/esprima@4.0.1",
+    "recheck_executed": false
+  },
+  {
+    "final_action": "SECURITY_BLOCK",
+    "initial_action": "SECURITY_BLOCK",
+    "initial_verdict": {
+      "avoided_false_positive": "Avoided discarding or flagging a legitimate package as license-incompatible while avoiding unverified attribution of parser fault.",
+      "category": "REAL_ERROR",
+      "confidence": 1.0,
+      "details": "deps.dev reports licenses: ['non-standard']. In contrast, PyPI registry classifiers contain '['License :: OSI Approved :: Python Software Foundation License']' and ClearlyDefined confirms 'Python-2.0.1'. The artifact typing_extensions-4.12.2.dist-info/LICENSE contains verified license text (PSF-2.0). Because authoring field omission versus downstream classifier parsing fault cannot be separated, unilateral parser responsibility assertion is removed; recorded verifiable metadata contradiction.",
+      "subcode": "STANDARDS_CONTRADICTION",
+      "summary": "Downstream index license classification contradicts upstream and curated standards"
+    },
+    "purl": "pkg:pypi/typing-extensions@4.12.2",
+    "recheck_executed": false
+  },
+  {
+    "final_action": "SECURITY_BLOCK",
+    "initial_action": "SECURITY_BLOCK",
+    "initial_verdict": {
+      "avoided_false_positive": "Avoided defamatory or premature assertion of 'mirror tampered / compromised'; accurately scoped factual claim to verifiable 'digest conflict'.",
+      "category": "DIGEST_CONFLICT",
+      "confidence": 1.0,
+      "details": "Digest discrepancy on artifact 'synthetic-fixture-1.0.0.tgz' for algorithm(s): sha256. Evidence proves conflicting digests across sources. Enforcing hard constraint: strictly prohibited from asserting mirror corruption or malicious tampering.",
+      "subcode": "ARTIFACT_DIGEST_MISMATCH",
+      "summary": "Digest conflict observed between sources for identical artifact and algorithm"
+    },
+    "purl": "pkg:npm/synthetic-fixture@1.0.0",
+    "recheck_executed": false
+  },
+  {
+    "final_action": "MANUAL_REVIEW",
+    "initial_action": "MANUAL_REVIEW",
+    "initial_verdict": {
+      "avoided_false_positive": "Avoided false-positive CONSISTENT verdict when sources lack substantive license declarations entirely.",
+      "category": "INDETERMINATE",
+      "confidence": 0.0,
+      "details": "None of the available sources provide verifiable license declarations (found only empty arrays, whitespace, or placeholder values such as 'unknown' or 'see license file'). Lacking comparable license evidence, metadata consistency is undecidable. Enforcing hard constraint: absent license evidence strictly yields 'undecidable', NEVER defaults to CONSISTENT.",
+      "subcode": "undecidable",
+      "summary": "Cannot determine consistency: no comparable license evidence across sources"
+    },
+    "purl": "pkg:pypi/django-flowcontrol@0.0.21",
+    "recheck_executed": false
+  },
+  {
+    "final_action": "APPROVE",
+    "initial_action": "SCHEDULE_RECHECK",
+    "initial_verdict": {
+      "avoided_false_positive": "Avoided misclassifying normal downstream indexing latency as upstream publication failure or missing package integrity fault.",
+      "category": "SYNC_DELAY",
+      "confidence": 0.979,
+      "details": "Upstream registry reports release published at '2026-10-13T09:59:55Z'. Temporal observation chain verified: downstream missing (404) observed at '2026-10-13T10:07:26Z' (delta 7 minutes (451s)), subsequent appearance (HTTP 200) observed at '2026-10-13T10:11:15Z'. Provable delay range is [7 minutes (451s), 11 minutes (680s)], which within sync tolerance window (86400s). Preserving uncertainty; not judged as missing package or mirror defect.",
+      "subcode": "DOWNSTREAM_INGESTION_LAG",
+      "summary": "Downstream index ingested release with verified temporal delay chain"
+    },
+    "purl": "pkg:pypi/validfilepath@0.1",
+    "recheck_executed": true
+  }
+]
