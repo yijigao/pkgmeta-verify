@@ -41,7 +41,7 @@ class TestOutputSchema(unittest.TestCase):
         self.assertEqual(self.schema.get("type"), "object")
         # Confirm versioned project $id
         self.assertTrue(self.schema.get("$id", "").startswith("https://"))
-        self.assertIn("/schemas/pmv-output/", self.schema.get("$id", ""))
+        self.assertIn("/schemas/pmv-output.schema.json", self.schema.get("$id", ""))
 
     def test_all_baseline_results_validate_against_schema(self):
         """All result instances in evidence/results/ must validate cleanly against schema."""
