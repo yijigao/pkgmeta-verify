@@ -1,0 +1,40 @@
+=== CodeSupply PMV Rigorous Independent Offline Rerun Runner ===
+Workdir: /tmp/pmv-independent-rerun-aren/repo
+Temp dir: /tmp/pmv-rerun-W9CRKA
+
+--- Phase 1: Verifying Cryptographic Baseline Manifest (evidence/MANIFEST.sha256) ---
+FAIL: Cryptographic hash mismatch in MANIFEST.sha256!
+../rules/rules-v0.1.json: OK
+../schemas/pmv-output.schema.json: FAILED
+results/pkg-npm-debug-4.3.4.result.json: OK
+results/pkg-npm-esprima-4.0.1.result.json: OK
+results/pkg-npm-synthetic-fixture-1.0.0.result.json: OK
+results/pkg-pypi-archgraph-layout-2.3.0.result.json: OK
+results/pkg-pypi-typing-extensions-4.12.2.result.json: OK
+snapshots/pkg-npm-debug-4.3.4.json: OK
+snapshots/pkg-npm-esprima-4.0.1.json: OK
+snapshots/pkg-npm-synthetic-fixture-1.0.0.json: OK
+snapshots/pkg-pypi-archgraph-layout-2.3.0.json: OK
+snapshots/pkg-pypi-typing-extensions-4.12.2.json: OK
+sha256sum: WARNING: 1 computed checksum did NOT match
+
+--- Phase 2: Validating JSON Schema & Baseline Result Files ---
+PASS: Schema self-check and baseline instances verified successfully.
+
+--- Phase 3: Executing Regression Test Suite (tests/test_*.py) ---
+PASS: All 56 targeted regression tests passed cleanly.
+
+--- Phase 4: Executing Deterministic Offline Replay & Byte-for-Byte Diff ---
+Rerunning pkg:pypi/typing-extensions@4.12.2 ... PASS (0 diff, Schema VALID)
+Rerunning pkg:pypi/archgraph-layout@2.3.0 ... PASS (0 diff, Schema VALID)
+Rerunning pkg:npm/esprima@4.0.1 ... PASS (0 diff, Schema VALID)
+Rerunning pkg:npm/debug@4.3.4 ... PASS (0 diff, Schema VALID)
+Rerunning pkg:npm/synthetic-fixture@1.0.0 ... PASS (0 diff, Schema VALID)
+
+--- Phase 5: Generating Full Dynamic Audit Report (/tmp/pmv-independent-rerun-aren/repo/rerun-report.md) ---
+
+=== Final Status ===
+Test Result: Failures: 1
+Passed Cases: 5/5
+Report written to: /tmp/pmv-independent-rerun-aren/repo/rerun-report.md
+CHECKS FAILED WITH 1 ERRORS!

@@ -156,3 +156,7 @@
 - 修复：已按当前 12 个文件重新生成 MANIFEST.sha256，`sha256sum -c` 12/12 OK；基线重新冻结。
 - 阿仁的复跑记录原文归档：docs/evidence/INDEPENDENT-RERUN-AREN.md（**逐字归档，未改写其结论**，含"本次复跑不能作为全部检查通过的证据"）。
 - **缺件**：记录中引用的 pytest-full.log、rerun-full.log 原始日志尚未收到，已向主聊索取；收到后补入归档。
+
+## 条目 21 — 阿仁复跑原始日志补入（2026-10-13 18:11，主聊）
+- pytest-full.log（8,048 字节：56 passed）、rerun-full.log（1,866 字节）已归档到 docs/evidence/。
+- 4 项诚实问题全部闭环。
