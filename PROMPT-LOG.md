@@ -131,3 +131,9 @@
 - 未编辑输出：~/workspace/nlnet-codesupply-council/pmv-fix4-gemini.txt（DSH_EXIT=0；现有测试零失败）
 - 用途：修复 5 组新反例＋同类边界一次性扫荡＋README/报告口径收窄＋回归测试＋新基线冻结。
 - 公开提交：https://github.com/yijigao/pkgmeta-verify @7fc8757（13 prompt、20 output，全部可访问；此前漏拷的 pmv-fix3-gemini.txt、TASK-PMV-FIX3-gemini.md、ASTRA-REV3FIX2-2026-10-13.md 已补齐）。
+
+## 条目 17 — Joey 战略拍板（2026-10-13 17:57，主聊）
+- 冻结规则集：verifier.py 当前版本冻结，不再追 Astra 新反例；5 组新误判不动。
+- 公开口径统一收窄为"现有测试零失败（56/56），PMV 为概念验证"（README、rerun-report、提案大纲同步）。
+- 火力转 5 项提交前关口：真实错误案例最终确认、延迟时间链核验、自然不可判定案例、Schema $id 落实、独立复跑＋材料统一＋履历索引；11/2 内部提交日前关闭。
+- 提案正文（人工主笔）可开始，大纲 rev3 已过。

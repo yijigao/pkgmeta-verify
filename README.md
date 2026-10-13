@@ -1,7 +1,9 @@
 # CodeSupply · Package Metadata Verifier (PMV)
 
-**可运行的最小质检组件原型 (Minimum Viable Quality Inspection Component)**  
+**可运行的最小质检组件原型 (Minimum Viable Quality Inspection Component)**
 *技术负责人：Joey（Jigao Yi）个人申请 | 授权许可：Apache-2.0*
+
+> **公开口径（2026-10-13 Joey 定）**：现有测试零失败（56/56），**PMV 为概念验证**。测试通过仅代表符合当前测试集规范，不等于判定绝对正确；不宣称"覆盖全部误判""100% 确定性"。
 
 ---
 
