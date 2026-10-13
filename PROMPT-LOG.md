@@ -181,3 +181,10 @@
 - 结论：成立（真实解析器故障，非构造）。typing-extensions 证伪原因也在报告中如实记录（STANDARDS_CONTRADICTION，双方均未违反自身规范）。
 - 证据文件：evidence/real-error-case-v2.md（14,252 字节）。
 - verifier.py 保持冻结；56/56 测试、MANIFEST 12/12 不受影响。
+
+## 条目 25 — 提案正文草稿＋Schema $id 落实＋政策复查（2026-10-13 20:22，主聊）
+- 提案正文：孔明（Muse）按 rev3 大纲直接编写英文完整草稿 PROPOSAL-DRAFT.md（19,346 字节），供 Joey 定稿。模型：Muse Spark；时间：2026-10-13 20:22–20:40 CST；未编辑输出即草稿原文（公开副本：docs/evidence/PROPOSAL-DRAFT.md）。GenAI 披露按据实版写入 §13。
+- Schema $id：`<tag>` 替换为 `v0.1`，tag 已打并推送；发现 $id 曾指向不存在的路径，已修正为真实可访问地址（curl 200 验证）；test_schema 断言同步对齐（$id 关口授权，非规则变更）；56/56 通过。
+- GenAI 政策复查：官网最新仍为 v1.1（2026-01-26 生效），无换版。
+- MoU 签署人＝申请人＝Jigao Yi（个人申请），草稿 §1、§14 已写明。
+- Astra 10 项 checklist：1（真实错误 hatch-vcs 成立）、2（validfilepath 延迟成立）、3（四类案例齐）、4（规则落实）、5（Schema 可用）、6（独立复跑：阿仁已跑，署名记录公开）、7（复跑程序）、8（材料统一）、9（例外口论证）、10（口径收口）——全部已落实。
