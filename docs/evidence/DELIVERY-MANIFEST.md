@@ -1,11 +1,11 @@
 # 交付清单（Delivery Manifest）
 
-- **交付版本**：`ab931da46a1c52af2e2b7849847e536b96767f24`（main 分支；tag `v0.1` 指向 Schema $id 版本）
+- **交付版本**：tag `delivery-2026-10-13`（对应 commit 见 `git rev-list -n 1 delivery-2026-10-13`；文件不可自含其所在提交的 hash，故以 tag 绑定具体版本）
 - **交付目录**：https://github.com/yijigao/pkgmeta-verify（公开仓库，免登录可读）
 - **清单生成时间**：2026-10-13（UTC+8）；共 120 个文件（含本清单与主张登记表自身）
 - **修改规则**：每个文件同时只允许一个修改者；冻结文件（已冻结）不得修改，改则重新走验收
 - **排除范围**：仓库内无重复目录；/tmp 中转目录不属于交付
-- **哈希说明**：SHA-256 为完整 40 位 git blob hash，可用 `git hash-object <文件>` 独立校验；本清单自身为自指文件，以交付版本 commit 保证完整性
+- **哈希说明**：SHA-256 为完整 40 位 git blob hash，可用 `git hash-object <文件>` 独立校验；本清单自身为自指文件，以交付版本 tag 保证完整性
 
 | # | 文件路径 | 用途 | 字节数 | SHA-256（git blob，完整 40 位） |
 |---|---|---|---:|---|
@@ -15,7 +15,7 @@
 | 4 | `bin/pkgmeta-verify` | 复跑程序与报告 | 869 | `898c267073d300b75e96f2a45ece6e39e9fe4980` |
 | 5 | `docs/evidence/CLAIM-REGISTRY.md` | 主张登记表 | 5199 | `d3d63d0fca13f35b4a3177cb79abda5a72d7d588` |
 | 6 | `docs/evidence/CREDENTIALS-INDEX.md` | 履历索引 | 2321 | `1b1b40b4b23997b89aca10ea6375a23b0a348b6f` |
-| 7 | `docs/evidence/DELIVERY-MANIFEST.md` | 交付清单（本文件；自指，见注） | 14952 | `自指（本文件）；完整性由交付版本 commit 保证` |
+| 7 | `docs/evidence/DELIVERY-MANIFEST.md` | 交付清单（本文件；自指，见注） | 18077 | `自指（本文件）；完整性由交付版本 tag/commit 保证` |
 | 8 | `docs/evidence/GENAI-DISCLOSURE-DRAFT.md` | GenAI 披露草稿（据实版） | 2482 | `8801c5a78000895a92cec381c59205591296d617` |
 | 9 | `docs/evidence/INDEPENDENT-RERUN-AREN.md` | 独立复跑记录 | 2106 | `5a99a7a9177c3ed6c7a4f2064b68ff1e83eb2f88` |
 | 10 | `docs/evidence/INDEPENDENT-RERUN.md` | 独立复跑记录 | 2202 | `a42b46d6f3046387f21b940df11a80885b5e232a` |
