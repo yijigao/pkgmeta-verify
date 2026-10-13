@@ -1,0 +1,67 @@
+# NLnet CodeSupply · 关口 1 补救：真实错误案例核验总结报告
+
+针对 NLnet CodeSupply 提交前关口 1 补救任务（替换 `typing-extensions@4.12.2` 单边责任断言已被证伪的旧案例），已完成多源真实数据的全面扫描、法证式交叉比对及四维边界辨析，生成完整证据链报告：**`evidence/real-error-case-v2.md`**。
+
+在整个核验过程中，**严格遵守规则集冻结约束**，未修改 `pmv/verifier.py`（56/56 项单元测试全部通过，`evidence/MANIFEST.sha256` 12/12 文件哈希完全一致）。
+
+---
+
+## 一、候选案例评测汇总（3 个候选）
+
+按照“最多尝试 3 个候选、不成立写清原因、成立提供闭环证据”的要求，测试结果如下：
+
+| 候选编号 | 候选坐标 | 考察字段 | 核心现象 | 四维判定与核验结论 |
+|---|---|---|---|---|
+| **候选 1（采纳）** | `pkg:pypi/hatch-vcs@0.4.0` | 仓库链接 (`SOURCE_REPO`) | deps.dev 断言为赞助链接 `github.com/sponsors/ofek`，而制品原生 `METADATA` 明确区分了 `Funding` 与 `Source` | **成立 (ESTABLISHED)**<br>✔ **Field Error**: 字段值客观错误（非代码库）<br>✔ **Parser Fault**: deps.dev 摄取解析器未遵守 PEP 566/753 标签语义<br>✖ **Sync Delay**: 排除（已发布超 2 年，HTTP 200 稳态）<br>✖ **Semantic Difference**: 排除（赞助页与代码库概念互斥） |
+| **候选 2（排除）** | `pkg:npm/atob@1.1.2` | 许可证 (`license`) | package.json 声明非标 `"license": "Apache2"`，deps.dev 输出 `"Apache-2.0"` | **不成立 (REJECTED)**<br>1. **历史规范时效**: 该版本发布于 2014 年，早于 npm 强制 SPDX 校验（npm 2.10.0 / 2015 年），作者当时未违规；<br>2. **复合许可差异**: 制品内同时含 `LICENSE` (Apache-2.0) 与 `LICENSE.DOCS` (CC-BY-3.0)，属于多切面语义差异 (`SEMANTIC_DIVERGENCE`)，非孤立错误。 |
+| **候选 3（排除）** | `pkg:pypi/blinker@1.5` | 版本号 (`version`) | PyPI 标称 `"1.5"`，deps.dev 规范化为 `"1.5.0"` | **不成立 (REJECTED)**<br>1. **PEP 440 等价性**: Python 打包标准明确规定 `Version("1.5") == Version("1.5.0")`，双方在数学与逻辑上完全等价；<br>2. **架构规整策略**: deps.dev 统一 SemVer 三段式建模，非解析反序列化故障。 |
+
+---
+
+## 二、新真实错误案例完整证据链条 (`hatch-vcs@0.4.0`)
+
+### 1. 原始制品坐标与哈希证明
+- **二进制 Wheel**: `hatch_vcs-0.4.0-py3-none-any.whl`  
+  - SHA-256: `b8a2b6bee54cf6f9fc93762db73890017ae59c9081d1038a41f16235ceaf8b2c`
+- **源码 Sdist**: `hatch_vcs-0.4.0.tar.gz`  
+  - SHA-256: `093810748fe01db0d451fabcf2c1ac2688caefd232d4ede967090b1c1b07d9f7`
+- **发布时间**: `2023-12-11T03:31:37.498188Z`
+
+### 2. 各来源字段值对比
+- **制品内部原始标头 (`METADATA` / `PKG-INFO`)**:
+  ```text
+  Project-URL: Funding, https://github.com/sponsors/ofek
+  Project-URL: History, https://github.com/ofek/hatch-vcs/blob/master/HISTORY.md
+  Project-URL: Issues, https://github.com/ofek/hatch-vcs/issues
+  Project-URL: Source, https://github.com/ofek/hatch-vcs
+  ```
+- **上游注册表 (PyPI JSON API)**:
+  `info.project_urls.Source` 为 `"https://github.com/ofek/hatch-vcs"`；`info.project_urls.Funding` 为 `"https://github.com/sponsors/ofek"`。
+- **下游索引 (deps.dev API v3)**:
+  `links`: `[{"label": "SOURCE_REPO", "url": "https://github.com/sponsors/ofek"}, ...]`  
+  `relatedProjects`: `[{"projectKey": {"id": "github.com/sponsors/ofek"}, "relationType": "SOURCE_REPO"}]`
+
+### 3. 客观证伪与判定依据链
+1. **网络协议层客观证伪**:
+   - `git ls-remote https://github.com/sponsors/ofek` 直接返回 `fatal: repository not found`（exit code 128），证明该链接**物理上不是 Git 仓库**，无法检出代码；
+   - `git ls-remote https://github.com/ofek/hatch-vcs` 正常返回完整 commit ref（exit code 0）。
+2. **规范依据**:
+   - PEP 566 (Metadata 2.1) 与 PEP 753 明确定义了 `Project-URL: label, url` 的标签映射关系，`Source` 与 `Funding` 互斥。
+3. **权威维护者归因确认**:
+   - Google [deps.dev Issue #220](https://github.com/google/deps.dev/issues/220) 官方团队成员公开确认系解析器在处理 PEP 753 规范标签时的提取缺陷；hatch-vcs 作者也亲自证实了该问题。
+
+---
+
+## 三、产出文件与当前环境状态
+
+1. **报告落盘**: `~/workspace/nlnet-codesupply-council/pmv/evidence/real-error-case-v2.md` 已写入。
+2. **自动化测试与基线验证**:
+   ```bash
+   $ python3 -m unittest discover -s tests -p "test_*.py"
+   Ran 56 tests in 0.080s - OK
+   
+   $ cd evidence && sha256sum -c MANIFEST.sha256
+   12/12 文件全部校验通过 (OK)
+   ```
+3. **结论**: 关口 1 补救任务圆满完成，提供了无需任何人工构造、具备 100% 封闭可验证证据链的真实错误案例。
+DSH_EXIT=0

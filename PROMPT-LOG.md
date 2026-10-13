@@ -173,3 +173,11 @@
 - 新真实错误案例：Gemini 已派工（TASK-REALERROR-gemini.md），最多试 3 个候选。
 - 材料统一：已核查——README/大纲/日志/披露草稿口径一致（56/56、PMV 概念验证、262h 未来人类预算）；大纲 L336 为历史修正记录，非过度承诺。
 - 履历索引：新建 CREDENTIALS-INDEX.md（6 项：dsh 补丁、MEC、terramike、PR #228、purl#39、PMV），每项写明主张/证据/验证范围。
+
+## 条目 24 — 关口 1 新真实错误案例（Gemini，2026-10-13 19:43）
+- 模型：Gemini（dsh --profile gemini-sub）；Prompt：TASK-REALERROR-gemini.md；输出：realerror-gemini.txt（DSH_EXIT=0）
+- 新案例：**pkg:pypi/hatch-vcs** —— deps.dev 把 `SOURCE_REPO` 链接错标为资助地址（github.com/sponsors/ofek）而非真实仓库（github.com/ofek/hatch-vcs）。
+- 证据链：`git ls-remote` 物理证伪（sponsors 链接非 Git 仓库）＋ PEP 566/753 标签规范 ＋ **deps.dev 官方团队在 Issue #220 公开确认为解析器缺陷** ＋ hatch-vcs 作者亲自证实。
+- 结论：成立（真实解析器故障，非构造）。typing-extensions 证伪原因也在报告中如实记录（STANDARDS_CONTRADICTION，双方均未违反自身规范）。
+- 证据文件：evidence/real-error-case-v2.md（14,252 字节）。
+- verifier.py 保持冻结；56/56 测试、MANIFEST 12/12 不受影响。
