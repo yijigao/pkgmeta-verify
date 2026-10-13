@@ -1,6 +1,6 @@
 # 交付清单（Delivery Manifest）
 
-- **交付版本**：tag `delivery-2026-10-13-sealed2`（对应 commit 见 `git rev-list -n 1 delivery-2026-10-13-sealed2`；文件不可自含其所在提交的 hash，故以 tag 绑定具体版本）
+- **交付版本**：tag `delivery-2026-10-13-sealed3`（对应 commit 见 `git rev-list -n 1 delivery-2026-10-13-sealed3`；文件不可自含其所在提交的 hash，故以 tag 绑定具体版本）
 - **交付目录**：https://github.com/yijigao/pkgmeta-verify（公开仓库，免登录可读）
 - **清单生成时间**：2026-10-13（UTC+8）；共 130 个文件（含本清单与主张登记表自身）
 - **修改规则**：每个文件同时只允许一个修改者；冻结文件（已冻结）不得修改，改则重新走验收；**改文件必同步重生成本清单；清单必须是所有文件定稿后的最后一步，单独生成、单独提交，之后不许再动任何文件**
