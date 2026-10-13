@@ -188,7 +188,7 @@ cd evidence && sha256sum -c MANIFEST.sha256
 
 输出结果遵循严格的 JSON Schema 规范，定义文件位于 `schemas/pmv-output.schema.json`。
 - **类型规范**：完全使用合法的 Draft 2020-12 小写类型（`object`, `string`, `array`, `boolean`, `number`, `integer` 等）。
-- **$id 地址**：`https://raw.githubusercontent.com/yijigao/pkgmeta-verify/<tag>/schemas/pmv-output/v0.1.json`（*注：项目上线并绑定生产域名之前，作为版本化规范占位地址*）。
+- **$id 地址**：`https://raw.githubusercontent.com/yijigao/pkgmeta-verify/v0.1/schemas/pmv-output/v0.1.json`（*注：项目上线并绑定生产域名之前，作为版本化规范占位地址*）。
 - **核心字段**：
   - `purl`, `ecosystem`, `name`, `version`, `ruleset_version`, `synthetic`
   - `verdict`: `category`, `subcode`, `confidence`, `summary`, `details`, `avoided_false_positive`

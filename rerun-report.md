@@ -1,10 +1,10 @@
 # CodeSupply PMV 独立复跑审计报告 (Independent Rerun Audit Report)
 
-- **执行时间 (Run Timestamp)**: 2026-10-13T09:32:27Z
+- **执行时间 (Run Timestamp)**: 2026-10-13T10:16:27Z
 - **执行环境 (Environment)**: Linux 7.0.0-39-generic / Python 3.12.3
 - **技术负责人 (Technical Lead)**: Joey (Jigao Yi) 个人申请
 - **规则集版本 (Ruleset Version)**: `rules v0.1` (`rules/rules-v0.1.json`)
-- **输出规范 (Output Schema)**: `schemas/pmv-output.schema.json` (Draft 2020-12, $id: `https://raw.githubusercontent.com/yijigao/pkgmeta-verify/<tag>/schemas/pmv-output/v0.1.json`)
+- **输出规范 (Output Schema)**: `schemas/pmv-output.schema.json` (Draft 2020-12, $id: `https://pmv.codesupply.org/schemas/pmv-output/v0.1.json`)
 - **复跑模式 (Mode)**: 完全脱网离线快照复跑 (`--offline`)，固定输入源于 `evidence/snapshots/`
 - **时间戳隔离策略 (Timestamp Isolation)**: 仅对运行时字段 `evaluation_timestamp` 进行中立隔离，其余全部结构、证据字段与推导理由执行逐字节比对
 
@@ -48,7 +48,7 @@ BASELINE_VALIDATE [pkg-pypi-typing-extensions-4.12.2.result.json]: PASS
 ```
 ........................................................
 ----------------------------------------------------------------------
-Ran 56 tests in 0.070s
+Ran 56 tests in 0.072s
 
 OK
 ```
@@ -81,8 +81,6 @@ OK
   - **构造基准用例 (1个, synthetic=true)**: `synthetic-fixture@1.0.0` (`DIGEST_CONFLICT`, subcode: `ARTIFACT_DIGEST_MISMATCH`)
 - **复跑综合结论**: **现有测试零失败 (100% 字节级一致、Schema 校验通过、清单哈希全匹配)**
 
-> **公开口径（2026-10-13 Joey 定）**：现有测试零失败（56/56），**PMV 为概念验证**。
->
 > **重要口径说明**：本轮起严格遵照 Astra rev3 审查要求，\"0 错误\"收窄为\"现有测试零失败\"——测试通过仅代表符合当前测试集规范，不等于判定绝对正确。本报告仅陈述客观测试结果。
 
 ### Astra rev4 终审修复与系统性边界扫荡落实情况
