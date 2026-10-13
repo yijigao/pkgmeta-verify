@@ -1,6 +1,6 @@
 # 交付清单（Delivery Manifest）
 
-- **交付版本**：`NEW_COMMIT_HASH`（main 分支；tag `v0.1` 指向 Schema $id 版本）
+- **交付版本**：`ab931da46a1c52af2e2b7849847e536b96767f24`（main 分支；tag `v0.1` 指向 Schema $id 版本）
 - **交付目录**：https://github.com/yijigao/pkgmeta-verify（公开仓库，免登录可读）
 - **清单生成时间**：2026-10-13（UTC+8）；共 120 个文件（含本清单与主张登记表自身）
 - **修改规则**：每个文件同时只允许一个修改者；冻结文件（已冻结）不得修改，改则重新走验收
