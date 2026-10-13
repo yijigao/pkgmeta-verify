@@ -278,7 +278,10 @@ def load_sample_records() -> List[Dict[str, Any]]:
     if os.path.exists(df_path):
         records.append(json.load(open(df_path, encoding="utf-8")))
 
-    # 6. Ingestion Sync Delay: pkg:pypi/validfilepath@0.1 (with initial 404 observation)
+    # 6. Ingestion Sync Delay: pkg:pypi/validfilepath@0.1
+    # DEMO NOTE: the timestamps below are hand-filled from a single observation
+    # session for pipeline demonstration; this is a RECONSTRUCTED DEMO RECORD,
+    # not a measured proof. Do not cite as primary evidence.
     sync_record = {
         "purl": "pkg:pypi/validfilepath@0.1",
         "ecosystem": "pypi",
@@ -286,7 +289,7 @@ def load_sample_records() -> List[Dict[str, Any]]:
         "version": "0.1",
         "fetch_timestamp": "2026-10-13T10:07:26Z",
         "evaluation_timestamp": "2026-10-13T10:15:00Z",
-        "synthetic": False,
+        "synthetic": True,  # reconstructed demo record; not measured proof,
         "sources": {
             "registry": {
                 "source_id": "pypi_json",

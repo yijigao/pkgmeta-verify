@@ -51,6 +51,8 @@
 | CLM-025 | 生态范围 npm＋PyPI | Joey 决策 | 大纲 | 本申请 | 已证明（决策） | PROPOSAL §4 |
 
 | CLM-028 | PSF 分支标题触发局限 | `verifier.py` L346 实测 | 标题＋"version 2"即触发 | PMV 概念验证 | 已记录（已知局限） | README；rerun-report.md；PROPOSAL §6 |
+| CLM-029 | 接入示例为重建演示 | pipeline_demo.py／audit_pipeline_run.json 标注 | 手工填写时间戳 | 演示，非实测证明 | 已记录（演示） | examples/integration/ |
+| CLM-030 | real-error-case.md v1 已 superseded | 文件顶部标注 | "双方均未违反规范"归因已撤回 | 历史过程记录 | **已撤回**（被 v2 替代） | evidence/real-error-case.md；引用已改指 v2 |
 
 ## 状态机
 

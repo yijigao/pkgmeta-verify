@@ -76,9 +76,9 @@
       "avoided_false_positive": "Avoided misclassifying normal downstream indexing latency as upstream publication failure or missing package integrity fault.",
       "category": "SYNC_DELAY",
       "confidence": 0.979,
-      "details": "Upstream registry reports release published at '2026-10-13T09:59:55Z'. Temporal observation chain verified: downstream missing (404) observed at '2026-10-13T10:07:26Z' (delta 7 minutes (451s)), subsequent appearance (HTTP 200) observed at '2026-10-13T10:11:15Z'. Provable delay range is [7 minutes (451s), 11 minutes (680s)], which within sync tolerance window (86400s). Preserving uncertainty; not judged as missing package or mirror defect.",
+      "details": "[DEMO RECONSTRUCTION — not measured proof] Illustrative record based on a single observation session: upstream 2026-10-13T09:59:55Z, downstream 404 at 10:07:26Z, 200 at 10:11:15Z. The [451s, 680s] range is a single-observation value, not a proven delay interval.",
       "subcode": "DOWNSTREAM_INGESTION_LAG",
-      "summary": "Downstream index ingested release with verified temporal delay chain"
+      "summary": "[DEMO] Illustrative sync-delay record (reconstructed; not verified proof)"
     },
     "purl": "pkg:pypi/validfilepath@0.1",
     "recheck_executed": true

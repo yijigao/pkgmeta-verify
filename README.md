@@ -123,7 +123,7 @@ PMV 锁定 **npm** 与 **PyPI** 双生态，每个生态均包含权威注册表
 | **`INDETERMINATE`**<br>(无法判定) | `pkg:npm/debug@4.3.4`<br>*(synthetic=true)* | npm packument (200) | 跨算法比对测试：输入仅有 SHA-1 (`3d75be84...`) 与外部 SHA-256 请求。因缺乏共享算法，判定输出 `undecidable`。输入明确标为 `synthetic=true` 与真实案例分开统计。真实自然不可判定案例见 `evidence/natural-undecidable-case.md` (`django-flowcontrol@0.0.21`)。 | 普通 Diff 会因字符串不相等直接报警“哈希不匹配/被篡改”，或因算法键缺失触发 `KeyError` 崩溃。PMV 优雅降级为 `undecidable`。 |
 | **`DIGEST_CONFLICT`**<br>(*构造用例, synthetic=true*) | `pkg:npm/synthetic-fixture@1.0.0` | npm registry (200)<br>synthetic mirror (200) | 同一制品 `synthetic-fixture-1.0.0.tgz`（具备版本发布记录与 origin_url 身份绑定证据）与同一算法 `SHA-256`，解码字节不同 (`aaa...` vs `bbb...`)。 | 普通 Diff 会断言“镜像遭黑客篡改/损坏”。PMV 恪守客观边界，仅认定“摘要冲突”，要求进一步核验镜像源证明。 |
 
-> **完整案例与证据核验清单**: 详见 [`evidence/cases.md`](evidence/cases.md)、[`evidence/real-error-case.md`](evidence/real-error-case.md)、[`evidence/delay-chain.md`](evidence/delay-chain.md) 与 [`evidence/natural-undecidable-case.md`](evidence/natural-undecidable-case.md)。
+> **完整案例与证据核验清单**: 详见 [`evidence/cases.md`](evidence/cases.md)、[`evidence/real-error-case-v2.md`](evidence/real-error-case-v2.md)、[`evidence/delay-chain.md`](evidence/delay-chain.md) 与 [`evidence/natural-undecidable-case.md`](evidence/natural-undecidable-case.md)。
 
 ---
 
