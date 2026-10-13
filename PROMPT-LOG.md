@@ -218,3 +218,14 @@
 - ⑦ §10：M3 第三方明确为无偿参与；€100 覆盖其环境费；申请人 43.64h 仅为准备/协调/分析。
 - ⑧ 接入示例：删除 CONSISTENT 安全保证；STANDARDS_CONTRADICTION 分流人工复核；README"彻底避免误报"撤回。
 - 56/56 通过，MANIFEST 12/12 通过。
+
+## 条目 29 — 6 项残留修正＋新纪律（2026-10-13 21:09，主聊；已修完）
+- 背景：第三次"报完工实际没改干净"。新纪律：**任何"修完"必须先全文 grep 相关关键词确认无残留，再报完工**。
+- ① real-error-case-v2.md 总结段："官方承认/Parser Fault:YES/贪婪匹配"全部撤回→"链接错误成立，机制未确认"；grep 确认无残留（仅剩撤回声明本身）。
+- ② delay-chain.md blochsim 段："可证明/通常 7~12 分钟"撤回→单次观察。
+- ③ natural-undecidable-case.md L99："无许可项目"→"声明字段缺失，LICENSE 未核验，不能定性"。
+- ④ CREDENTIALS-INDEX："编写 PMV 判定规则"→"设定验证原则与验收纪律；明细规格由 AI 编写"。
+- ⑤ 条目 26：如实标注终审 prompt 缺失（此前补的是 handoff），已向主聊请求。
+- ⑥ 接入示例：删除仓库内重复目录 examples/integration/integration/；修复 triage——STANDARDS_CONTRADICTION 按 subcode 优先分流人工复核（实测 typing-extensions → MANUAL_REVIEW）；README"彻底避免误报"撤回。
+- manifest 12/12（全新 clone），56/56 通过。
+- **等 Astra 全量根因扫描报告**，不再一轮一补（Joey 指令）。
