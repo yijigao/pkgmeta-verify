@@ -1,0 +1,140 @@
+# NLnet CodeSupply · 提交前 5 关口之证据核验报告
+
+工作目录：`~/workspace/nlnet-codesupply-council/pmv/`  
+核验原则：严格遵照规则集冻结约束（不修改 `verifier.py`），以**可引用的原始证据**为唯一准绳，拿不到闭环原始证据则如实定性为“未证明/不成立”，绝不编造解释。
+
+---
+
+## 一、三项核验结论一览
+
+| 关口项 | 核验对象 | 明确结论 | 核心结论判定说明 | 产出证据文件 |
+|---|---|---|---|---|
+| **1. 真实错误案例** | `pkg:pypi/typing-extensions@4.12.2` | **不成立**<br>(未证明) | **单边责任断言不成立**（`DOWNSTREAM_PARSING_ERROR` 已从规则集与基线中删除）；**区分“字段错误 vs 解析器故障”未证明**（属于生态规范演进导致的跨标准语义脱节，而非单一字段语法错误或程序崩溃）。 | `evidence/real-error-case.md` |
+| **2. 延迟时间链** | `pkg:pypi/archgraph-layout@2.3.0`<br>*(重采: `validfilepath@0.1`)* | `archgraph-layout`: **不成立**<br>重采案例: **成立** | `archgraph-layout` 原始日志缺乏 07:15:00Z 原始抓包与服务端标头记录，**无法消除 07:03:12Z 报告引用未来观察的倒序矛盾，维持 suspect / retracted 撤回状态**；<br>全新重采 `validfilepath@0.1` 具备完整前向单调时间链与服务器原始 HTTP Date 标头，**证明延迟区间为 `[450.1s, 679.1s]`**。 | `evidence/delay-chain.md` |
+| **3. 自然不可判定** | `pkg:pypi/django-flowcontrol@0.0.21` | **成立** | **真实缺证、自然不可比（非构造）**。PyPI 注册表核心元数据未声明任何许可，deps.dev 亦返回空数组，ClearlyDefined 无收录。触发 `CONSISTENCY_01_COMPARABLE_LICENSE`，证明“双源皆空”属于自然不可判定（置信度 0.0），避免了传统 Diff `null == null` 虚假一致报绿。 | `evidence/natural-undecidable-case.md` |
+
+---
+
+## 二、逐项证据核验与分析报告
+
+### 1. 真实错误案例最终确认 (`typing-extensions@4.12.2`)
+
+#### (1) 原始证据链
+- **制品许可证原文**:
+  - 制品文件：`typing_extensions-4.12.2-py3-none-any.whl`（SHA-256: `269fad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0`）
+  - 内置路径：`typing_extensions-4.12.2.dist-info/LICENSE`
+  - 原文为完整的标准 `PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2`，对应 SPDX 标识符 `PSF-2.0`（或 `Python-2.0.1`）。
+- **上游发布元数据规范 (PyPI Core Metadata)**:
+  - 源码 `pyproject.toml` 采用 PEP 621 语法 `license = { file = "LICENSE" }` 与 Trove 分类器 `Classifier: License :: OSI Approved :: Python Software Foundation License`；
+  - `flit_core` 打包生成的 `METADATA` (Metadata-Version 2.1) 未生成 `License:` 文本标头（当时 PEP 639 尚未普遍强制落地），PyPI JSON API 忠实反映为 `info.license: null`。
+- **下游衍生索引规范 ([deps.dev FAQ](https://docs.deps.dev/faq/#how-are-licenses-determined) 与 [Issue #94 维护者回复](https://github.com/google/deps.dev/issues/94))**:
+  - deps.dev 明确指出仅解析 wheel 的 `METADATA` 中的 `License:` 文本标头，且因历史歧义原因明确**不采信 Trove Classifiers**；在未映射到 SPDX 表达式时，按公开策略回退为 `licenses: ["non-standard"]`。
+- **辅助分析**: ClearlyDefined API 深度分析返回 `declared: "Python-2.0.1"`。
+
+#### (2) 区分“字段错误” vs “解析器故障”的因果判定
+- **能否证明上游“字段错误”？** 不能。上游开发者完全遵循当时的 PEP 517/566/621 标准与 Trove 分类器生态规范，没有违反任何打包约束，无法定性为字段填写错误；
+- **能否证明下游“解析器故障”？** 不能。deps.dev 严格执行了其公开声明的降级策略（无显式 SPDX 标头即输出 `non-standard`），程序没有崩溃、无反序列化异常；
+- **本质诊断**: 该差异是 **Python 打包生态历史标准（文件表+分类器）与外部现代索引器（强制要求单一 SPDX 标头）之间的标准脱节与语义阻抗（Standards/Semantic Mismatch）**。
+
+#### (3) 处理落实
+- **彻底删除 `DOWNSTREAM_PARSING_ERROR` 单边责任断言**：在 PMV 规则引擎中已彻底删除该子状态码，客观以 `STANDARDS_CONTRADICTION` 记录跨标准冲突，避免合规系统误拒核心基础库；
+- **换案例方案**：在 `evidence/real-error-case.md` 中记录了若后续严格审查要求 100% 封闭的“纯语法/格式字段错误”，推荐替换为违反 SPDX 语法的真实 npm 案例（如 package.json 声明非法表达式）。
+
+---
+
+### 2. 延迟时间链核验 (`archgraph-layout` 与全新重采 `validfilepath`)
+
+#### (1) `archgraph-layout@2.3.0` 排查结果：不能解释，保持 suspect/retracted
+- **矛盾复核**: 既有执行报告时间为 `2026-10-13T07:03:12Z`，快照却引用了 `2026-10-13T07:15:00Z` 的后续观察（倒序 12 分钟）；
+- **一手记录排查**:
+  - `run.log` 仅记录 `06:31:23Z` 的初始抓取，完全未记录 `07:15:00Z` 的原始 HTTP 响应、服务端标头或 cURL 跟踪；
+  - `evidence/snapshots/` 仅含结构化字段，无底层网络报文支撑；
+- **核验结论**: **不能解释矛盾，核验不成立**。严格保持 `verification_status: suspect` 与 `audit_status: retracted`，判定保持 `INDETERMINATE` (`undecidable`)，严禁作为已证明延迟宣称。
+
+#### (2) 全新重采干净延迟案例：`pkg:pypi/validfilepath@0.1`
+为提供完整单调、无时间倒序争议的一手延迟证据，在真实网络环境下完整捕获了以下三段链：
+
+- **T1: 上游发布时间 (PyPI Release)**
+  - 时间戳：`2026-10-13T09:59:55.901785Z`（PyPI 官方 `upload_time_iso_8601`）
+  - 状态：HTTP 200 OK，包含完整元数据与 wheel 制品。
+- **T2: 下游同步延迟观察 (deps.dev 404 Not Found)**
+  - 观察时间戳：`2026-10-13T10:07:26Z`
+  - 服务端协议标头：`HTTP/1.1 404 Not Found`，`Date: Tue, 13 Oct 2026 10:07:26 GMT`
+  - 响应报文体：`version not found`
+  - 摄取延迟时差：距发布 **+450.1 秒**（约 7.5 分钟）。
+- **T3: 下游同步完成观察 (deps.dev 200 OK)**
+  - 观察时间戳：`2026-10-13T10:11:15Z`
+  - 服务端协议标头：`HTTP/1.1 200 OK`，`Date: Tue, 13 Oct 2026 10:11:15 GMT`
+  - 响应报文体：返回完整版本信息与 `licenses: ["MIT"]`
+  - 摄取延迟时差：距发布 **+679.1 秒**（约 11.3 分钟）。
+- **可证明的延迟范围 (Proven Ingestion Lag Window)**:
+  $$\text{Lag Window} = [450.1\text{s}, 679.1\text{s}]\quad (\approx 7.5\text{ 分钟} \sim 11.3\text{ 分钟})$$
+  完全处于 PMV 设定的 24 小时（86,400 秒）正常生态摄取延迟容限之内。
+- **因果单调性检验**:
+  $$\text{09:59:55Z} < \text{10:07:26Z} < \text{10:11:15Z}$$
+  具备服务端 `Date` 标头支撑，严格单调向前递增，证据链 100% 封闭完整。
+- *(备选交叉互证案例：`pkg:pypi/blochsim@0.0.13`，发布 09:59:16Z，10:06:32 GMT 返回 404，10:11:34 GMT 返回 200，证明延迟区间为 `[436s, 738s]`)*。
+
+---
+
+### 3. 自然不可判定案例 (`django-flowcontrol@0.0.21`)
+
+#### (1) 案例坐标与属性
+- **PURL**: `pkg:pypi/django-flowcontrol@0.0.21`
+- **属性**: `synthetic: false`（天然真实案例，非人工构造）
+
+#### (2) 证据标准与缺失证据核验
+- **上游 PyPI 注册表核心元数据**:
+  - `info.license`: `null`
+  - `info.classifiers`: `[]`（无任何 License 相关分类器）
+  - 缺失事实：上游打包与发布清单完全缺失开源许可证声明。
+- **下游 deps.dev 索引 API**:
+  - `licenses`: `[]`（空数组）
+  - 缺失事实：下游索引未发现任何许可证信息。
+- **ClearlyDefined API**:
+  - 未收录或无有效许可证切面数据。
+
+#### (3) 为什么不可比 (Why Incomparable)
+- **触发硬约束规则**: `CONSISTENCY_01_COMPARABLE_LICENSE`（`has_comparable_license_declarations == False`）；
+- **判定输出**: `category: INDETERMINATE`，`subcode: undecidable`，`confidence: 0.0`；
+- **形式化逻辑证明**:
+  各对照源均未提供任何实质性的许可证声明。“双源皆空（`null == null`）”在形式逻辑上**仅代表双方共同缺失证据（Evidence Vacuum），绝不能等同于“已验证一致（CONSISTENT）”**。在缺乏可比对的实质元数据事实的前提下，跨源一致性在逻辑上属于典型的**自然不可判定**。
+- **相较普通 Diff 避免的误判**:
+  避免传统 Diff 工具因 `null == null` 机械判断为 PASS，误向合规系统报告“经核验证实一致”，导致下游系统放行版权完全保留、零授权保护的高风险代码。
+
+---
+
+## 三、生成证据文件与环境校验
+
+1. **已生成的核验文档**:
+   - `evidence/real-error-case.md`：typing-extensions 许可证原文、各来源字段定义与因果链论证；
+   - `evidence/delay-chain.md`：archgraph-layout 倒序矛盾核验分析及 validfilepath 全新重采完整时间链；
+   - `evidence/natural-undecidable-case.md`：django-flowcontrol 真实缺证、自然不可比判定报告；
+   - `evidence/cases.md`：全量案例清单与证据状态总表；
+   - 更新 `README.md` §5 案例清单索引。
+
+2. **独立复跑与密码学一致性校验 (`./rerun.sh`)**:
+   ```
+   --- Phase 1: Verifying Cryptographic Baseline Manifest (evidence/MANIFEST.sha256) ---
+   PASS: All 12/12 files in MANIFEST.sha256 verified successfully with exact SHA-256 match.
+
+   --- Phase 2: Validating JSON Schema & Baseline Result Files ---
+   PASS: Schema self-check and baseline instances verified successfully.
+
+   --- Phase 3: Executing Regression Test Suite (tests/test_*.py) ---
+   PASS: All 56 targeted regression tests passed cleanly.
+
+   --- Phase 4: Executing Deterministic Offline Replay & Byte-for-Byte Diff ---
+   Rerunning pkg:pypi/typing-extensions@4.12.2 ... PASS (0 diff, Schema VALID)
+   Rerunning pkg:pypi/archgraph-layout@2.3.0 ... PASS (0 diff, Schema VALID)
+   Rerunning pkg:npm/esprima@4.0.1 ... PASS (0 diff, Schema VALID)
+   Rerunning pkg:npm/debug@4.3.4 ... PASS (0 diff, Schema VALID)
+   Rerunning pkg:npm/synthetic-fixture@1.0.0 ... PASS (0 diff, Schema VALID)
+
+   === Final Status ===
+   Test Result: 现有测试零失败 (0 failures)
+   Passed Cases: 5/5
+   现有测试零失败 (ALL TESTS PASSED)
+   ```
+   **核验状态说明**：`verifier.py` 严格保持冻结无修改，基线哈希清单 12/12 完全匹配，56 个回归测试全数通过，字节级复跑 0 diff。所有证据材料均已落地并可直接引用。
+DSH_EXIT=0

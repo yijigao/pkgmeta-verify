@@ -160,3 +160,11 @@
 ## 条目 21 — 阿仁复跑原始日志补入（2026-10-13 18:11，主聊）
 - pytest-full.log（8,048 字节：56 passed）、rerun-full.log（1,866 字节）已归档到 docs/evidence/。
 - 4 项诚实问题全部闭环。
+
+## 条目 22 — 提交前关口 1–3 证据核验完成（Gemini，2026-10-13 18:17）
+- 模型：Gemini（dsh --profile gemini-sub）；Prompt：TASK-GATES-gemini.md；输出：gates-gemini.txt（DSH_EXIT=0）
+- 关口 1（真实错误案例）：typing-extensions 单边责任断言**不成立**（已删除）；"字段错误 vs 解析器故障"区分未证明。需替换新案例。
+- 关口 2（延迟时间链）：archgraph-layout 倒序矛盾无法消除，维持 suspect/retracted；**新采 validfilepath@0.1 成立**（完整时间链＋原始 HTTP 响应头＋可证明延迟范围）。
+- 关口 3（自然不可判定）：**django-flowcontrol@0.0.21 成立**（真实缺证、INDETERMINATE、非构造）。
+- 证据文件：evidence/real-error-case.md、delay-chain.md、natural-undecidable-case.md、cases.md；README §5 索引已更新。
+- verifier.py 保持冻结未改；MANIFEST 12/12 仍有效。

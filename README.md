@@ -118,10 +118,12 @@ PMV 锁定 **npm** 与 **PyPI** 双生态，每个生态均包含权威注册表
 | 判定类别 | 案例坐标 (PURL) | 对照源与状态 | 实测判定依据 | 相较普通 Diff 避免的误判 |
 |---|---|---|---|---|
 | **`REAL_ERROR`**<br>(真实错误) | `pkg:pypi/typing-extensions@4.12.2` | PyPI JSON (200)<br>deps.dev v3 (200)<br>ClearlyDefined (200) | 基于制品内 `typing_extensions-4.12.2.dist-info/LICENSE` 经验证据与 PyPI 分类器明确为标准 PSF-2.0，ClearlyDefined 验证为 `Python-2.0.1`。但 deps.dev 标注为 `['non-standard']`。动态引用经验证据，客观判定为 `STANDARDS_CONTRADICTION`，删除单边归因。 | 普通 Diff 仅报告字符串不一致或直接归咎某方。PMV 客观记录标准冲突，避免合规系统误拒合规核心库。 |
-| **`INDETERMINATE`**<br>(疑似延迟，时间链待核验) | `pkg:pypi/archgraph-layout@2.3.0` | PyPI JSON (200)<br>deps.dev v3 (404 & 200) | 按照 Astra rev3 审查要求，该案例降级为“疑似延迟，时间链待核验”，标记 `verification_status: suspect` 与 `audit_status: retracted`。从已证明延迟案例撤下，判定为 `INDETERMINATE` (`undecidable`)。 | 避免在缺乏原始日志核验时武断宣称延迟已获确凿证明。保留快照审计记录并保留不确定性。 |
+| **`INDETERMINATE`**<br>(疑似延迟，时间链待核验) | `pkg:pypi/archgraph-layout@2.3.0` | PyPI JSON (200)<br>deps.dev v3 (404 & 200) | 按照 Astra rev3 审查要求，该案例降级为“疑似延迟，时间链待核验”，标记 `verification_status: suspect` 与 `audit_status: retracted`。从已证明延迟案例撤下，判定为 `INDETERMINATE` (`undecidable`)。新采已证明案例见 `evidence/delay-chain.md` (`validfilepath@0.1`)。 | 避免在缺乏原始日志核验时武断宣称延迟已获确凿证明。保留快照审计记录并保留不确定性。 |
 | **`SEMANTIC_DIVERGENCE`**<br>(语义差异) | `pkg:npm/esprima@4.0.1` | npm packument (200)<br>ClearlyDefined (200) | 明确判定源（`npm_registry`, `clearlydefined`, `deps_dev`）与字段。ClearlyDefined 全仓库核心切面文件级扫描发现并声明 `BSD-2-Clause AND BSD-3-Clause`，与 npm 顶层声明 `BSD-2-Clause` 存在布尔与义务差异，禁止自动采信单方。 | 普通 Diff 会强行以顶层声明覆盖深度扫描，或机械合并导致许可冲突。PMV 标识复合布尔语义差异。 |
-| **`INDETERMINATE`**<br>(无法判定) | `pkg:npm/debug@4.3.4`<br>*(synthetic=true)* | npm packument (200) | 跨算法比对测试：输入仅有 SHA-1 (`3d75be84...`) 与外部 SHA-256 请求。因缺乏共享算法，判定输出 `undecidable`。输入明确标为 `synthetic=true` 与真实案例分开统计。 | 普通 Diff 会因字符串不相等直接报警“哈希不匹配/被篡改”，或因算法键缺失触发 `KeyError` 崩溃。PMV 优雅降级为 `undecidable`。 |
+| **`INDETERMINATE`**<br>(无法判定) | `pkg:npm/debug@4.3.4`<br>*(synthetic=true)* | npm packument (200) | 跨算法比对测试：输入仅有 SHA-1 (`3d75be84...`) 与外部 SHA-256 请求。因缺乏共享算法，判定输出 `undecidable`。输入明确标为 `synthetic=true` 与真实案例分开统计。真实自然不可判定案例见 `evidence/natural-undecidable-case.md` (`django-flowcontrol@0.0.21`)。 | 普通 Diff 会因字符串不相等直接报警“哈希不匹配/被篡改”，或因算法键缺失触发 `KeyError` 崩溃。PMV 优雅降级为 `undecidable`。 |
 | **`DIGEST_CONFLICT`**<br>(*构造用例, synthetic=true*) | `pkg:npm/synthetic-fixture@1.0.0` | npm registry (200)<br>synthetic mirror (200) | 同一制品 `synthetic-fixture-1.0.0.tgz`（具备版本发布记录与 origin_url 身份绑定证据）与同一算法 `SHA-256`，解码字节不同 (`aaa...` vs `bbb...`)。 | 普通 Diff 会断言“镜像遭黑客篡改/损坏”。PMV 恪守客观边界，仅认定“摘要冲突”，要求进一步核验镜像源证明。 |
+
+> **完整案例与证据核验清单**: 详见 [`evidence/cases.md`](evidence/cases.md)、[`evidence/real-error-case.md`](evidence/real-error-case.md)、[`evidence/delay-chain.md`](evidence/delay-chain.md) 与 [`evidence/natural-undecidable-case.md`](evidence/natural-undecidable-case.md)。
 
 ---
 
