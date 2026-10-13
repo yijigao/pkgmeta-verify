@@ -1,3 +1,27 @@
-Ran 53 tests in 0.008s
+=== Independent rerun attempt 1 (FAILED) ===
+start: 2026-10-13T10:06:46Z
+env: fresh venv, requests only (NO jsonschema)
+E....................................................
+======================================================================
+ERROR: test_schema (unittest.loader._FailedTest.test_schema)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_schema
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/unittest/loader.py", line 394, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/unittest/loader.py", line 337, in _get_module_from_name
+    __import__(name)
+  File "/tmp/indep-rerun2/tests/test_schema.py", line 26, in <module>
+    import jsonschema
+ModuleNotFoundError: No module named 'jsonschema'
+
+
+----------------------------------------------------------------------
+Ran 53 tests in 0.015s
 
 FAILED (errors=1)
+exit: 1
+end: 2026-10-13T10:06:47Z
+cause: ModuleNotFoundError: No module named 'jsonschema' -> test_schema import failed
+fix: install jsonschema==4.26.0, rerun -> 56/56 OK
