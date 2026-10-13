@@ -1,0 +1,7 @@
+# GenAI 披露段落（草稿，供 Joey 写入申请文本时采用/修改）
+
+> **Use of generative AI in preparing this application.** We used generative AI tools for background research summarisation, proposal outline structuring, technical design suggestions, and budget modelling. Specifically: DeepSeek (via API) for literature/differentiation analysis and outline drafts; Gemini for demo technical design and PMV prototype implementation; GPT-6.1-Sol and Astra Max for outline revisions against reviewer feedback. All AI outputs were independently verified against primary sources (official NLnet pages, upstream project docs, live API responses) before use. The final proposal text was written and verified by the applicant (Jigao Yi); no AI-generated text was submitted unverified. A complete prompt provenance log — model, date/time, full prompts, and unedited outputs — is archived at https://github.com/yijigao/pkgmeta-verify/blob/main/PROMPT-LOG.md (prompts and outputs under `docs/evidence/prompts/` and `docs/evidence/outputs/`).
+>
+> The ~262h labour budget corresponds to real human work: software development, code review, dataset integration, independent verification runs, documentation, and upstream coordination. AI-assisted artefacts (PMV prototype code, evidence pack) were human-reviewed, independently re-run, and will be re-verified by a non-implementer before submission.
+
+注：按官方 GenAI Policy，披露须说明"为什么必要"——原因：申请人在出差窗口期，需在 3 周内完成跨 5 个上游项目的差异调研与可运行原型验证，AI 用于加速资料整理与初稿，具体事实均经人工核验。

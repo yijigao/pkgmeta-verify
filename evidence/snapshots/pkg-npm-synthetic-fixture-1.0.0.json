@@ -12,6 +12,7 @@
           "digests": {
             "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
           },
+          "release_record": "pkg:npm/synthetic-fixture@1.0.0",
           "url": "https://registry.npmjs.org/synthetic-fixture/-/synthetic-fixture-1.0.0.tgz"
         }
       ],
@@ -37,6 +38,8 @@
           "digests": {
             "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
           },
+          "origin_url": "https://registry.npmjs.org/synthetic-fixture/-/synthetic-fixture-1.0.0.tgz",
+          "release_record": "pkg:npm/synthetic-fixture@1.0.0",
           "url": "https://mirror.example.org/synthetic-fixture-1.0.0.tgz"
         }
       ],

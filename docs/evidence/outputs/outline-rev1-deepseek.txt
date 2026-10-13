@@ -1,0 +1,295 @@
+# 第 2 节 提案大纲（修订版，€15,000 拍板）
+
+> 按 Astra 终审意见（ASTRA-ADJUDICATION-2026-10-13.md）逐项落实。定位收窄为"可供 CodeSupply 聚合管线接入的独立质检组件"；生态锁定 2 个；金额 €15,000；M1–M4 按终审表；新增竞品差异表、真实冲突样例设计、选题评估记录与待拍板项。本文件只给大纲，不含提案正文。
+
+## 2.0 与官方评分权重的对应（已核原文）
+
+Official Guide for Applicants 原文表（30/40/30）：
+
+> 30% Technical excellence/feasibility ｜ 40% Relevance/Impact/Strategic potential ｜ 30% Cost effectiveness/Value for money
+
+加权总分须 **>5.0 / 7** 才进第二轮；二轮会明确问 "what is the difference in approach to existing projects U, V and W"、"how does upstream project D feel about your application"。([CodeSupply Guide for Applicants](https://nlnet.nl/codesupply/guideforapplicants/))
+
+大纲按 **40% → 30% → 30%** 组织。
+
+## 2.1 项目标题与定位
+
+> **Package Metadata Verifier（PMV）——可接入 CodeSupply 聚合管线的独立质检组件：带来源、时间与可复现证据的跨源包元数据差异判定与生命周期追踪**
+
+**一句话定位**：本项目**不采集、不聚合、不重建数据集**；它消费各权威源已经发布的包元数据，做**带 provenance 与时间戳的跨源差异判定和生命周期追踪**，输出机器可读、可离线复现、可整包下载的**校验结论**，供任何聚合方（含 CodeSupply 核心聚合管线）作为第三方质检组件接入。
+
+**明确定位为"组件"的三个含义**：
+1. **可接入**：提供 CLI + 稳定 JSON Schema 的库，聚合方按 `purl + version` join 即可消费判定结果，无需改其内部架构。
+2. **独立**：不写上游、不依赖任何闭源服务、无密钥、支持离线快照回退；即使不接 deps.dev / ClearlyDefined 也可完整运行。
+3. **质检而非重建**：只补"对不对、还新不新、谁在何时说过"，不重做采集/归一/漏洞/依赖图。
+
+## 2.2 定位与接入方式：输入 / 输出 / 接入示例
+
+### 2.2.1 输入（吃什么格式）
+
+1. **待校验坐标表** `coords.jsonl`（或 `purls.txt`），每行一个：
+   - `{"purl":"pkg:npm/lodash@4.17.21"}`
+   - `pkg:pypi/requests@2.31.0`
+   - 允许只给包名（则枚举该包所有版本做存在性与生命周期判定）。
+2. **源适配器配置** `sources.yaml`：每源声明 `id、ecosystem、endpoint 模板、认证（默认 none）、限速、快照目录、数据许可`。
+   - 本轮锁定 **npm**：npm registry 官方接口 ＋ deps.dev API（ClearlyDefined API 作可选第三源）。
+   - 本轮锁定 **PyPI**：PyPI JSON API / Simple index ＋ deps.dev API（ClearlyDefined / OSV export 用于生命周期交叉核对）。
+3. **固定输入快照** `snapshots/<source_id>/<fetched_at>/…`：抓取结果原样落盘，附 `_meta`（`source_id、url、http_status、etag/last-modified、snapshot_sha256、fetched_at、抓取工具版本`）。**判定阶段只读快照，不依赖实时网络**——这是"可复现"的物理前提。
+4. **版本化规则文件** `rules/normalization-v1.yaml`、`rules/verification-v1.yaml`：含归一化规则、判定阈值、权威源优先级、**哈希比较硬约束**、判定类别映射。规则文件本身可测试、可引用、带版本号。
+
+### 2.2.2 输出（产出什么）
+
+| 产物 | 格式 | 内容要点 |
+|---|---|---|
+| `out/discrepancies.jsonl` | JSON Lines，每行一个 (坐标, 字段, 判定类) | `purl、version、field、verdict∈{real_error, sync_delay, semantic_diff, undecidable, consistent}、sources[]{source_id,endpoint,fetched_at,snapshot_sha256,value}、rule_id、rule_version、checked_at、evidence` |
+| `out/lifecycle.jsonl` | JSON Lines | 存在性、撤包/yank、改名/迁移事件，带 `first_seen_at / last_seen_at / source_id / evidence` |
+| `out/scorecard.json` | JSON | 每生态/每源的覆盖率、冲突率、陈旧率、不可判定率；作为时间序列发布 |
+| `out/dataset-<version>.tar.zst` | 压缩包 | 正式校验结果数据集；附 `MANIFEST.sha256`（可选 Sigstore 签名）与 `CITATION.cff`；许可 CC-BY-4.0；可整包离线下载 |
+| `out/report.html` / `out/report.sarif` | HTML（WCAG 2.2 AA）/ SARIF 2.1.0 | 人类可读报告；SARIF 供 CI 消费；CLI 另提供纯文本、非颜色依赖输出 |
+
+### 2.2.3 接入示例（聚合方如何调用）
+
+**CLI 示例**：
+
+```bash
+pkgmeta-verify verify \
+  --coords coords.jsonl \
+  --sources sources.yaml \
+  --snapshots ./snapshots \
+  --rules ./rules \
+  --out ./out \
+  --format jsonl,sarif
+```
+
+**库调用示例**（Python 包，稳定 JSON Schema）：
+
+```python
+from pkgmeta_verify import Verifier
+v = Verifier(sources="sources.yaml", rules="rules/", mode="offline")
+records = v.verify(coords)   # -> {"discrepancies": [...], "lifecycle": [...]}
+```
+
+**聚合方接入契约**（写进提案，避免厂商锁定）：
+
+1. 以 `purl + version` 为联合键 join 聚合记录；校验器**只读、不修改上游源数据**。
+2. 判定到策略的默认映射：`real_error` → 隔离/告警；`sync_delay` → 按 `retry_after` 重查；`semantic_diff` → 套用 `rule_id` 规范化并保留原始值；`undecidable` → 降置信度、人工/智能体复核；`consistent` → 放行。
+3. **CI 集成**：提供 conformance kit 与 GitHub Action 示例，用固定快照离线复跑，出现新的 `real_error` 时非零退出。
+4. **接入成本趋零**：无密钥、无云账号、可完全离线；离线快照回退保证上游宕机时仍可复算。
+
+## 2.3 问题陈述（对应 40% 相关性/影响）
+
+现有项目解决了"**有没有**"（AboutCode/PurlDB、ClearlyDefined、deps.dev 都在采集）和"**漏没漏**"（OSV 做漏洞），但没有解决"**对不对、还新不新、谁在何时说过**"：
+
+- 同一 PURL 在不同权威源之间的字段会互相矛盾（许可证声明、仓库链接、发布时间、生态归属），且**没有任何一处带来源与时间地判定谁错、谁只是慢、谁只是口径不同**。
+- ClearlyDefined 官方明确"**不解决 identity 问题**"，且**无独立校验层**；`licensedScoreMedian` 仅 60，数据陈旧。
+- AboutCode `purl-validator` 目前**只判 base PURL 是否存在**，不校验版本存在性、撤包、改名、哈希漂移。
+- deps.dev **后端闭源、不接受外部校验**，缺撤包/改名/维护者字段，全量数据只能走 BigQuery。
+- **PURL 官方测试集**只覆盖 PURL 字符串规范化一致性，不涉及跨源元数据比对。
+- OSV 的质量校验只在**导入期、面向 advisory**，不是包级。
+
+结果是：CodeSupply 这类聚合即使成功，**下游拿到的仍是"未经验证、无 provenance 的元数据"**；CRA 等要求"可验证、可追溯"的场景下，冲突与过期数据无人负责。**我们只补这一层。**
+
+## 2.4 增量聚焦（唯一主张）
+
+> **唯一主张：带来源、时间和可复现证据的跨源差异判定与生命周期追踪。**
+
+**明确剔除（不算创新，仅作基线接入与测试基础设施）**：
+
+- ❌ 普通**存在性检查**——AboutCode `purl-validator` 已有 base PURL 存在性校验，我们直接接入其结果并向下扩展到版本级与字段级，不主张存在性本身是创新。
+- ❌ **PURL 归一化测试**——PURL 官方已有 conformance 测试集；我们的边界语料只用于保证自身判定正确，不计入创新主张。
+- ❌ 坐标/标识归一、依赖图解析、漏洞归一、联邦数据目录——全部不做。
+
+**本增量必须同时满足三要素，缺一不算**：
+
+1. **来源（provenance）**：每条判定都能追到 `source_id + endpoint + fetched_at + snapshot_sha256`。
+2. **时间**：判定能区分"错误"与"时间差"，并显式解释同步延迟，而不是把新旧快照一律当冲突。
+3. **可复现证据**：固定输入快照 + 固定规则版本 → 逐字节可复算同一判定。
+
+## 2.5 竞品差异表
+
+### 2.5.1 五项逐项：已解决 / 未解决 / 我们的增量
+
+| 项目 | 已解决 | 未解决 | 我们的增量 |
+|---|---|---|---|
+| **AboutCode purl-validator** | base PURL 存在性校验；12 生态；依赖 MineCode 快照 | 仍为 0.0.1b1；**只判 base PURL 是否存在**；不校验版本存在性、字段一致性、哈希漂移；无生命周期、无 provenance/时间、无可下载数据集 | 接入其存在性结果为基线，**向下扩展**到版本级存在性 + 字段级跨源差异 + 生命周期；输出带来源/时间/快照哈希的判定；不重做其归一 |
+| **PURL 官方测试集** | 跨类型 canonical PURL 解析/归一 conformance 测试；已是事实标准 | 仅覆盖**标识字符串规范化**；不涉及跨源元数据比对、在线/离线存在性验证、证据留存 | 直接以官方测试集为**回归基线**；在其上补"跨源对齐 + 带 provenance 判定"的边界语料；**不主张归一化本身是创新** |
+| **ClearlyDefined** | 坐标模型 `type/provider/namespace/name/revision`；harvest 管线；declared/discovered 区分；GitHub PR curation；CC0 | 官方明说"**不解决 identity**"；**无独立校验层**（仅工具输出+人工 review）；无签名/证明/自动冲突检测；无官方全量离线数据集（issue #386 自 2019 开放，路线图排到 2027） | 做其**下游质检层** + **可离线整包下载的校验结果数据集**；补它公开承认不做、路线图又排在 2027 之后的两块；不替代它 |
+| **deps.dev** | 7 生态"真解析"传递依赖图（一致率 99%+）；统一 System/Name/Version；`publishedAt`、SPDX、OSV、hashes、purl、Sigstore attestation；BigQuery 数据集 | **后端闭源**，外部无法参与校验、无法自建；全量数据**仅 BigQuery**（需 GCP，不可离线 dump）；缺 maintainers、下载量、显式 yank、改名追踪；**无通用元数据校验层** | 把 deps.dev 当**对照源之一**（公共 API/开源 util）；校验它自己也不追踪的撤包/改名/字段冲突；提供可离线、可自托管、可在 CI 跑的校验器；不重做依赖图 |
+| **OSV / OSV.dev** | OSV Schema 事实标准；aliases/upstream/related 归一；约 30 生态；GCS 全量导出；exporter 每 15 分钟；OSV-Scanner 离线 | **只描述漏洞+受影响版本范围**；无作者/仓库/发布时间/下载量/许可证/删除/改名/存在性；质量校验发生在**导入期且面向 advisory** | **包级**（而非 advisory 级）存在性、撤包、改名、字段冲突校验；漏洞归一**交给 OSV，我们不碰** |
+
+### 2.5.2 能力边界（确认不重叠）
+
+| 能力 | purl-validator / PURL 测试集 | ClearlyDefined | deps.dev | OSV | **我们** |
+|---|---|---|---|---|---|
+| 采集/聚合包元数据 | ⚠️ purl-validator 依赖 MineCode | ✅ harvest | ✅ 7 生态 | ❌ | ❌ 消费，不重建 |
+| 坐标/标识归一 | ✅ PURL 规范与测试集 | ✅ 坐标模型 | ✅ | ⚠️ advisory 内 | ❌ 复用，不重做 |
+| 传递依赖图 | ❌ | ❌ | ✅ | ❌ | ❌ 消费 |
+| 漏洞归一/去重 | ⚠️ VulnerableCode | ❌ | ✅ 用 OSV | ✅ | ❌ 交给 OSV |
+| 版本级存在性/撤包/改名/哈希漂移 | ⚠️ 仅 base PURL | ❌ | ❌ | ❌ | ✅ 核心增量 |
+| 带来源+时间的跨源字段差异判定 | ❌ | ❌ 官方明说不解决 identity | ❌ 闭源、不接受外部校验 | ❌ 仅 advisory | ✅ 核心增量 |
+| 可复现证据链（快照+规则版本+checksum） | ⚠️ 部分 | ⚠️ 仅人工 PR | ❌ 闭源 | ⚠️ 部分 | ✅ 核心增量 |
+| 可离线整包下载的校验结果数据集 | ❌ | ❌（#386 开放中） | ⚠️ 仅 BigQuery | ✅ 漏洞 all.zip | ✅ 核心增量 |
+| 数据集质检器 + 质量评分卡 | ❌ | ❌ | ❌ | ❌ | ✅ 核心增量 |
+
+## 2.6 真实冲突样例设计
+
+### 2.6.1 判定类别定义
+
+| 判定 | 定义 | 必要条件 |
+|---|---|---|
+| `real_error` | 有权威、可复核证据证明某一源字段错误，或同一制品完整性不一致 | 存在权威源/内部一致性反证；证据可离线复算 |
+| `sync_delay` | 差异可被采集时间差**完全解释** | 较新源的发布时间晚于较旧快照的生成时间；记录双方时间 |
+| `semantic_diff` | 差异源于字段语义/归一化口径不同，双方表述各自成立 | 引用具体归一化规则；处理后可能一致或属于不同但都对 |
+| `undecidable` | 证据不足或不可比 | 输出 `unknown` + 原因码；**绝不猜测、绝不误报 mismatch** |
+| `consistent` | 多源一致 | 正样本，用于计算覆盖率与正确率 |
+
+**每条判定必须携带 provenance（source_id/endpoint/fetched_at/snapshot_sha256）与时间口径**，否则降级为 `undecidable`。
+
+### 2.6.2 样例表（≥4 类，含哈希例）
+
+> 以下为**真实机制的样例设计**；具体包名/版本在 M1 用实时抓取固化并写进 conformance kit，提案中不点名任何未经复核的项目。
+
+| 编号 | 类别 | 生态/对象 | 冲突机制（真实成因） | 来源与时间口径 | 期望判定 | 判定依据/规则 |
+|---|---|---|---|---|---|---|
+| S1 | **真实错误** | npm，版本级发布时间 | 某聚合快照把包级 `modified` 时间**复制到所有版本**，导致历史版本发布时间整体错误；registry packument 的 `time` 有逐版本权威时间 | 源 A：npm registry（权威，`time["<v>"]`）；源 B：某数据集快照 | `real_error`（指向源 B 的 `publishedAt`） | 权威源优先级 + 内部一致性反证（源 B 所有版本时间戳完全相同＝异常模式） |
+| S2 | **同步延迟** | npm 或 PyPI，新发布版本 | 版本刚发布数小时；registry 已列出，日更数据集尚未含该版本 | 源 A：registry（`fetched_at` 为 T）；源 B：数据集快照（`built_at` < T 且早于发布时间） | `sync_delay`（pending，非冲突）；给出 `retry_after` | 时间先后关系：`snapshot_built_at < version_published_at ≤ source_a_fetched_at` |
+| S3 | **语义差异** | PyPI，许可证字段 | PyPI `info.license` 是自由文本（"MIT License" / "MIT" / "UNKNOWN"），deps.dev/ClearlyDefined 用 SPDX；ClearlyDefined 还区分 declared/discovered | 源 A：PyPI JSON；源 B：deps.dev/ClearlyDefined | `semantic_diff`；规范化后可能升为 `consistent` | 套 SPDX 归一规则（`rule_id=license-spdx`）；表达式 OR/AND 不同则保留语义差异，不判错误 |
+| S4 | **语义差异**（归一化） | PyPI / npm，名称与版本 | PyPI 名称 PEP 503（大小写/`.`/`_`/`-`）、版本 PEP 440（`1.0`≡`1.0.0`、`1.0.post1`）；npm 名称强制小写 | 双方各自命名 | `semantic_diff` → 归一后 `consistent` | 归一规则显式化；若源使用了非规范写法，记 note 而非 error |
+| S5 | **无法判定** | npm / PyPI | 该字段仅一个源提供；或哈希仅单源；或仅剩不同算法的哈希；或依赖的快照已不可获取 | 单源或不可比 | `undecidable`（`unknown` + 原因码 `single_source` / `no_common_algorithm` / `evidence_expired`） | 不可比即如实标注；**禁止**用启发式猜出 mismatch |
+| S6 | **真实错误**（哈希） | npm / PyPI，同一制品 | 同一制品（同文件名+同大小）、**同一算法**（均 sha256）的两个来源摘要不同 → 镜像损坏或篡改 | 源 A：registry；源 B：镜像/数据集 | `real_error`（integrity） | 仅当"同一制品 + 同一算法"成立；否则不进入本判定 |
+
+### 2.6.3 哈希比较硬约束（写进校验规则）
+
+写入 `rules/verification-v1.yaml`，违反即**硬失败报错**，绝不输出判定：
+
+1. **同一制品**：`ecosystem/namespace/name/version` 相同，且分发文件名（及大小，若可用）相同；sdist 与 wheel 视为不同制品。
+2. **同一算法**：算法标识完全相同（sha256 vs sha256）。编码差异（hex / base64 / `sha512-` 前缀）**先规范化编码再比较**；编码不同不等于算法不同。
+3. **跨算法一律不可比**：如 npm `dist.shasum`（sha1, hex）vs `dist.integrity`（sha512, base64）→ `not_comparable`，**绝不判 mismatch**。
+4. **多文件版本按文件逐一比较**，禁止把多个分发文件折叠成单一"版本哈希"。
+5. 任何违反上述约束的比较尝试 → 校验器报错退出（非零），而不是静默降级。
+
+## 2.7 技术路线（对应 30% 技术可行性；本轮锁定 2 个生态）
+
+关键澄清：此处"采集"**不是**重建 registry 爬虫，而是**采集上游既有元数据与校验证据**；"归一"**不是**重做坐标模型，而是**把不同源的同一坐标对齐到可比较的字段集**；重心在"**校验**"。**本轮锁定 npm + PyPI，每生态 ≥2 个对照源，不设"扩至第 5–6 生态"的承诺。**
+
+- **P1（T+0 → T+3）：对齐层 + 端到端核心校验**
+  - 锁定 npm + PyPI；每生态 ≥2 对照源（registry 官方接口 + deps.dev；ClearlyDefined/OSV 作可选交叉源）。
+  - 定义统一 `SourceRecord` schema 与 `_meta` provenance；落地快照抓取与离线加载。
+  - 接入 PURL 官方测试集与 `purl-validator` 结果作为**基线**（非创新）。
+  - 跑通**端到端最小闭环**：坐标 → 快照 → 对齐 → 四类判定 → **可下载的小样结果集**（含每类样例 ≥2，总坐标数约 200–500）。
+  - 交付：`pkgmeta-verify` v0.1（CLI + 库）、CI 绿、覆盖率门槛、归一规则文件 v1 冻结、小样结果集（带 SHA-256 清单）。
+- **P2（T+3 → T+5）：生命周期规则 + 边界语料 + 正式数据集**
+  - 生命周期规则：版本存在性、撤包/yank、改名/迁移；产出 `first_seen/last_seen`。
+  - 边界语料（大小写、PEP 503、PEP 440、npm integrity/shasum 编码、多文件）——定位为**保证判定正确的测试基础设施**。
+  - **正式校验数据集**：版本化、CC-BY-4.0、可离线整包下载、带 `MANIFEST.sha256`。
+  - 交付：v0.2 + dataset v1 + conformance kit。
+- **P3（T+5 → T+7）：可复现 + 评分卡**
+  - **固定输入快照 + 固定规则版本 → 离线复跑**，逐字节一致（仅时间戳差异且已隔离）。
+  - **数据质量评分卡**时间序列首次发布（覆盖率/冲突率/陈旧率/不可判定率）。
+  - 交付：v0.3 + scorecard 时间序列。
+- **P4（T+7 → T+9）：上游化 + 收尾**
+  - 向上游（AboutCode purl-validator/PurlDB、ClearlyDefined、CodeSupply 核心仓库）提交校验器与语料，按其接口风格适配，**按约定处理反馈**。
+  - **不以他方合并作为验收条件**。
+  - 最终 Release、文档、复现手册、项目自身 SBOM + 供应链自审报告。
+  - 交付：v1.0 + 文档 + 上游提交记录 + 反馈处理记录。
+- **T+9 → T+12 验收返修窗口**：约定范围内返修，工时计入总预算（见 2.9）。
+
+## 2.8 里程碑表（按终审表改写）
+
+| 里程碑 | 时间（相对开工） | 金额 | 付款权重 | 必须明确的验收内容 |
+|---|---|---:|---:|---|
+| **M1 对齐层＋端到端核心校验＋可下载小样结果集** | **第 3 月** | **€6,000** | **40%** | v0.1 tag + CHANGELOG；npm＋PyPI **各 ≥2 对照源**跑通；端到端四类判定均有用例；**小样结果集可下载**（带 SHA-256 清单）；CI 绿 + 覆盖率门槛可查；规则文件 v1 冻结 |
+| **M2 生命周期规则＋边界语料＋正式校验数据集** | **第 5 月** | **€5,000** | **33.3%** | 生命周期规则（存在性/yank/改名/迁移）可复现；边界语料 ≥100 条且纳入 CI；**正式校验数据集发布**：版本化、CC-BY-4.0、可离线整包、带 SHA-256 清单 |
+| **M3 固定输入快照离线复跑＋数据质量评分卡** | **第 7 月** | **€2,500** | **16.7%** | 两位独立复跑者按手册得到**逐字节一致**产物（或仅时间戳差异且已隔离）；评分卡时间序列首次发布 |
+| **M4 最终发布＋文档＋上游提交＋约定反馈处理** | **第 9 月** | **€1,500** | **10%** | 最终 Release；复现手册；上游提交公开可查**并处理约定反馈**；项目自身 SBOM + 供应链自审报告；**不以他方合并作为验收条件** |
+
+**前两笔合计 73.3% ≥ 70%** ✅；M1 在第 3 月即可客观验收，且**必须已展示核心价值**（40% 首款的对应要求）。各笔均为完成后申请付款。
+
+## 2.9 预算拆分（二选一呈现；非人工先扣除）
+
+**总申请 €15,000。非人工费用先扣除，余额为人工经费池。**
+
+| 用途 | 金额 | 说明 |
+|---|---:|---|
+| 非人工（先扣除） | €600 | 一次性：数据归档与长期存储、CI 超出免费额度、包签名/公证、文档与 a11y 工具。**NLnet 不资助长期托管/算力运营费**，故不列服务器 |
+| 人工经费池 | €14,400 | 按下列两档费率折算工时 |
+
+**两档费率（二选一）**：
+
+| 档 | 费率 | 毛额工时（非人工 €0 的终审口径） | 净额工时（扣 €600 后） | 结论 |
+|---|---|---:|---:|---|
+| **A** | **€55/h** | **≈273h** | **≈262h** | ✅ **推荐** |
+| B | €60/h | ≈250h | ≈240h | 备选 |
+
+**参考工时分配（档 A 毛额）**：M1 ≈109h、M2 ≈91h、M3 ≈45h、M4 ≈27h，合计 ≈272–273h。
+**FTE 口径**：273h ÷（9 个月 × 160h）≈ **0.19 FTE**；摊到 6 个月约 0.28 FTE，属稳定兼职，可信。
+**交付/验收周期**：采用"**9 个月计划交付、12 个月内完成验收返修**"；**返修工时计入总预算**。官方 12 个月是默认完成期限，并非必须持续工作满 12 个月；按实际工时结算，未用余额不申请。
+
+**推荐档 A（€55/h）的理由**：
+
+1. **同样的 €14,400 人工池，€55/h 多出约 22h**（262 vs 240）。本项目范围紧（两生态×≥2 源、四类判定、正式数据集、评分卡、上游往返，外加 12 个月返修），工时余量直接决定能否覆盖交付与返修；€60/h 会把工时压到 240h，与交付清单不匹配，**反而降低预算可信度**。
+2. **保护 30% 性价比分**：€55/h 距官方 €65/h 上限仍有约 15% 空间；FAQ 明确顶格会降低 cost effectiveness。评分看 **value for money**，不看你时薪标得多高。
+3. **口径可核算**：273h / 0.19 FTE 完全落在"0.2 FTE 兼职、9–12 个月"的体量内，便于评审复核。
+
+## 2.10 团队与 FOSS 承诺
+
+- **负责人结构**：
+  - **申请人/lead（个人申请）**：**Joey（Jigao Yi）**，承担 M1–M4 全部交付与对外沟通；0.2 FTE 占位。
+  - 资助按 NLnet 口径直接付给实际做工作的人（即申请人 Joey），不鼓励分包。
+  - NLnet 表单只收一个 lead + 可列 contributor，且偏好把钱直接付给实际做工作的人、不鼓励分包。
+- **FOSS 承诺**：
+  - 代码 **Apache-2.0**（与 AboutCode 生态一致，便于上游合并）；数据 **CC-BY-4.0**（与 deps.dev 生成数据、CodeSupply 开放数据口径一致）；规则文件与语料同样开放。
+  - **不依赖任何闭源环境**：无 Google Cloud 账号、无专有服务也可完整运行；deps.dev / ClearlyDefined 仅作**可选对照源**，必须支持离线快照回退。
+  - 产出开源、文档公开、Release 可复现。
+
+## 2.11 合规声明与风险（AI 口径已按终审更正）
+
+- **A. AI 辅助声明**：按官方 FAQ 与 GenAI Policy，任何 GenAI 使用（含 drafting/translation/**summarisation**）须声明并保留 prompt provenance log（模型、日期时间、完整提示词、未编辑输出）。本项目 AI 用途如实写为：**选题评估、大纲、技术设计、预算及终审建议**；**正文由人自行撰写与核验**。提交材料必须包含实际日志及引用文件（**评审可访问的副本，不能只给本机路径**）。
+- **政策修订口径更正**：公告的表述是"**建议等待新版**"（不是强制停投令）；其中"**取消例外**"指 **GenAI 政策例外**，**与地域资格例外无关**。2026-11-03 提交前复查政策页最新版并存档版本。
+- **B. 欧洲维度（唯一真正的 knock-out 风险）**：资格页要求 strong "European dimension"，通常需 Horizon Europe 合格国人员拿走 ≥60% 资金；例外口为 *"exceptional quality and the proposer holds unique technical expertise"* ([Eligibility](https://nlnet.nl/codesupply/eligibility/))。Office Hour 口径更紧（被问仅靠让欧洲标准/技术栈更安全能否满足，答复 "Generally not."）。**对策**：走 exceptional quality，把筹码全部压在可见证据上（技术负责人可验证履历、公开历史产出、与项目直接相关成果），10/28 office hour **只问规则、不问预审**。
+- **C. 与联盟成员的重叠（技术性致命风险）**：AboutCode 是联盟成员且是核心承担方。对策：① 提案 compare 字段主动承认与 PurlDB/ClearlyDefined/deps.dev/OSV 的关系，明确只做**校验层**；② 提交前在 AboutCode 公开仓库开 issue 表达对齐/上游意愿；③ 全文避免"我们要建数据集/目录"，改为"我们要发布**校验结果**数据集"。
+- **D. 数据源合规**：只用官方 API/已发布开放数据；尊重 rate limit 与 ToS；缓存快照；不绕过验证；deps.dev 无 key、过载返 429 需指数退避。数据集只存坐标与判定，不重新分发受限制内容。
+- **E. a11y 与安全**：报告页面按 **WCAG 2.2 AA** 设计，CLI 提供纯文本、非颜色依赖输出。本项目 <€50k 不触发强制独立安全审计，但主动做自身 SBOM、依赖锁定、Release 校验和（可选 Sigstore 签名）与负责任披露流程。
+
+## 2.12 二轮评审预置答案
+
+| 二轮必问题 | 我们的答案要点 |
+|---|---|
+| 与 U/V/W 的差异 | 见 2.5：他们做采集/归一/漏洞/依赖图，我们做**带 provenance 与时间的校验层**；唯一边界清晰 |
+| 复杂因素 X 怎么处理 | 同步延迟与语义差异是主要不确定性 → 用判定类别 + 规则版本显式区分，`undecidable` 如实标注 |
+| 如何验证 claim Y | 数据集带 SHA-256 清单、固定快照+固定规则可复现、CI 复跑、两位独立复跑者 |
+| 是否考虑与 Z 合作/用标准 A | 用 **PURL** 作统一标识；与 AboutCode/ClearlyDefined/OSV/deps.dev 对齐，不做私有格式 |
+| 费率是否过高 | 主动取 **€55/h（推荐）**，低于 €65 上限；工时按 0.19 FTE 可核算 |
+| 如何可持续 | 校验器与语料 upstream；数据集更新由 CI 定期跑，长期运营成本趋零 |
+| upstream 项目 D 怎么想 | 提交前开 issue 对齐；提案列明可合并路径；**不以合并为验收条件** |
+
+## 2.13 选题评估记录（给 AI 合规）
+
+本节为按官方 GenAI Policy 要求保留的**选题评估用途与结论记录**，将随 PROMPT-LOG 一并提交。
+
+**定位收窄记录**：选题从初版"**包元数据聚合器 + 全量开放数据集**"收窄为"**独立校验层 + 校验结果数据集**"，原因与依据：
+
+1. **CodeSupply 核心项目本身就在做聚合与开放数据**：CORDIS 目标原文为聚合/编目全面软件元数据、编入数据目录、以开放数据分发；联盟预算 **€3M**（AboutCode €970k / Edsger €970k / NLnet €650k / URJC €410k），周期 2026-06 至 2029-05（[CORDIS 101298846](https://cordis.europa.eu/project/id/101298846)）。若我们再写"聚合器+全量数据集"，即与核心项目**正面重复**。
+2. **AboutCode 是 CodeSupply 联盟成员**（`ABOUTCODE EUROPE ASBL`），且拥有 PurlDB/MineCode/purl-validator（[CodeSupply background](https://nlnet.nl/codesupply/background/)）。
+3. **ClearlyDefined 已交由 AboutCode 运营**：2026-02 OSI 与 AboutCode 签 MoU 接管日常运营；其官方文档明说"不解决 identity"，且无全量离线数据集（issue #386，路线图 2027）（[OSI MoU](https://opensource.org/blog/ensuring-the-long-term-sustainability-of-clearlydefined-osi-and-aboutcode-sign-mou)）。
+
+**结论**：收窄后我们**消费**上游既有输出、做第三方质检，输出**校验结果**数据集，可被 CodeSupply 聚合管线直接接入，避免与 €3M 核心及联盟成员重复建设，并保住 €15,000 预算下的可信度。
+
+**AI 使用用途（如实记录）**：选题评估、大纲结构、技术设计、预算测算、终审建议归纳；提案正文由人自行撰写与核验。实际模型、日期时间、完整提示词与未编辑输出见 PROMPT-LOG 及其引用文件。
+
+## 2.14 待拍板项（单独成段）
+
+1. **技术负责人具名**——**已解决**：Joey（Jigao Yi）个人申请挂名。"虚拟一个"方案已否决（伪造材料红线）。exceptional quality 例外口的履历证据仍需整理 Joey 公开成果清单。
+2. **费率档位**：选 **档 A（€55/h≈273h，推荐）** 还是档 B（€60/h≈250h）。
+3. **第二生态确认**：本轮锁定 **npm + PyPI**（已建议），请确认。
+4. **上游对齐动作**：是否在提交前向 AboutCode/ClearlyDefined 公开仓库开对齐 issue（**建议开**，作为 upstream 认可证据）。
+5. **AI 日志维护人**指定，并补齐三席初审、本次终审及后续评审问答的完整记录。
+6. **10/28 office hour 问法**确认（只问规则、不问预审）。
+7. **提交前复查 GenAI 政策最新版并归档版本**（截止 2026-11-03 12:00 CET）。
+
+---
+
+## 【可直接转交 Joey 验收】一句话结论
+
+选题按终审收窄为"**可接入 CodeSupply 聚合管线的独立质检组件**"，唯一增量锁定"**带来源、时间和可复现证据的跨源差异判定与生命周期追踪**"；生态锁定 **npm + PyPI**（每生态 ≥2 对照源）；金额 **€15,000**（推荐 **€55/h≈273h**）；M1–M4 按终审表（40/33.3/16.7/10%，前两笔 73.3%≥70%）；9 个月交付、12 个月内完成验收返修。技术负责人已定：Joey（Jigao Yi）个人申请挂名；剩余履历证据清单待整理。
+DSH_EXIT=0

@@ -65,6 +65,8 @@ class Normalizer:
             "version": version,
             "fetch_timestamp": fetch_ts,
             "synthetic": synthetic,
+            "verification_status": raw_bundle.get("verification_status"),
+            "audit_status": raw_bundle.get("audit_status"),
             "sources": norm_sources,
             "dependency_relations": dependency_relations,
         }
@@ -125,9 +127,9 @@ class Normalizer:
             filename = tarball_url.split("/")[-1] if tarball_url else f"{name}-{version}.tgz"
             digests: Dict[str, str] = {}
             if "shasum" in dist:
-                digests["sha1"] = dist["shasum"].lower()
+                digests["sha1"] = dist["shasum"]
             if "sha256" in dist:
-                digests["sha256"] = dist["sha256"].lower()
+                digests["sha256"] = dist["sha256"]
             if "integrity" in dist:
                 integrity_str = dist["integrity"]
                 if integrity_str.startswith("sha512-"):
@@ -136,11 +138,18 @@ class Normalizer:
                 elif integrity_str.startswith("sha256-"):
                     digests["sha256"] = integrity_str
 
+            src_arts = src.get("artifacts", [])
+            matched_src_art = next((a for a in src_arts if a.get("artifact_id") == filename), src_arts[0] if src_arts else {})
+            rel_rec = matched_src_art.get("release_record") or f"pkg:{ecosystem}/{name}@{version}"
+
             artifacts.append({
                 "artifact_id": filename,
                 "artifact_type": "npm_tarball",
                 "digests": digests,
                 "url": tarball_url,
+                "release_record": rel_rec,
+                "origin_url": matched_src_art.get("origin_url"),
+                "files": matched_src_art.get("files") or matched_src_art.get("file_list"),
             })
 
         elif ecosystem == "pypi":
@@ -176,9 +185,13 @@ class Normalizer:
                 d_obj = rel.get("digests", {})
                 for algo in ["sha256", "md5", "blake2b_256"]:
                     if algo in d_obj and d_obj[algo]:
-                        digs[algo] = d_obj[algo].lower()
+                        digs[algo] = d_obj[algo]
                 if "md5_digest" in rel and "md5" not in digs:
-                    digs["md5"] = rel["md5_digest"].lower()
+                    digs["md5"] = rel["md5_digest"]
+
+                src_arts = src.get("artifacts", [])
+                matched_src_art = next((a for a in src_arts if a.get("artifact_id") == fn), {})
+                rel_rec = matched_src_art.get("release_record") or f"pkg:{ecosystem}/{name}@{version}"
 
                 artifacts.append({
                     "artifact_id": fn,
@@ -186,6 +199,9 @@ class Normalizer:
                     "digests": digs,
                     "url": rel.get("url"),
                     "upload_time": upload_time,
+                    "release_record": rel_rec,
+                    "origin_url": matched_src_art.get("origin_url"),
+                    "files": matched_src_art.get("files") or matched_src_art.get("file_list"),
                 })
 
         return {
@@ -293,6 +309,9 @@ class Normalizer:
                 "artifact_type": art.get("artifact_type", "npm_tarball"),
                 "digests": art.get("digests", {}),
                 "url": art.get("url", src.get("endpoint")),
+                "release_record": art.get("release_record"),
+                "origin_url": art.get("origin_url"),
+                "files": art.get("files") or art.get("file_list"),
             })
         return {
             "source_id": src.get("source_id", "synthetic"),
@@ -303,7 +322,7 @@ class Normalizer:
             "published_at": src.get("published_at"),
             "artifacts": artifacts,
             "licenses": src.get("licenses", []),
-            "derived_from": None,
+            "derived_from": src.get("derived_from"),
         }
 
     def _build_dependency_relations(

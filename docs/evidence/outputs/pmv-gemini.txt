@@ -1,0 +1,99 @@
+# CodeSupply · PMV 原型任务实测交付总结
+
+**组件名称**：Package Metadata Verifier (PMV · 包元数据质检原型组件)  
+**技术负责人**：Joey（Jigao Yi）个人申请  
+**授权许可**：Apache-2.0  
+**交付工作目录**：`~/workspace/nlnet-codesupply-council/pmv/`（全部代码、日志、证据包、复跑报告均已落盘并通过检验）
+
+---
+
+## 一、实测案例与判定明细汇总
+
+PMV 原型严格锁定了 **npm** 与 **PyPI** 双生态，实现了真实多源数据抓取（npm packument、PyPI JSON API、deps.dev v3、ClearlyDefined），并完成了四类判定真实案例 + 一类哈希冲突合成用例的完整实测：
+
+| 判定类别 | 测试类型 | 案例 PURL 与版本坐标 | 对照源与状态 | 实测判定输出 (Verdict) | 判定核心依据 (Ground Truth / Rationale) |
+|---|---|---|---|---|---|
+| **`REAL_ERROR`**<br>(真实错误) | **真实案例** | `pkg:pypi/typing-extensions@4.12.2` | • PyPI JSON API (200)<br>• deps.dev v3 API (200)<br>• ClearlyDefined (200) | **类别**: `REAL_ERROR`<br>**子码**: `DOWNSTREAM_PARSING_ERROR`<br>**置信度**: `1.0` | PyPI 注册表分类器明确声明 `License :: OSI Approved :: Python Software Foundation License`，ClearlyDefined 源码定义确认为 `Python-2.0.1`（PSF 许可证）。然而 **deps.dev 错误标记为 `['non-standard']`**。事实证据链确凿指向 downstream 解析器映射失效。 |
+| **`SYNC_DELAY`**<br>(同步延迟) | **真实案例** | `pkg:pypi/archgraph-layout@2.3.0` | • PyPI JSON API (200)<br>• deps.dev v3 API (404) | **类别**: `SYNC_DELAY`<br>**子码**: `DOWNSTREAM_INGESTION_LAG`<br>**置信度**: `0.96` | PyPI 注册表发布时间为抓取前 1 小时内（`2026-10-13T06:16:05Z`），处于质检规则定义的 24h 同步容忍窗口内；deps.dev 尚未建立索引返回 HTTP 404。**保留时间窗口的不确定性，不得武断定性为上游发布失败或丢包**。 |
+| **`SEMANTIC_DIVERGENCE`**<br>(语义差异) | **真实案例** | `pkg:npm/esprima@4.0.1` | • npm packument (200)<br>• ClearlyDefined (200)<br>• deps.dev v3 API (200) | **类别**: `SEMANTIC_DIVERGENCE`<br>**子码**: `LICENSE_EXPRESSION_CONJUNCTION_MISMATCH`<br>**置信度**: `0.95` | npm 顶层 package.json 声明 `BSD-2-Clause`，而 ClearlyDefined 深度源码扫描发现并声明为 `BSD-2-Clause AND BSD-3-Clause`。**二者存在布尔与（AND）合规义务约束差异，终审规则严格禁止自动认定双方均正确**。 |
+| **`INDETERMINATE`**<br>(无法判定) | **真实案例** | `pkg:npm/debug@4.3.4` | • npm packument (200)<br>• 外部哈希输入 | **类别**: `INDETERMINATE`<br>**子码**: `undecidable`<br>**置信度**: `1.0` | 跨算法比对测试：输入仅有 npm 提供的 SHA-1 与外部 SHA-256 请求。**严格落实终审硬约束：跨算法/跨制品哈希输入输出 `undecidable`**，统一为确定性判定值，无未捕获异常崩溃。 |
+| **`DIGEST_CONFLICT`**<br>(摘要冲突) | **合成用例**<br>(`synthetic=true`) | `pkg:npm/synthetic-fixture@1.0.0` | • npm 官方源 (200)<br>• 镜像源 (200) | **类别**: `DIGEST_CONFLICT`<br>**子码**: `ARTIFACT_DIGEST_MISMATCH`<br>**置信度**: `1.0` | 同一制品 `synthetic-fixture-1.0.0.tgz` 在同一算法（SHA-256）下哈希值不同。**终审硬约束原文落实：只能认定为“摘要冲突”，严格禁止断言镜像损坏或恶意篡改**。 |
+
+---
+
+## 二、相较普通字段 Diff 避免的误判分析
+
+普通字段比较器（Naive Diff）仅做基于字符串相等的纯浅层比对，在真实供应链元数据处理中会产生严重的虚假警报或关键漏判。PMV 针对性地避免了以下典型误判：
+
+1. **避免“下游抓取延迟”误判为“镜像缺失/损坏”**：
+   - *普通 Diff*：在对比 PyPI 与 deps.dev 时，遇到 deps.dev 404 会直接判定为“致命数据不一致”或“包丢失”，触发阻断告警。
+   - *PMV 判定*：引入抓取时间戳与上游更新时间差校验，在容忍窗口内归类为带有置信度评分的 `SYNC_DELAY`，不阻断流水线，而是将包路由至重试队列。
+2. **避免“非标准许可证误标”导致“合规系统误拒关键基础库”**：
+   - *普通 Diff*：在处理 `typing-extensions` 时，仅机械展示 `non-standard` 与 `Python-2.0.1` 不相等，甚至直接继承 deps.dev 标签导致企业合规引擎误拦截 Python 官方核心类型库。
+   - *PMV 判定*：引入 SPDX/OSI 权威标准基准比对，通过交叉证据链锁定 deps.dev 解析器错误（`REAL_ERROR`），保护主干知识图谱不受下游脏数据污染。
+3. **避免“跨算法/跨制品缺失”触发“崩溃或误报篡改”**：
+   - *普通 Diff*：不同源仅提供不同算法（如 npm 历史上常见 SHA-1，现代源提供 SHA-256/512）或比较了不同发行产物（Wheel vs Sdist），普通程序要么抛出 `KeyError`/`ValueError` 崩溃退出，要么误报“哈希不匹配、文件遭到黑客投毒篡改”。
+   - *PMV 判定*：硬约束限定“只比较同一制品、同一算法”，非同源同构比较优雅降级为 `undecidable`；即使同算法哈希不同也严格限制在“摘要冲突”事实认定，杜绝过度断言。
+4. **避免“多许可证布尔逻辑”被“机械覆盖或错误放行”**：
+   - *普通 Diff*：面对 `BSD-2-Clause` vs `BSD-2-Clause AND BSD-3-Clause`，普通 diff 要么随意采信上游单值，要么粗暴认为“都包含 BSD 所以合法”。
+   - *PMV 判定*：识别布尔逻辑连接符差异，输出 `SEMANTIC_DIVERGENCE`，明确标识双重合规义务风险，转交专业合规策略路由。
+5. **打破“一致性即真实”的循环信任误区**：
+   - *普通 Diff*：看到 deps.dev 与 npm 注册表字段完全一致，便认定“有两个独立数据源证实该字段为真”。
+   - *PMV 判定*：强制维护 **来源依赖关系（Provenance DAG）**，记录 deps.dev 摄取自 npm 注册表的从属链路，明确指出“该一致性属于缓存摄取衍生，不得作为独立真值证明”。
+
+---
+
+## 三、CodeSupply 聚合管线中的直接应用节点
+
+PMV 组件设计为高内聚、低耦合的可插拔质检内核，能够**零改造直接嵌入 NLnet CodeSupply 聚合流水线的以下核心节点**：
+
+```
+[原始数据采集层]
+    npm Registry / PyPI JSON / deps.dev / ClearlyDefined
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Stage 2: CodeSupply 摄取对齐与质量门禁 (Ingestion Quality Gate) │
+│  ───【PMV 组件直接运行位置】                                  │
+└─────────────────────────────────────────────────────────────┘
+         │                          │                     │
+         ▼ (CONSISTENT)             ▼ (SYNC_DELAY)        ▼ (SEMANTIC_DIVERGENCE /
+┌─────────────────────┐    ┌──────────────────┐               REAL_ERROR / DIGEST_CONFLICT)
+│ 进入标准规范知识图谱  │    │ 挂起延迟重试队列  │    ┌───────────────────────────┐
+│ (Canonical KG Store)│    │ (Backoff Retry)  │    │ 隔离存证 / 合规告警看板    │
+└─────────────────────┘    └──────────────────┘    │ (Dead-Letter & Audit Web) │
+                                                   └───────────────────────────┘
+```
+
+- **具体承接环节**：位于**“阶段 2：多源摄取对齐与质量门禁（Multi-Source Ingestion Reconciliation & Quality Gate）”**，处于分布式采集器之后、写入规范聚合知识图谱（Canonical Knowledge Graph）之前。
+- **输出驱动决策（Routing Action）**：
+  - `CONSISTENT` $\rightarrow$ 标记独立性权重后直接入库；
+  - `SYNC_DELAY` $\rightarrow$ 写入延迟重试队列（TTL 1~6h），避免污染主干；
+  - `SEMANTIC_DIVERGENCE` $\rightarrow$ 携带复合表达式差异推送到许可证合规复核队列；
+  - `REAL_ERROR` $\rightarrow$ 触发源纠错逻辑，生成带有证据链的上游 Bug 报告；
+  - `INDETERMINATE` $\rightarrow$ 标记不可比维度，防止质检管线在海量批处理中被异常打断。
+
+---
+
+## 四、交付产物与可复现性验证检查
+
+所有工程文件与证据均已完备落盘在 `/home/hatch/workspace/nlnet-codesupply-council/pmv/`：
+
+1. **核心源代码**（全标准库 + requests，均带 Apache-2.0 许可头）：
+   - `pmv/collector.py`、`pmv/normalizer.py`、`pmv/verifier.py`、`pmv/exporter.py`、`pmv/cli.py`
+   - `bin/pkgmeta-verify`（CLI 可执行工具）
+2. **规则与模式定义**：
+   - `rules/rules-v0.1.json`（版本化质检规则，落实全部终审硬约束）
+   - `schemas/pmv-output.schema.json`（标准输出 JSON Schema，已通过实测数据校验）
+3. **离线证据包**：
+   - `evidence/snapshots/`：5 个用例的最小可再分发原始响应脱敏快照（已剔除冗余巨大字段）
+   - `evidence/results/`：5 个用例的标准输出 JSON 结果
+   - `evidence/MANIFEST.sha256`：所有快照、结果与规则文件的哈希清单（`sha256sum -c` 100% OK）
+4. **一次独立复跑与审计报告**：
+   - `rerun.sh`：一键脱网离线复跑脚本（隔离 `evaluation_timestamp` 动态时间戳）
+   - `rerun-report.md`：复跑审计报告，**5 个用例全部通过，逐字节比对（diff -u）0 差异**
+   - `run.log`：完整在线采集、离线复跑与哈希核验的全流程控制台日志落盘记录
+5. **接入说明与文档**：
+   - `README.md`：包含架构图、CLI 说明、规则硬约束、聚合方 Python 接入代码与数据流设计
+   - `LICENSE`：标准 Apache-2.0 完整授权文本
+DSH_EXIT=0

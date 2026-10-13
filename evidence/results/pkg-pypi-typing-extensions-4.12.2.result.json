@@ -1,14 +1,14 @@
 {
   "decision_audit_trail": [
     {
-      "condition_evaluated": "deps.dev reported 'non-standard' vs (osi_classifier=True, cd_standard=True)",
+      "condition_evaluated": "deps.dev reported 'non-standard' vs (osi_classifier=True, cd_standard=True, artifact_evidence='typing_extensions-4.12.2.dist-info/LICENSE')",
       "outcome": "REAL_ERROR",
-      "rationale": "Cross-source license classification contradiction: PyPI classifiers, ClearlyDefined, and artifact license text confirm standard OSI/PSF license, while downstream indexer classifies it as non-standard. Because authoring field omission vs parser fault cannot be definitively proven, unilateral parser blame assertion is removed.",
+      "rationale": "Cross-source license classification contradiction: PyPI classifiers, ClearlyDefined, and artifact license text (typing_extensions-4.12.2.dist-info/LICENSE, PSF-2.0) confirm standard license, while downstream indexer classifies it as non-standard. Because authoring field omission vs parser fault cannot be definitively proven, unilateral parser blame assertion is removed.",
       "rule_id": "ERROR_01_STANDARDS_CONTRADICTION"
     }
   ],
   "ecosystem": "pypi",
-  "evaluation_timestamp": "2026-10-13T07:00:07Z",
+  "evaluation_timestamp": "2026-10-13T07:35:03Z",
   "name": "typing-extensions",
   "normalized_evidence": {
     "clearlydefined": {
@@ -50,6 +50,9 @@
             "md5": "b3e34bca86e2474ec80026e6fa5a065f",
             "sha256": "269fad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0"
           },
+          "files": null,
+          "origin_url": null,
+          "release_record": "pkg:pypi/typing-extensions@4.12.2",
           "upload_time": "2024-06-07T18:52:13.626461Z",
           "url": "https://files.pythonhosted.org/packages/26/9f/ad63fc0248c5379346306f8668cda6e2e2e9c95e01216d2b8ffd9ff037d0/typing_extensions-4.12.2-py3-none-any.whl"
         }
@@ -117,7 +120,7 @@
     "avoided_false_positive": "Avoided discarding or flagging a legitimate package as license-incompatible while avoiding unverified attribution of parser fault.",
     "category": "REAL_ERROR",
     "confidence": 1.0,
-    "details": "deps.dev reports licenses: ['non-standard']. In contrast, PyPI registry classifiers contain '['License :: OSI Approved :: Python Software Foundation License']' and ClearlyDefined confirms 'Python-2.0.1'. The artifact dist-info/LICENSE contains the standard Python Software Foundation License Version 2. Because upstream core metadata omits an explicit PEP 639 License-Expression header, authoring field omission versus downstream classifier parsing fault cannot be separated. Enforcing hard constraint: deleted DOWNSTREAM_PARSING_ERROR and removed unilateral parser responsibility assertion; recorded verifiable metadata contradiction.",
+    "details": "deps.dev reports licenses: ['non-standard']. In contrast, PyPI registry classifiers contain '['License :: OSI Approved :: Python Software Foundation License']' and ClearlyDefined confirms 'Python-2.0.1'. The artifact typing_extensions-4.12.2.dist-info/LICENSE contains verified license text (PSF-2.0). Because upstream core metadata omits an explicit PEP 639 License-Expression header, authoring field omission versus downstream classifier parsing fault cannot be separated. Enforcing hard constraint: deleted DOWNSTREAM_PARSING_ERROR and removed unilateral parser responsibility assertion; recorded verifiable metadata contradiction.",
     "subcode": "STANDARDS_CONTRADICTION",
     "summary": "Downstream index license classification contradicts upstream and curated standards"
   },

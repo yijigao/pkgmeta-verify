@@ -64,39 +64,46 @@ PMV 锁定 **npm** 与 **PyPI** 双生态，每个生态均包含权威注册表
 
 ## 4. 终审硬约束在规则中的落实
 
-根据终审意见原文（ASTRA-REV2 第 4 节 checklist），PMV 在 `rules/rules-v0.1.json` 与 `verifier.py` 中严格落实了各项判定硬约束：
+根据终审意见原文（ASTRA-REV2 与 ASTRA-REV3 终审意见），PMV 在 `rules/rules-v0.1.json` 与 `verifier.py` 中严格落实了各项判定硬约束：
 
-1. **哈希比较硬约束**：
-   - **严格限定**：哈希比对**只允许同一制品、同一算法**。
-   - **制品同一性核验**：必须具备制品级证据（摘要 digest、下载 URL、包内文件清单其一），仅文件名相同不得认定为同一制品，直接输出 `undecidable`。
-   - **摘要统一 `.lower()` 审计记录**：十六进制 hex digest 比较前统一大小写与去除首尾空格是允许的，但必须在 `decision_audit_trail` 中显式记录原始值与归一化动作，且仅限同一算法。
-   - **跨输入统一为判定值**：若输入为跨算法（如 SHA-1 vs SHA-256）或跨制品（如 Wheel vs Sdist），输出统一判定值 `INDETERMINATE`（子状态码 `undecidable`），严禁抛出未捕获异常退出。
-   - **仅证明摘要冲突**：对于同一制品、同一算法但哈希值不一致的情况，判定归类为 `DIGEST_CONFLICT`，结论严格限定为“摘要冲突”，**严禁断言镜像损坏或恶意篡改**。
-2. **延迟时间链与不确定性保留（`SYNC_DELAY`）**：
-   - **无发布时间仍判延迟之修正**：缺少上游发布时间字段时，不得输出 SYNC_DELAY，必须输出 `undecidable`（低置信度疑似延迟）。
-   - **三段延迟时间链**：保存发布时间、下游缺失观察（404）、后续出现观察（200）三段证据，只报告可证明的延迟范围；单次 404 或缺少时间证据时输出不可判定／疑似延迟。
-3. **真实错误责任断言剥离（`REAL_ERROR`）**：
-   - 在无法区分字段缺失 vs 解析器故障的情况下，删除 `DOWNSTREAM_PARSING_ERROR` 及其单边责任断言。保存对应版本制品的许可证原文（如 wheel 包内 `dist-info/LICENSE`）与各源字段定义，客观判定为 `STANDARDS_CONTRADICTION`。
-4. **语义差异多源与扫描范围补全（`SEMANTIC_DIVERGENCE`）**：
-   - 当许可证出现逻辑运算符（`AND` / `OR`）或单值 vs 复合值差异时，判定为 `SEMANTIC_DIVERGENCE`，**严禁自动采信单方**。同时明确列出参与判定的全部来源、字段以及文件扫描范围（核心切面源码级扫描 vs 顶层声明）。
-5. **空证据严禁默认一致**：
+1. **制品身份关联核验 (同名文件不同摘要)**：
+   - 摘要比对**必须验证制品身份关联**（证明 digest 绑定到同一下载 URL / 同一包内文件清单 / 同一制品发布记录之一）。
+   - 仅“两边都有摘要”不足以证明同一制品，未证明身份关联时严格输出 `INDETERMINATE`（子状态码 `ARTIFACT_IDENTITY_UNPROVEN`），**严禁判定为 `DIGEST_CONFLICT`**。
+   - 对于同一制品、同一算法且身份已证明的哈希冲突，判定为 `DIGEST_CONFLICT`，结论严格限定为“摘要冲突”，**严禁断言镜像损坏或恶意篡改**。
+2. **编码感知字节级解码 (禁止静默 `.lower()` 判匹配)**：
+   - 摘要比对统一按编码**解码为原始字节后比对**（十六进制 hex 经解码比对消除大小写差异；Base64 区分大小写比对）。
+   - 禁止对 Base64 等区分大小写的编码静默 `.lower()` 判匹配。若编码未知或不支持，明确输出 `INDETERMINATE`（子状态码 `ENCODING_UNSUPPORTED`）。
+3. **延迟时间链与观测有效性校验 (`SYNC_DELAY`)**：
+   - 必须同时满足：**后续观察 HTTP 成功状态 (200)**、**有效发布时间**、**严格正向观察时间顺序**（`t_observed_after > t_observed_before > t_published`）。
+   - 任一不满足均判定为 `INDETERMINATE`（子状态码 `undecidable`，疑似延迟，标注不确定性）。
+   - 包含发布时间、下游缺失观察（404）、后续出现观察（200）的完整可信三段链，方可输出可证明的延迟范围。
+4. **跨源许可证主动比对与可比性检查 (`SEMANTIC_DIVERGENCE`)**：
+   - 实际进行字段比较；两源许可证为 MIT vs Apache-2.0 属于**明确不一致**，判定为 `SEMANTIC_DIVERGENCE`（子状态码 `LICENSE_DECLARATION_DISCREPANCY`）。
+   - 当许可证出现逻辑运算符（`AND` / `OR`）时，判定为 `SEMANTIC_DIVERGENCE`（`LICENSE_EXPRESSION_CONJUNCTION_MISMATCH`），严禁自动采信单方。
+   - 一源缺少可比字段时，严格判定为 `INDETERMINATE`（`undecidable`），**坚决禁止“无比较就判一致”**。
+5. **真实错误经验证据要求 (`REAL_ERROR`)**：
+   - 必须依赖制品内实际 LICENSE 原文等经验证据（如 wheel 包内 `dist-info/LICENSE`）。未提供对应证据时不得判定 `REAL_ERROR`（输出 `undecidable` 并注明缺证据）。
+   - **删除一切硬编码事实断言**；在无法区分字段缺失 vs 解析器故障的情况下，删除 `DOWNSTREAM_PARSING_ERROR` 及其单边责任断言，客观判定为 `STANDARDS_CONTRADICTION`。
+6. **archgraph-layout 延迟案例降级**：
+   - 该公开案例降级为“**疑似延迟，时间链待核验**”，在证据与结果中标记 `verification_status: "suspect"` 与 `audit_status: "retracted"`，不再列为已证明的延迟。
+7. **空证据严禁默认一致**：
    - 当证据为空或不足（可用对照源少于 2 个）时，严禁默认返回 `CONSISTENT`，必须返回 `undecidable`。
-6. **来源依赖关系明确记录（Source Provenance DAG）**：
-   - `deps.dev` 的版本发布与哈希等字段本身衍生自权威注册表。PMV 在 `provenance_and_dependencies` 中强制记录 `[deps_dev -> registry]` 依赖链，显式标注“二者一致仅为摄取传播结果，不得作为独立真值证明”。
-7. **synthetic 标记一致性**：
+8. **来源依赖关系明确记录 (Source Provenance DAG)**：
+   - PMV 在 `provenance_and_dependencies` 中强制记录 `[deps_dev -> registry]` 依赖链，显式标注“二者一致仅为摄取传播结果，不得作为独立真值证明”。
+9. **synthetic 标记一致性**：
    - 跨算法比较模拟输入明确标记 `synthetic=true`，与构造基准 fixture 分开统计。
 
 ---
 
-## 5. 四类案例与判定依据
+## 5. 案例与判定依据
 
 | 判定类别 | 案例坐标 (PURL) | 对照源与状态 | 实测判定依据 | 相较普通 Diff 避免的误判 |
 |---|---|---|---|---|
-| **`REAL_ERROR`**<br>(真实错误) | `pkg:pypi/typing-extensions@4.12.2` | PyPI JSON (200)<br>deps.dev v3 (200)<br>ClearlyDefined (200) | 制品内 `dist-info/LICENSE` 与 PyPI 分类器明确为标准 PSF-2.0，ClearlyDefined 验证为 `Python-2.0.1`。但 deps.dev 标注为 `['non-standard']`。因核心元数据缺少显式 PEP 639 License-Expression，无法区分字段缺失还是解析故障，删除了单边责任归咎，判定为 `STANDARDS_CONTRADICTION`。 | 普通 Diff 仅报告字符串不一致或直接归咎某方。PMV 客观记录标准冲突，避免合规系统误拒合规核心库。 |
-| **`SYNC_DELAY`**<br>(同步延迟) | `pkg:pypi/archgraph-layout@2.3.0` | PyPI JSON (200)<br>deps.dev v3 (404 & 200) | 基于上游发布时间 (06:16:05Z)、下游 404 缺失观察 (06:31:25Z) 及后续 200 出现观察 (07:15:00Z) 建立完整三段链，计算出可证明的延迟范围 `[920s, 3535s]`，处于 24h 容忍窗口内，判定为 `SYNC_DELAY`。 | 普通 Diff 会将 deps.dev 404 判定为“版本不存在/数据丢失”。PMV 识别时间链，保留不确定性并放行进入延迟重试队列。 |
+| **`REAL_ERROR`**<br>(真实错误) | `pkg:pypi/typing-extensions@4.12.2` | PyPI JSON (200)<br>deps.dev v3 (200)<br>ClearlyDefined (200) | 基于制品内 `typing_extensions-4.12.2.dist-info/LICENSE` 经验证据与 PyPI 分类器明确为标准 PSF-2.0，ClearlyDefined 验证为 `Python-2.0.1`。但 deps.dev 标注为 `['non-standard']`。动态引用经验证据，客观判定为 `STANDARDS_CONTRADICTION`，删除单边归因。 | 普通 Diff 仅报告字符串不一致或直接归咎某方。PMV 客观记录标准冲突，避免合规系统误拒合规核心库。 |
+| **`INDETERMINATE`**<br>(疑似延迟，时间链待核验) | `pkg:pypi/archgraph-layout@2.3.0` | PyPI JSON (200)<br>deps.dev v3 (404 & 200) | 按照 Astra rev3 审查要求，该案例降级为“疑似延迟，时间链待核验”，标记 `verification_status: suspect` 与 `audit_status: retracted`。从已证明延迟案例撤下，判定为 `INDETERMINATE` (`undecidable`)。 | 避免在缺乏原始日志核验时武断宣称延迟已获确凿证明。保留快照审计记录并保留不确定性。 |
 | **`SEMANTIC_DIVERGENCE`**<br>(语义差异) | `pkg:npm/esprima@4.0.1` | npm packument (200)<br>ClearlyDefined (200) | 明确判定源（`npm_registry`, `clearlydefined`, `deps_dev`）与字段。ClearlyDefined 全仓库核心切面文件级扫描发现并声明 `BSD-2-Clause AND BSD-3-Clause`，与 npm 顶层声明 `BSD-2-Clause` 存在布尔与义务差异，禁止自动采信单方。 | 普通 Diff 会强行以顶层声明覆盖深度扫描，或机械合并导致许可冲突。PMV 标识复合布尔语义差异。 |
 | **`INDETERMINATE`**<br>(无法判定) | `pkg:npm/debug@4.3.4`<br>*(synthetic=true)* | npm packument (200) | 跨算法比对测试：输入仅有 SHA-1 (`3d75be84...`) 与外部 SHA-256 请求。因缺乏共享算法，判定输出 `undecidable`。输入明确标为 `synthetic=true` 与真实案例分开统计。 | 普通 Diff 会因字符串不相等直接报警“哈希不匹配/被篡改”，或因算法键缺失触发 `KeyError` 崩溃。PMV 优雅降级为 `undecidable`。 |
-| **`DIGEST_CONFLICT`**<br>(*构造用例, synthetic=true*) | `pkg:npm/synthetic-fixture@1.0.0` | npm registry (200)<br>synthetic mirror (200) | 同一制品 `synthetic-fixture-1.0.0.tgz`（包含 URL 及摘要证据）与同一算法 `SHA-256`，哈希值不同 (`aaa...` vs `bbb...`)。 | 普通 Diff 会断言“镜像遭黑客篡改/损坏”。PMV 恪守客观边界，仅认定“摘要冲突”，要求进一步核验镜像源证明。 |
+| **`DIGEST_CONFLICT`**<br>(*构造用例, synthetic=true*) | `pkg:npm/synthetic-fixture@1.0.0` | npm registry (200)<br>synthetic mirror (200) | 同一制品 `synthetic-fixture-1.0.0.tgz`（具备版本发布记录与 origin_url 身份绑定证据）与同一算法 `SHA-256`，解码字节不同 (`aaa...` vs `bbb...`)。 | 普通 Diff 会断言“镜像遭黑客篡改/损坏”。PMV 恪守客观边界，仅认定“摘要冲突”，要求进一步核验镜像源证明。 |
 
 ---
 
@@ -140,9 +147,9 @@ Source Dependencies:
 项目内置一键离线复跑脚本 `rerun.sh`：
 - **密码学清单校验**：实际运行 `sha256sum -c evidence/MANIFEST.sha256` 校验全部 12 个规则、Schema、快照与基线文件；
 - **Schema 严格校验**：执行 Draft 2020-12 Schema 自检及全部结果实例校验；
-- **针对性回归测试**：执行 `tests/test_*.py` 中覆盖全部误判缺陷的 14 个回归测试用例；
+- **针对性回归测试**：执行 `tests/test_*.py` 中覆盖全部误判缺陷的 25 个回归测试用例；
 - **确定性判定复跑**：对动态运行时时间戳 `evaluation_timestamp` 进行中立隔离后，与基线执行逐字节比对（`diff -u`）；
-- **动态审计报告**：失败时非零退出，通过时生成 `rerun-report.md`。
+- **动态审计报告**：失败时非零退出，通过时生成 `rerun-report.md`，口径严格遵循“现有测试零失败”。
 
 ```bash
 # 执行完整独立复跑与检验

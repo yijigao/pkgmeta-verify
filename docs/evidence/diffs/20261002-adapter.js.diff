@@ -1,0 +1,166 @@
+--- /home/hatch/workspace/dsh-gemini-sub/improve/backup/antigravity-20261002-184635/adapter.js.orig	2026-10-02 18:12:40.828203556 +0800
++++ node_modules/dsh-llm-antigravity/lib/adapter.js	2026-10-02 18:48:49.342893598 +0800
+@@ -14,8 +14,96 @@
+ const RECORD_ID = "antigravity";
+ const CLI_UA = "antigravity/cli/1.1.23 (aidev_client; os_type=linux; arch=amd64; cl=974125021; auth_method=consumer)";
+ 
++// ── profile-owned retry + model-fallback policy ─────────────────────────────
++// dsh resolves a provider retry policy from adapter.providerRetryPolicy(); the
++// stock adapter returned undefined, so antigravity inherited the harness normal
++// defaults (5 retries, 500 ms -> 10 s). The subscription quota window refills on
++// a ~per-minute boundary, so those waits exhaust while the window is still shut.
++// These defaults widen the bounded normal-mode budget to 5 s -> 60 s with 20%
++// jitter (5s,10s,20s,40s,60s) which is what actually rides out a 429. Override
++// per profile via plugin config `retryPolicy` or $DSH_ANTIGRAVITY_RETRY_POLICY.
++const DEFAULT_RETRY_POLICY = Object.freeze({
++  mode: "normal",
++  maxRetries: 5,
++  retryableCodes: Object.freeze(["EMPTY_RESPONSE", "RATE_LIMIT", "SERVER", "TIMEOUT", "TRANSPORT"]),
++  initialDelayMs: 5000,
++  maxDelayMs: 60000,
++  jitterRatio: 0.2,
++});
++const MAX_TIMER_DELAY_MS = 2147483647;
++
++/** Validate/clamp a flat resolved retry policy; never throw (a bad value must not brick the profile). */
++export function resolveAdapterRetryPolicy(raw) {
++  if (!raw || typeof raw !== "object") return DEFAULT_RETRY_POLICY;
++  const merged = { ...DEFAULT_RETRY_POLICY, ...raw };
++  // Only bounded normal mode: always-mode on a metered subscription would spend
++  // quota without bound while the window stays closed.
++  merged.mode = "normal";
++  const pos = (v, fallback) => (Number.isFinite(v) && v > 0 && v <= MAX_TIMER_DELAY_MS ? v : fallback);
++  merged.initialDelayMs = pos(merged.initialDelayMs, DEFAULT_RETRY_POLICY.initialDelayMs);
++  merged.maxDelayMs = pos(merged.maxDelayMs, DEFAULT_RETRY_POLICY.maxDelayMs);
++  if (merged.maxDelayMs < merged.initialDelayMs) merged.maxDelayMs = merged.initialDelayMs;
++  merged.jitterRatio =
++    Number.isFinite(merged.jitterRatio) && merged.jitterRatio >= 0 && merged.jitterRatio <= 1
++      ? merged.jitterRatio
++      : DEFAULT_RETRY_POLICY.jitterRatio;
++  merged.maxRetries =
++    Number.isSafeInteger(merged.maxRetries) && merged.maxRetries >= 0 ? merged.maxRetries : DEFAULT_RETRY_POLICY.maxRetries;
++  const codes =
++    Array.isArray(merged.retryableCodes) &&
++    merged.retryableCodes.length > 0 &&
++    merged.retryableCodes.every((c) => typeof c === "string" && c.length > 0)
++      ? [...new Set(merged.retryableCodes)]
++      : [...DEFAULT_RETRY_POLICY.retryableCodes];
++  merged.retryableCodes = Object.freeze(codes);
++  return Object.freeze(merged);
++}
++
++/** Respect an upstream Retry-After header or google.rpc.RetryInfo.retryDelay, clamped to the policy cap. */
++function parseRetryAfterMs(headers, bodyText, maxDelayMs) {
++  let ms;
++  const header = headers?.get?.("retry-after");
++  if (header) {
++    const secs = Number(header);
++    if (Number.isFinite(secs) && secs >= 0) ms = secs * 1000;
++    else {
++      const when = Date.parse(header);
++      if (Number.isFinite(when)) ms = when - Date.now();
++    }
++  }
++  if (ms === undefined && bodyText) {
++    try {
++      const details = JSON.parse(bodyText)?.error?.details;
++      if (Array.isArray(details)) {
++        for (const detail of details) {
++          const delay = detail?.retryDelay; // e.g. "37s" / "2.500s"
++          if (typeof delay === "string") {
++            const match = /^([0-9]+(?:\.[0-9]+)?)s$/.exec(delay.trim());
++            if (match) {
++              ms = Number(match[1]) * 1000;
++              break;
++            }
++          }
++        }
++      }
++    } catch {
++      /* body is not JSON */
++    }
++  }
++  if (!Number.isFinite(ms) || ms <= 0) return undefined;
++  return Math.min(Math.max(ms, 1000), maxDelayMs);
++}
++
+ export function createAntigravityAdapter(opts) {
+   const { LlmError, LlmAdapter, attributionHeaders, logger, credentialsService } = opts ?? {};
++  const adapterRetryPolicy = resolveAdapterRetryPolicy(opts?.retryPolicy);
++  // "on-error" (default): fall back to the previous flash version only for
++  // non-rate-limit failures. A 429 is account-wide quota, so a version fallback
++  // cannot clear it — it only doubles upstream load and mislabels the error
++  // (the observed gemini-3.7-flash-medium call). "always"/"never" are honored.
++  const modelFallbackMode = ["always", "on-error", "never"].includes(opts?.modelFallback)
++    ? opts.modelFallback
++    : "on-error";
+   const llmErr = (message, code, cause) => (cause ? new LlmError(message, code, { cause }) : new LlmError(message, code));
+ 
+   // ── credential store (record-first, then dvcrn/pi files), auto-refresh ─────
+@@ -145,8 +233,13 @@
+     if (status === 401 || status === 403) return "AUTH";
+     if (status === 404) return "INVALID_REQUEST";
+     if (status === 429) return "RATE_LIMIT";
++    if (status === 408) return "TIMEOUT";
++    if (status >= 400 && status < 500) return "INVALID_REQUEST"; // parameter/contract errors: never retry
++    if (status >= 500) return "SERVER"; // transient
+     return "TRANSPORT";
+   }
++  // Quota can be signalled inside a non-429 envelope (e.g. 403 quotaExceeded).
++  const QUOTA_BODY_RE = /RESOURCE_EXHAUSTED|rateLimitExceeded|quotaExceeded/i;
+ 
+   const impl = {
+     providerInfo(provider) {
+@@ -161,7 +254,7 @@
+       return found;
+     },
+     providerRetryPolicy() {
+-      return undefined; // harness normal defaults
++      return adapterRetryPolicy; // profile-tuned normal policy (see resolveAdapterRetryPolicy)
+     },
+     imageRequestPricing() {
+       return undefined;
+@@ -180,7 +273,8 @@
+       const model = options.model;
+       const effort = options.reasoningEffort ?? defaultEffortForModel(model);
+       const baseRuntime = core.getAntigravityRequestModelId?.(model, effort) ?? model;
+-      const runtimeCandidates = [baseRuntime, core.getFallbackRuntimeModel?.(baseRuntime, effort)].filter(Boolean);
++      const fallbackRuntime = modelFallbackMode === "never" ? undefined : core.getFallbackRuntimeModel?.(baseRuntime, effort);
++      const runtimeCandidates = [baseRuntime, fallbackRuntime].filter(Boolean);
+       const modelMeta = modelById.get(model);
+       const maxTokens =
+         options.maxTokens !== undefined
+@@ -227,10 +321,19 @@
+             });
+             if (!res.ok) {
+               const text = await res.text().catch(() => "");
+-              lastErr = llmErr(
+-                `Antigravity upstream ${res.status} on ${endpoint} (model ${runtimeModel}): ${text.slice(0, 300)}`,
+-                mapHttpStatus(res.status),
++              const status = res.status;
++              let code = mapHttpStatus(status);
++              if (code !== "RATE_LIMIT" && QUOTA_BODY_RE.test(text)) code = "RATE_LIMIT";
++              const retryAfterMs = code === "RATE_LIMIT" ? parseRetryAfterMs(res.headers, text, adapterRetryPolicy.maxDelayMs) : undefined;
++              lastErr = new LlmError(
++                `Antigravity upstream ${status} on ${endpoint} (model ${runtimeModel}): ${text.slice(0, 300)}`,
++                code,
++                retryAfterMs === undefined ? { status } : { status, providerRetryAfterMs: retryAfterMs },
+               );
++              // Every endpoint is a front door to the same quota pool, so a 429 on
++              // one will 429 on the rest: stop instead of firing two more doomed
++              // requests per attempt and feeding the limit.
++              if (code === "RATE_LIMIT") break;
+               continue;
+             }
+             reader = res.body?.getReader?.();
+@@ -286,6 +389,10 @@
+             options.signal?.removeEventListener?.("abort", onAbort);
+           }
+         }
++        // A 429 is account-wide: another model version cannot clear it. Stop so the
++        // harness retry re-attempts the primary model after a wider backoff instead
++        // of spending a second doomed request on the fallback version.
++        if (lastErr && lastErr.code === "RATE_LIMIT" && modelFallbackMode !== "always") break;
+       }
+       throw lastErr ?? llmErr("Antigravity: no usable endpoint", "TRANSPORT");
+     },

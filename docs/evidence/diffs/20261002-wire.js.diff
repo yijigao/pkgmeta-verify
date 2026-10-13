@@ -1,0 +1,30 @@
+--- /home/hatch/workspace/dsh-gemini-sub/improve/backup/antigravity-20261002-184635/wire.js.orig	1985-10-26 16:15:00.000000000 +0800
++++ /home/hatch/.dsh/profiles/gemini-sub/node_modules/dsh-llm-antigravity/lib/wire.js	2026-10-02 19:13:13.123941759 +0800
+@@ -168,8 +168,25 @@
+   };
+ 
+   for (const message of messages) {
+-    const content = Array.isArray(message.content) ? message.content : [];
+-    const role = message.role;
++    // dsh 0.2 delivers tool results as role:"tool" with text content blocks,
++    // not role:"user" + tool-result blocks. Normalize them into the tool-result
++    // shape the rest of this loop understands; otherwise they fall through to
++    // the assistant branch and become a trailing model turn, which Cloud Code
++    // rejects with 400 "Requests ending with a model turn are not supported."
++    const isToolResult = message.role === "tool";
++    const content = isToolResult
++      ? [
++          {
++            type: "tool-result",
++            toolCallId: message.toolCallId ?? message.source?.callId,
++            content: Array.isArray(message.content) ? message.content : [],
++            isError: message.isError,
++          },
++        ]
++      : Array.isArray(message.content)
++        ? message.content
++        : [];
++    const role = isToolResult ? "user" : message.role;
+     if (role === "system") continue; // handled in buildRequest system slot
+     if (role === "user") {
+       const textParts = [];

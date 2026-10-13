@@ -269,7 +269,7 @@ $(cat "${SCHEMA_CHECK_OUTPUT}")
 \`\`\`
 
 ### 1.3 规则回归测试用例 (Targeted Regression Test Suite)
-$( [ ${TESTS_FAILED} -eq 0 ] && echo "**状态: 规则测试用例全部通过 (ALL PASS)**" || echo "**状态: 存在测试失败 (FAILED)**" )
+$( [ ${TESTS_FAILED} -eq 0 ] && echo "**状态: 现有测试零失败 (ALL TESTS PASSED)**" || echo "**状态: 存在测试失败 (FAILED)**" )
 
 \`\`\`
 $(cat "${TESTS_OUTPUT}")
@@ -297,17 +297,23 @@ cat << EOF >> "${REPORT_FILE}"
 - **通过案例数**: ${PASSED_CASES}
 - **失败案例数**: ${FAILED_CASES}
 - **分类统计**:
-  - **真实软件包案例 (3个)**: \`typing-extensions@4.12.2\` (\`REAL_ERROR\`), \`archgraph-layout@2.3.0\` (\`SYNC_DELAY\`), \`esprima@4.0.1\` (\`SEMANTIC_DIVERGENCE\`)
+  - **真实软件包案例 (3个)**:
+    - \`typing-extensions@4.12.2\`: \`REAL_ERROR\` (subcode: \`STANDARDS_CONTRADICTION\`)
+    - \`archgraph-layout@2.3.0\`: \`INDETERMINATE\` (subcode: \`undecidable\`, 疑似延迟，时间链待核验；已标注 suspect/retracted，撤出已证明延迟案例)
+    - \`esprima@4.0.1\`: \`SEMANTIC_DIVERGENCE\` (subcode: \`LICENSE_EXPRESSION_CONJUNCTION_MISMATCH\`)
   - **真实包跨算法构造测试 (1个, synthetic=true)**: \`debug@4.3.4\` (\`INDETERMINATE\`, subcode: \`undecidable\`)
   - **构造基准用例 (1个, synthetic=true)**: \`synthetic-fixture@1.0.0\` (\`DIGEST_CONFLICT\`, subcode: \`ARTIFACT_DIGEST_MISMATCH\`)
-- **复跑综合结论**: $( [ ${TOTAL_ERRORS} -eq 0 ] && echo "**ALL PASSED (100% 字节级一致、Schema 校验通过、清单哈希全匹配)**" || echo "**FAILED (发现 ${TOTAL_ERRORS} 处异常)**" )
+- **复跑综合结论**: $( [ ${TOTAL_ERRORS} -eq 0 ] && echo "**现有测试零失败 (100% 字节级一致、Schema 校验通过、清单哈希全匹配)**" || echo "**FAILED (发现 ${TOTAL_ERRORS} 处异常)**" )
 
-### 终审修复规则落实情况
-1. **真实错误责任断言剥离**: 在 \`pkg:pypi/typing-extensions@4.12.2\` 中，记录了制品内标准 PSF 许可证原文及 PyPI 分类器事实，删除了未证明原因的 \`DOWNSTREAM_PARSING_ERROR\` 及其单边责任归咎，客观判定为 \`STANDARDS_CONTRADICTION\`。
-2. **完整延迟时间链与范围计算**: 在 \`pkg:pypi/archgraph-layout@2.3.0\` 中，基于上游发布时间、下游 404 缺失观察及后续 200 出现观察建立完整三段链，输出可证明的延迟范围，避免了单次 404 或无发布时间时的误判。
-3. **语义差异多源与扫描范围补全**: 在 \`pkg:npm/esprima@4.0.1\` 中，完整补清了 npm registry 顶层声明与 ClearlyDefined 仓库核心切面文件级扫描的字段差异与扫描范围。
-4. **哈希比较硬约束与归一化审计**: 跨算法输入严格判定为 \`undecidable\`；hex digest 比较在同一算法下记录大小写/空格归一化动作与原始值；制品同一性强制核验制品级证据（摘要、URL、文件清单），杜绝仅凭文件名武断认定。
-5. **空证据严禁默认一致**: 证据为空或不足时严格输出 \`undecidable\`，杜绝空数据误判为 \`CONSISTENT\`。
+> **重要口径说明**：本轮起严格遵照 Astra rev3 审查要求，\"0 错误\"收窄为\"现有测试零失败\"——测试通过仅代表符合当前测试集规范，不等于判定绝对正确。本报告仅陈述客观测试结果。
+
+### Astra rev3 终审修复规则落实情况
+1. **制品身份关联核验 (同名文件不同摘要)**: 必须验证制品身份关联（绑定同一下载 URL / 文件清单 / 发布记录之一）；未证明身份关联严格判定为 \`undecidable\` (子码 \`ARTIFACT_IDENTITY_UNPROVEN\`)，严禁判定为 \`DIGEST_CONFLICT\`。
+2. **编码感知字节级解码 (Base64 大小写区分与不支持编码拦截)**: 摘要统一按编码解码为原始字节后比对，严禁静默 \`.lower()\` 后判匹配；不支持或未知编码明确输出 \`undecidable\` (子码 \`ENCODING_UNSUPPORTED\`)。
+3. **延迟观测链严苛校验**: 必须同时满足后续观测 HTTP 成功 (200)、有效发布时间与严格正向观测顺序 (\`t_observed_after > t_observed_before > t_published\`)；任一不满足判定 \`undecidable\` (疑似延迟，标注不确定性)。
+4. **跨源许可证主动比对与可比性检查**: 实际比对元数据字段，MIT vs Apache-2.0 判定为明确不一致 (\`SEMANTIC_DIVERGENCE\`)；缺少可比字段严格判定为 \`undecidable\`，坚决杜绝\"无比较就判一致\"。
+5. **真实错误严禁硬编码断言**: 必须依赖制品内实际 LICENSE 文本等经验证据；未提供原文证据不得判定 \`REAL_ERROR\`，彻底删除硬编码事实断言。
+6. **archgraph-layout 延迟案例降级**: 公开口径降级为\"疑似延迟，时间链待核验\"，证据中标记 \`verification_status: suspect\` 与 \`audit_status: retracted\`，撤出已证明延迟案例名单。
 
 EOF
 
@@ -325,12 +331,12 @@ fi
 
 echo ""
 echo "=== Final Status ==="
-echo "Total Errors: ${TOTAL_ERRORS}"
+echo "Test Result: $( [ ${TOTAL_ERRORS} -eq 0 ] && echo "现有测试零失败 (0 failures)" || echo "Failures: ${TOTAL_ERRORS}" )"
 echo "Passed Cases: ${PASSED_CASES}/${TOTAL_CASES}"
 echo "Report written to: ${REPORT_FILE}"
 
 if [ "${TOTAL_ERRORS}" -eq 0 ]; then
-  echo "ALL CHECKS PASSED SUCCESSFULLY!"
+  echo "现有测试零失败 (ALL TESTS PASSED)"
   exit 0
 else
   echo "CHECKS FAILED WITH ${TOTAL_ERRORS} ERRORS!"

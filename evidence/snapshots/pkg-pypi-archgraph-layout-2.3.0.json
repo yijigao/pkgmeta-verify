@@ -78,5 +78,7 @@
     }
   },
   "synthetic": false,
+  "verification_status": "suspect",
+  "audit_status": "retracted",
   "version": "2.3.0"
 }

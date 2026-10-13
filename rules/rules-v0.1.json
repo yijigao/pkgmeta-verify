@@ -7,8 +7,11 @@
     "digest_comparison": {
       "require_identical_artifact": true,
       "require_identical_algorithm": true,
-      "require_artifact_level_evidence": true,
-      "require_case_normalization_logging": true,
+      "require_artifact_identity_provenance": true,
+      "require_byte_level_decoding": true,
+      "prohibit_silent_lower_matching": true,
+      "unproven_identity_subcode": "ARTIFACT_IDENTITY_UNPROVEN",
+      "unsupported_encoding_subcode": "ENCODING_UNSUPPORTED",
       "cross_incomparable_verdict": "INDETERMINATE",
       "cross_incomparable_subcode": "undecidable",
       "conflict_verdict": "DIGEST_CONFLICT",
@@ -18,8 +21,13 @@
       "tolerance_window_seconds": 86400,
       "evaluation": "TIME_SKEW_UNCERTAINTY",
       "require_temporal_chain": true,
+      "require_subsequent_http_success": true,
+      "require_valid_published_at": true,
+      "require_strict_forward_order": true,
       "missing_timestamp_verdict": "INDETERMINATE",
       "single_observation_verdict": "INDETERMINATE",
+      "inversion_verdict": "INDETERMINATE",
+      "suspect_delay_verdict": "INDETERMINATE",
       "verdict": "SYNC_DELAY",
       "base_confidence": 0.95
     },
@@ -27,18 +35,24 @@
       "verdict": "SEMANTIC_DIVERGENCE",
       "prohibit_auto_acceptance": true,
       "flag_boolean_logic_disparity": true,
+      "flag_license_declaration_discrepancy": true,
       "require_field_and_scope_provenance": true
     },
     "real_error": {
       "verdict": "REAL_ERROR",
       "require_irrefutable_evidence": true,
+      "require_artifact_license_text_evidence": true,
+      "prohibit_hardcoded_fact_assertions": true,
       "prohibit_unilateral_parser_blame_without_proof": true,
       "recognized_standards": ["SPDX-2.3", "OSI-Approved"]
     },
     "consistency": {
       "prohibit_empty_evidence_default": true,
+      "prohibit_uncompared_consistency": true,
+      "require_field_level_comparison": true,
       "min_available_sources": 2,
-      "empty_evidence_verdict": "INDETERMINATE"
+      "empty_evidence_verdict": "INDETERMINATE",
+      "incomparable_fields_verdict": "INDETERMINATE"
     },
     "source_dependency": {
       "record_derivation_dag": true,

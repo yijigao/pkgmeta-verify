@@ -1,6 +1,12 @@
 {
   "decision_audit_trail": [
     {
+      "condition_evaluated": "has_artifact_identity_provenance(same_url, same_file_list, same_release_record)",
+      "outcome": "PASS_IDENTITY_PROVEN",
+      "rationale": "Artifact identity verified via identical download URL: 'https://registry.npmjs.org/debug/-/debug-4.3.4.tgz'.",
+      "rule_id": "DIGEST_01_ARTIFACT_IDENTITY_PROVENANCE"
+    },
+    {
       "condition_evaluated": "shared_algorithms(['sha1'], ['sha256'])",
       "outcome": "FAIL_CROSS_ALGORITHM",
       "rationale": "Cross-algorithm hash comparison (e.g. sha1 vs sha256 or sha512) is mathematically incomparable.",
@@ -8,7 +14,7 @@
     }
   ],
   "ecosystem": "npm",
-  "evaluation_timestamp": "2026-10-13T07:00:07Z",
+  "evaluation_timestamp": "2026-10-13T07:35:04Z",
   "name": "debug",
   "normalized_evidence": {
     "clearlydefined": {
@@ -44,6 +50,9 @@
             "sha1": "1319f6579357f2338d3337d2cdd4914bb5dcc865",
             "sha512": "sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ=="
           },
+          "files": null,
+          "origin_url": null,
+          "release_record": "pkg:npm/debug@4.3.4",
           "url": "https://registry.npmjs.org/debug/-/debug-4.3.4.tgz"
         }
       ],

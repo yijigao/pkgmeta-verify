@@ -67,7 +67,7 @@
 - 日期：2026-10-13 14:47 CST（启动）
 - 模型：Gemini（dsh --profile gemini-sub，订阅版）
 - Prompt：~/workspace/nlnet-codesupply-council/TASK-PMV-FIX-gemini.md（原文存档）
-- 未编辑输出：~/workspace/nlnet-codesupply-council/pmv-fix-gemini.txt（DSH_EXIT=0，已完成；0 错误、Schema 100%、12/12 哈希、新基线复跑 100% 字节一致）
+- 未编辑输出：~/workspace/nlnet-codesupply-council/pmv-fix-gemini.txt（DSH_EXIT=0，已完成；"0 错误"口径后收窄为"现有测试零失败"，见条目 12）
 - 用途：修复 verifier.py 判定规则、Schema 小写类型、synthetic 标注、typing-extensions 证据、延迟时间链、rerun.sh 实际检查、新基线冻结复跑。提案正文人工主笔。
 
 ## 条目 10 — rev3 大纲（按 Astra rev2 终审 10 项 checklist）
@@ -79,6 +79,13 @@
 
 ## 公开归档索引（提交材料用，评审可访问）
 - PMV 公开仓库：https://github.com/yijigao/pkgmeta-verify（commit f25484f，main 分支；含代码、evidence/ 快照与 MANIFEST.sha256、rerun-report.md、schemas/、docs/evidence/dsh-patches.md、PROMPT-LOG.md 本日志副本）
-- AboutCode 对齐 issue：https://github.com/aboutcode-org/purl-validator/issues/39（2026-10-13 发起，只写"已发起技术对齐"，不写获认可）
+- AboutCode 对齐 issue：https://github.com/aboutcode-org/purl-validator/issues/39（2026-10-13 发起，只写"已发起技术对齐"，不写获认可）；archgraph-layout 案例纠正评论 https://github.com/aboutcode-org/purl-validator/issues/39#issuecomment-6140484558（降级为疑似延迟）
 - PR #228（MEC 履历证据）：https://github.com/Anil-matcha/awesome-muse-connectors/pull/228（描述已按终审更新成熟度措辞＋评论留痕；SKILL.md 同步）
 - 维护人：Jigao Yi（@yijigao）。提交版本固定 commit＋打 tag（提交前执行）。
+
+## 条目 11 — PMV 第二轮 bug 修复（按 Astra rev3 终审第1节）
+- 日期：2026-10-13 15:41 CST（完成）
+- 模型：Gemini（dsh --profile gemini-sub，订阅版）
+- Prompt：~/workspace/nlnet-codesupply-council/TASK-PMV-FIX2-gemini.md（原文存档）
+- 未编辑输出：~/workspace/nlnet-codesupply-council/pmv-fix2-gemini.txt（DSH_EXIT=0）
+- 用途：修复 5 个误判（制品身份关联、base64 解码比较、延迟三条件、许可证实际比较、删硬编码断言）＋25 项回归测试；archgraph-layout 降级 suspect/retracted；新基线冻结。口径统一为"现有测试零失败"。

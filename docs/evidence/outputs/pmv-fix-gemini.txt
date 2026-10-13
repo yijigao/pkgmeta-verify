@@ -1,0 +1,116 @@
+# NLnet CodeSupply · PMV Bug 修复与新基线复跑总结报告
+
+技术负责人：**Joey（Jigao Yi）个人申请**  
+工作目录：`~/workspace/nlnet-codesupply-council/pmv/`  
+审计依据：`ASTRA-REV2-2026-10-13.md` 第 4 节 Checklist
+
+---
+
+## 一、修复清单与改动详情（逐项）
+
+### 1. `verifier.py` 判定规则修正（`pmv/pmv/verifier.py`）
+- **无发布时间仍判延迟**：修正 `_evaluate_sync_delay` 逻辑。当上游注册表缺少发布时间（`published_at is None`）或时间戳无法计算时，严禁输出 `SYNC_DELAY`，强制输出 `INDETERMINATE`（子状态码 `undecidable`，置信度 0.3，明确标明因时间戳缺失导致不可判定）。
+- **空证据默认一致**：修正 `_evaluate_consistent` 逻辑。当对照源为空或可用源数量少于 2 个（`len(avail_sources) < 2`），或所有可用源元数据字段均为空时，严禁默认返回 `CONSISTENT`，强制输出 `INDETERMINATE`（子状态码 `undecidable`，置信度 0.0）。
+- **仅凭文件名认定同一制品**：在 `_evaluate_digest_constraints` 中增加制品级证据核验逻辑（`has_artifact_level_evidence`），要求除文件名（`artifact_id`）相同外，必须具备哈希摘要（`digests`）、下载地址（`url`）或包内清单（`files`）等制品级证据；若仅凭裸文件名匹配，严格判定为 `INDETERMINATE`（子状态码 `undecidable`）。
+- **摘要统一 `.lower()` 审计与跨算法判定**：在同一算法比较前执行大小写统一和去除空格是允许的，但在 `decision_audit_trail` 中强制增加 `DIGEST_03_NORMALIZATION` 审计条目，完整记录原始值（`original_values`）与归一化动作（`normalized_values`）；跨算法比较（如 SHA-1 vs SHA-256）严格保持输出 `INDETERMINATE`（`undecidable`）。
+
+### 2. Schema 真正可用（`pmv/schemas/pmv-output.schema.json`）
+- **合法小写类型**：将原 Schema 中全部非法的纯大写类型（`OBJECT/STRING/ARRAY/BOOLEAN/INTEGER/NUMBER`）统一替换为 Draft 2020-12 标准小写类型（`object/string/array/boolean/integer/number`）。
+- **版本化项目 `$id`**：将 `$id` 改为项目控制的版本化地址 `https://pmv.codesupply.org/schemas/pmv-output/v0.1.json`，并在 `README.md` 中注明为项目正式上线前规范占位地址。
+- **自检与实例校验**：通过 `Draft202012Validator.check_schema` 自检，且全部 5 个基线结果实例及复跑实例均通过 Schema 校验。
+
+### 3. `synthetic` 标记一致性（`pmv/pmv/cli.py` & `pmv/run_harvest.py`）
+- `debug --cross-algo-test` 触发跨算法不可比模拟时，输入数据显式标记 `norm_data["synthetic"] = True`，输出结果中 `synthetic` 严格与输入一致为 `true`。
+- 在复跑报告与统计中，将“真实包跨算法构造测试（`debug@4.3.4`, synthetic=true）”与“纯构造基准用例（`synthetic-fixture@1.0.0`, synthetic=true）”及另外 3 个真实案例明确分开统计。
+
+### 4. 真实错误责任断言剥离（`typing-extensions` 案例）
+- **删除 `DOWNSTREAM_PARSING_ERROR`**：在 `snapshots/pkg-pypi-typing-extensions-4.12.2.json` 中保存 wheel 制品内 `dist-info/LICENSE` 的 PSF 许可证原文片段及 PyPI 分类器事实；由于核心元数据缺少显式 PEP 639 License-Expression，无法客观证明是上游打包字段缺失还是下游 deps.dev 解析器故障，因此**彻底删除 `DOWNSTREAM_PARSING_ERROR` 及其单边责任归咎**，将子状态码修正为事实描述性质的 `STANDARDS_CONTRADICTION`。
+
+### 5. 延迟时间链完整构建（`archgraph-layout` 案例）
+- **三段延迟时间链**：在 `snapshots/pkg-pypi-archgraph-layout-2.3.0.json` 中保存：
+  1. 上游 PyPI 实际发布时间：`2026-10-13T06:16:05Z`（wheel 上传时间）；
+  2. 下游 deps.dev 404 缺失观察：`2026-10-13T06:31:25Z`（+920s）；
+  3. 下游 deps.dev 200 随后出现观察：`2026-10-13T07:15:00Z`。
+- 在 `verifier.py` 中，计算并输出**可证明的延迟范围 `[920s, 3535s]`**；对于仅有单次 404 或缺少发布时间的案例，输出不可判定／疑似延迟。
+
+### 6. `rerun.sh` 实际检查重构（`pmv/rerun.sh`）
+- **废除死写与固定文字**：彻底删除了原脚本中直接写死 `SHA-256 MATCH` 的假象及硬编码归因文字。
+- **全环节实际校验**：
+  1. 真实运行 `sha256sum -c evidence/MANIFEST.sha256` 逐项比对全部 12 个文件；
+  2. 真实执行 `Draft202012Validator` Schema 自检与结果验证；
+  3. 真实运行针对性回归测试集；
+  4. 真实执行脱网离线复跑与逐字节 `diff -u`；
+  5. 任何一项失败均设置非零退出码（`exit 1`），全通方可 `exit 0`。
+
+### 7. `esprima` 案例补清字段与扫描范围
+- 在 `_evaluate_semantic_divergence` 中补齐判定依据与审计跟踪：
+  - 参与源：`npm_registry`、`clearlydefined`、`deps_dev`；
+  - 参与字段：`registry.license`（顶层 `BSD-2-Clause`）、`clearlydefined.licensed.declared`（`BSD-2-Clause AND BSD-3-Clause`）、`clearlydefined.licensed.facets.core.discovered.expressions`（`['BSD-2-Clause', 'BSD-3-Clause']`）、`deps_dev.licenses`；
+  - 扫描范围：ClearlyDefined 仓库核心切面（core facet）文件级深度代码扫描 vs npm packument 顶层 `package.json` 声明。
+
+---
+
+## 二、针对性回归测试结果
+
+新增自动化测试集 `pmv/tests/test_verifier_rules.py` 与 `pmv/tests/test_schema.py`，共 14 个测试用例，覆盖全部 Astra rev2 捕获的误判场景：
+
+```text
+Ran 14 tests in 0.059s
+
+OK
+```
+
+**用例覆盖明细**：
+1. `test_missing_published_at_yields_undecidable_not_sync_delay`: 缺少发布时间严禁判延迟 -> PASS
+2. `test_single_404_observation_yields_undecidable_not_proven_delay`: 仅单次 404 缺少完整出现链严禁判延迟 -> PASS
+3. `test_complete_temporal_chain_yields_proven_sync_delay`: 完整三段延迟时间链输出可证明延迟范围 -> PASS
+4. `test_empty_evidence_yields_undecidable_not_consistent`: 空源或仅单源严禁判 CONSISTENT -> PASS
+5. `test_empty_metadata_fields_yield_undecidable`: 两源但元数据字段全空严禁判 CONSISTENT -> PASS
+6. `test_filename_only_matching_yields_undecidable`: 仅相同文件名无制品级证据输出不可判定 -> PASS
+7. `test_digest_case_normalization_logged_in_audit_trail`: 十六进制摘要归一化并在审计轨记录原始值 -> PASS
+8. `test_cross_algorithm_comparison_yields_undecidable`: 跨算法输入输出 undecidable 无崩溃 -> PASS
+9. `test_real_error_no_downstream_parser_blame`: 真实错误删除单边解析器责任归咎 -> PASS
+10. `test_synthetic_flag_strictly_preserved`: 输出 synthetic 标记严格与输入一致 -> PASS
+11. `test_schema_itself_is_valid_draft202012`: Schema 自身符合 Draft 2020-12 标准规范 -> PASS
+12. `test_all_baseline_results_validate_against_schema`: 全部 5 个基线结果通过 Schema 校验 -> PASS
+13. `test_schema_rejects_invalid_verdict_category`: Schema 能正确拦截非法判定类别 -> PASS
+14. `test_schema_rejects_missing_required_field`: Schema 能正确拦截缺失必填字段 -> PASS
+
+---
+
+## 三、新基线冻结与完整复跑结果
+
+已更新 `evidence/MANIFEST.sha256` 密码学基线并重新运行 `./rerun.sh`，生成新版 `rerun-report.md`。
+
+### 1. MANIFEST.sha256 冻结与实际校验
+```text
+../rules/rules-v0.1.json: OK
+../schemas/pmv-output.schema.json: OK
+results/pkg-npm-debug-4.3.4.result.json: OK
+results/pkg-npm-esprima-4.0.1.result.json: OK
+results/pkg-npm-synthetic-fixture-1.0.0.result.json: OK
+results/pkg-pypi-archgraph-layout-2.3.0.result.json: OK
+results/pkg-pypi-typing-extensions-4.12.2.result.json: OK
+snapshots/pkg-npm-debug-4.3.4.json: OK
+snapshots/pkg-npm-esprima-4.0.1.json: OK
+snapshots/pkg-npm-synthetic-fixture-1.0.0.json: OK
+snapshots/pkg-pypi-archgraph-layout-2.3.0.json: OK
+snapshots/pkg-pypi-typing-extensions-4.12.2.json: OK
+```
+**校验结果**：12/12 文件哈希 100% 匹配。
+
+### 2. 5/5 案例离线复跑逐字节比对（0 diff）
+| 案例 PURL | 判定类别 | 子状态码 | 置信度 | synthetic 标记 | 密码学清单校验 | 逐字节比对状态 |
+|---|---|---|---|---|---|---|
+| `pkg:pypi/typing-extensions@4.12.2` | `REAL_ERROR` | `STANDARDS_CONTRADICTION` | 1.0 | `False` | SHA-256 VERIFIED | **PASS** (0 diff) |
+| `pkg:pypi/archgraph-layout@2.3.0` | `SYNC_DELAY` | `DOWNSTREAM_INGESTION_LAG` | 0.978 | `False` | SHA-256 VERIFIED | **PASS** (0 diff) |
+| `pkg:npm/esprima@4.0.1` | `SEMANTIC_DIVERGENCE` | `LICENSE_EXPRESSION_CONJUNCTION_MISMATCH` | 0.95 | `False` | SHA-256 VERIFIED | **PASS** (0 diff) |
+| `pkg:npm/debug@4.3.4` | `INDETERMINATE` | `undecidable` | 1.0 | `True` | SHA-256 VERIFIED | **PASS** (0 diff) |
+| `pkg:npm/synthetic-fixture@1.0.0` | `DIGEST_CONFLICT` | `ARTIFACT_DIGEST_MISMATCH` | 1.0 | `True` | SHA-256 VERIFIED | **PASS** (0 diff) |
+
+**综合结论**：
+- **Total Errors: 0**，退出码 `0`。
+- Schema 自检与 5/5 结果实例校验通过率 **100%**。
+- 清单哈希匹配率 **100%**。
+- 脱网确定性复跑与基线比对达成 **100% 字节级一致（0 diff）**。
+DSH_EXIT=0

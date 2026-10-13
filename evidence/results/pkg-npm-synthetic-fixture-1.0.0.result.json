@@ -1,28 +1,34 @@
 {
   "decision_audit_trail": [
     {
-      "condition_evaluated": "normalize_hex_digest(algo='sha256')",
-      "normalized_values": {
-        "source_a": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "source_b": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      "condition_evaluated": "has_artifact_identity_provenance(same_url, same_file_list, same_release_record)",
+      "outcome": "PASS_IDENTITY_PROVEN",
+      "rationale": "Artifact identity verified via artifact B origin URL binds to artifact A download URL: 'https://registry.npmjs.org/synthetic-fixture/-/synthetic-fixture-1.0.0.tgz'.",
+      "rule_id": "DIGEST_01_ARTIFACT_IDENTITY_PROVENANCE"
+    },
+    {
+      "condition_evaluated": "decode_digest_bytes(algo='sha256')",
+      "encodings": {
+        "source_a": "hex",
+        "source_b": "hex"
       },
       "original_values": {
         "source_a": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "source_b": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
-      "outcome": "NORMALIZED",
-      "rationale": "Hex digest comparison restricted to identical algorithm 'sha256'. Case and whitespace normalization recorded: source_a 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' -> 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', source_b 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' -> 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'.",
-      "rule_id": "DIGEST_03_NORMALIZATION"
+      "outcome": "DECODED",
+      "rationale": "Decoded digests to raw bytes for algorithm 'sha256' (encodings: source_a=hex, source_b=hex). Byte-level comparison executed; silent .lower() string matching prohibited.",
+      "rule_id": "DIGEST_03_BYTE_DECODING"
     },
     {
-      "condition_evaluated": "digests_match([('sha256', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')])",
+      "condition_evaluated": "bytes_match([('sha256', 'hex', 'hex')])",
       "outcome": "DIGEST_CONFLICT",
-      "rationale": "Different hashes for identical artifact & algorithm prove digest conflict. Strictly prohibited from asserting mirror tampering or corruption.",
+      "rationale": "Different decoded byte values for identical artifact & algorithm prove digest conflict. Strictly prohibited from asserting mirror tampering or corruption.",
       "rule_id": "DIGEST_03_VALUE_COMPARISON"
     }
   ],
   "ecosystem": "npm",
-  "evaluation_timestamp": "2026-10-13T07:00:07Z",
+  "evaluation_timestamp": "2026-10-13T07:35:05Z",
   "name": "synthetic-fixture",
   "normalized_evidence": {
     "registry": {
@@ -33,6 +39,9 @@
           "digests": {
             "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
           },
+          "files": null,
+          "origin_url": null,
+          "release_record": "pkg:npm/synthetic-fixture@1.0.0",
           "url": "https://registry.npmjs.org/synthetic-fixture/-/synthetic-fixture-1.0.0.tgz"
         }
       ],
@@ -58,6 +67,9 @@
           "digests": {
             "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
           },
+          "files": null,
+          "origin_url": "https://registry.npmjs.org/synthetic-fixture/-/synthetic-fixture-1.0.0.tgz",
+          "release_record": "pkg:npm/synthetic-fixture@1.0.0",
           "url": "https://mirror.example.org/synthetic-fixture-1.0.0.tgz"
         }
       ],

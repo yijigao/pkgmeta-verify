@@ -40,6 +40,12 @@
       "type": "boolean",
       "default": false
     },
+    "verification_status": {
+      "type": "string"
+    },
+    "audit_status": {
+      "type": "string"
+    },
     "verdict": {
       "type": "object",
       "required": ["category", "subcode", "confidence", "summary", "details"],

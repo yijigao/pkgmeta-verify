@@ -1,14 +1,15 @@
 {
+  "audit_status": "retracted",
   "decision_audit_trail": [
     {
-      "condition_evaluated": "temporal_chain_complete(upstream='2026-10-13T06:16:05.856416Z', 404_observed='2026-10-13T06:31:25Z', 200_observed='2026-10-13T07:15:00Z')",
-      "outcome": "SYNC_DELAY",
-      "rationale": "Three-stage temporal observation chain confirmed (published -> 404 missing -> 200 resolved). Provable delay range [919s, 3534s] is within tolerance window 86400s.",
-      "rule_id": "SYNC_02_OBSERVATION_CHAIN"
+      "condition_evaluated": "verification_status == 'suspect' or audit_status == 'retracted'",
+      "outcome": "UNDECIDABLE_SUSPECT",
+      "rationale": "Observation temporal chain is marked verification_status: suspect / retracted due to temporal inconsistency or lack of raw audit corroboration. Demoted to suspect pending reverification.",
+      "rule_id": "SYNC_00_VERIFICATION_STATUS"
     }
   ],
   "ecosystem": "pypi",
-  "evaluation_timestamp": "2026-10-13T07:00:07Z",
+  "evaluation_timestamp": "2026-10-13T07:35:04Z",
   "name": "archgraph-layout",
   "normalized_evidence": {
     "clearlydefined": {
@@ -48,6 +49,9 @@
           "digests": {
             "sha256": "2e63832e5ac22720d63d43b999ed463523f08c57b8414964890d235eadfe8bc6"
           },
+          "files": null,
+          "origin_url": null,
+          "release_record": "pkg:pypi/archgraph-layout@2.3.0",
           "upload_time": "2026-10-13T06:16:05.856416Z",
           "url": "https://files.pythonhosted.org/packages/65/22/af24cc7b5fb7391166cf4fc5191e30933bc7b041e8bd5d7e3069f8183eef/archgraph_layout-2.3.0-py3-none-any.whl"
         }
@@ -105,12 +109,13 @@
   "ruleset_version": "v0.1",
   "synthetic": false,
   "verdict": {
-    "avoided_false_positive": "Avoided misclassifying normal downstream indexing latency as upstream publication failure or missing package integrity fault.",
-    "category": "SYNC_DELAY",
-    "confidence": 0.978,
-    "details": "Upstream registry reports release published at '2026-10-13T06:16:05.856416Z'. Temporal observation chain verified: downstream missing (404) observed at '2026-10-13T06:31:25Z' (delta 919s), subsequent appearance (200) observed at '2026-10-13T07:15:00Z'. Provable delay range is [919s, 3534s], within sync tolerance window (86400s). Preserving uncertainty; not judged as missing package or mirror defect.",
-    "subcode": "DOWNSTREAM_INGESTION_LAG",
-    "summary": "Downstream index ingested release with verified temporal delay chain"
+    "avoided_false_positive": "Avoided prematurely asserting proven sync delay when observation temporal chain contains unverified or inverted timestamps.",
+    "category": "INDETERMINATE",
+    "confidence": 0.4,
+    "details": "Downstream deps.dev returned HTTP 404 while upstream registry was available, but observation is marked verification_status: 'suspect' / retracted due to temporal chain inconsistency against audit environment. Demoted to suspect; delay is undecidable pending reverification.",
+    "subcode": "undecidable",
+    "summary": "\u7591\u4f3c\u5ef6\u8fdf\uff0c\u65f6\u95f4\u94fe\u5f85\u6838\u9a8c (Suspected sync delay, temporal chain unproven)"
   },
+  "verification_status": "suspect",
   "version": "2.3.0"
 }

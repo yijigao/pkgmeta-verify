@@ -8,7 +8,7 @@
     }
   ],
   "ecosystem": "npm",
-  "evaluation_timestamp": "2026-10-13T07:00:07Z",
+  "evaluation_timestamp": "2026-10-13T07:35:04Z",
   "name": "esprima",
   "normalized_evidence": {
     "clearlydefined": {
@@ -47,6 +47,9 @@
             "sha1": "13b04cdb3e6c5d19df91ab6987a8695619b0aa71",
             "sha512": "sha512-eGuFFw7Upda+g4p+QHvnW0RyTX/SVeJBDM/gCtMARO0cLuT2HcEKnTPvhjV6aGeqrCB/sbNop0Kszm0jsaWU4A=="
           },
+          "files": null,
+          "origin_url": null,
+          "release_record": "pkg:npm/esprima@4.0.1",
           "url": "https://registry.npmjs.org/esprima/-/esprima-4.0.1.tgz"
         }
       ],

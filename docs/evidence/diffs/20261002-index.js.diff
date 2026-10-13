@@ -1,0 +1,35 @@
+--- /home/hatch/workspace/dsh-gemini-sub/improve/backup/antigravity-20261002-184635/index.js.orig	2026-10-02 18:12:40.828726882 +0800
++++ node_modules/dsh-llm-antigravity/lib/index.js	2026-10-02 18:47:19.970890658 +0800
+@@ -10,13 +10,31 @@
+ // Requires the dsh-llm service. Credentials/settings seams are optional extras.
+ export const inject = ["llm"];
+ 
+-export function apply(ctx, _config) {
++/** Parse a JSON env override without ever throwing at plugin load. */
++function envJson(name) {
++  const raw = process.env[name];
++  if (!raw) return undefined;
++  try {
++    return JSON.parse(raw);
++  } catch {
++    return undefined;
++  }
++}
++
++export function apply(ctx, config) {
++  // Profile-layer override for the retry/fallback policy (dsh has no generic
++  // per-provider retry config, so the adapter owns it). Priority: plugin config
++  // in cordis.patch.yml -> environment -> built-in defaults.
++  const retryPolicy = config?.retryPolicy ?? envJson("DSH_ANTIGRAVITY_RETRY_POLICY");
++  const modelFallback = config?.modelFallback ?? process.env.DSH_ANTIGRAVITY_MODEL_FALLBACK;
+   const adapter = createAntigravityAdapter({
+     LlmError,
+     LlmAdapter,
+     attributionHeaders,
+     logger: ctx.logger,
+     credentialsService: () => ctx.get?.("credentials"),
++    retryPolicy,
++    modelFallback,
+   });
+ 
+   const registration = ctx.llm.registerAdapter(["antigravity"], adapter);

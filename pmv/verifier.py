@@ -15,14 +15,15 @@
 """
 Decision Verifier module.
 Implements the core decision rules and hard constraints mandated by the CodeSupply council:
-- REAL_ERROR: Proven contradictory metadata with empirical evidence of error.
-- SYNC_DELAY: Upstream vs downstream time skew preserving uncertainty; confidence attached.
-- SEMANTIC_DIVERGENCE: License conjunction/disjunction differences; disallows auto-acceptance.
-- INDETERMINATE: Incomparable inputs (cross-algorithm, cross-artifact) strictly output 'undecidable'.
+- REAL_ERROR: Proven contradictory metadata with empirical evidence of error (requires artifact license evidence; no hardcoded assertions).
+- SYNC_DELAY: Upstream vs downstream time skew preserving uncertainty; requires complete temporal chain, HTTP success, forward chronological order.
+- SEMANTIC_DIVERGENCE: License differences across sources (conjunction/disjunction or MIT vs Apache-2.0); disallows auto-acceptance.
+- INDETERMINATE: Incomparable inputs, unproven artifact identity, unsupported encodings, or missing comparable fields strictly output 'undecidable'.
 - DIGEST_CONFLICT: Identical artifact & algorithm hash mismatch proves only digest conflict, MUST NOT assert tampering/corruption.
 - Source Dependency: deps.dev dependency on registry is tracked; agreement is not independent proof.
 """
 
+import base64
 from datetime import datetime, timezone
 import json
 import os
@@ -99,7 +100,7 @@ class Verifier:
                 "derived_from": s_val.get("derived_from"),
             })
 
-        return {
+        res: Dict[str, Any] = {
             "purl": purl,
             "ecosystem": ecosystem,
             "name": name,
@@ -116,6 +117,143 @@ class Verifier:
             "decision_audit_trail": audit_trail,
         }
 
+        if norm_data.get("verification_status"):
+            res["verification_status"] = norm_data["verification_status"]
+        if norm_data.get("audit_status"):
+            res["audit_status"] = norm_data["audit_status"]
+
+        return res
+
+    @staticmethod
+    def _check_artifact_identity_provenance(art_a: Dict[str, Any], art_b: Dict[str, Any]) -> Tuple[bool, str]:
+        """
+        Verify artifact identity association:
+        Must prove digest is bound to:
+        1. Identical download URL; OR
+        2. Identical package file list; OR
+        3. Identical release record / publication record.
+        Merely having digests on both sides is strictly insufficient.
+        """
+        url_a = art_a.get("url") or art_a.get("download_url")
+        url_b = art_b.get("url") or art_b.get("download_url")
+        if url_a and url_b and url_a == url_b:
+            return True, f"identical download URL: '{url_a}'"
+        if art_b.get("origin_url") and url_a and art_b.get("origin_url") == url_a:
+            return True, f"artifact B origin URL binds to artifact A download URL: '{url_a}'"
+        if art_a.get("origin_url") and url_b and art_a.get("origin_url") == url_b:
+            return True, f"artifact A origin URL binds to artifact B download URL: '{url_b}'"
+
+        files_a = art_a.get("file_list") or art_a.get("files") or art_a.get("manifest")
+        files_b = art_b.get("file_list") or art_b.get("files") or art_b.get("manifest")
+        if files_a and files_b and files_a == files_b:
+            return True, "identical package file list / manifest"
+
+        rel_a = art_a.get("release_record") or art_a.get("release_id") or art_a.get("package_release")
+        rel_b = art_b.get("release_record") or art_b.get("release_id") or art_b.get("package_release")
+        if rel_a and rel_b and rel_a == rel_b:
+            return True, f"identical artifact release record: '{rel_a}'"
+
+        return False, "no shared download URL, package file list, or release record"
+
+    @staticmethod
+    def _decode_digest_bytes(raw_val: Any, algo: str) -> Tuple[Optional[bytes], str, Optional[str]]:
+        """
+        Decodes a digest representation to raw bytes without case corruption.
+        Supported encodings:
+        - hex: valid hexadecimal string
+        - base64: valid base64 string (including SRI prefixes like sha256-, sha512-)
+        Returns (decoded_bytes, encoding_name, error_reason).
+        """
+        if raw_val is None:
+            return None, "empty", "Digest value is null or empty"
+
+        # Structured dictionary input
+        if isinstance(raw_val, dict):
+            enc = raw_val.get("encoding", "").lower()
+            val = str(raw_val.get("value", "")).strip()
+            if enc == "base64":
+                try:
+                    return base64.b64decode(val, validate=True), "base64", None
+                except Exception as exc:
+                    return None, "base64", f"Invalid base64 payload: {exc}"
+            elif enc in ("hex", "base16"):
+                try:
+                    return bytes.fromhex(val), "hex", None
+                except Exception as exc:
+                    return None, "hex", f"Invalid hex payload: {exc}"
+            else:
+                return None, enc or "unknown", f"Unsupported explicit digest encoding '{enc}'"
+
+        s = str(raw_val).strip()
+
+        # Explicit prefixes
+        if s.startswith("base64:"):
+            payload = s[7:].strip()
+            try:
+                return base64.b64decode(payload, validate=True), "base64", None
+            except Exception as exc:
+                return None, "base64", f"Invalid base64 payload: {exc}"
+
+        if s.startswith("hex:"):
+            payload = s[4:].strip()
+            try:
+                return bytes.fromhex(payload), "hex", None
+            except Exception as exc:
+                return None, "hex", f"Invalid hex payload: {exc}"
+
+        # SRI format (e.g. sha512-..., sha256-...)
+        sri_prefix = f"{algo}-"
+        if s.startswith(sri_prefix) or (algo == "sha512" and s.startswith("sha512-")) or (algo == "sha256" and s.startswith("sha256-")):
+            payload = s.split("-", 1)[1].strip()
+            try:
+                return base64.b64decode(payload, validate=True), "base64", None
+            except Exception as exc:
+                return None, "base64", f"Invalid SRI base64 payload: {exc}"
+
+        expected_bytes = {
+            "sha256": 32,
+            "sha512": 64,
+            "sha1": 20,
+            "md5": 16,
+            "blake2b_256": 32,
+        }.get(algo)
+
+        # Check explicit base64 characteristics
+        has_b64_chars = "+" in s or "/" in s or s.endswith("=")
+        if has_b64_chars:
+            try:
+                b = base64.b64decode(s, validate=True)
+                if expected_bytes is None or len(b) == expected_bytes:
+                    return b, "base64", None
+            except Exception as exc:
+                return None, "base64", f"Invalid base64 characters or padding: {exc}"
+
+        # Check if valid hex string
+        is_all_hex = bool(re.fullmatch(r"[0-9a-fA-F]+", s))
+        if is_all_hex and len(s) % 2 == 0:
+            if expected_bytes is None or len(s) == expected_bytes * 2:
+                try:
+                    return bytes.fromhex(s), "hex", None
+                except Exception as exc:
+                    return None, "hex", f"Hex decode error: {exc}"
+
+        # Fallback base64 attempt
+        try:
+            b = base64.b64decode(s, validate=True)
+            if expected_bytes is None or len(b) == expected_bytes:
+                return b, "base64", None
+        except Exception:
+            pass
+
+        # Fallback hex attempt
+        if is_all_hex and len(s) % 2 == 0:
+            try:
+                return bytes.fromhex(s), "hex", None
+            except Exception:
+                pass
+
+        return None, "unknown", f"Unsupported or unrecognizable digest encoding for value '{s}'"
+
     def _evaluate_digest_constraints(
         self,
         norm_data: Dict[str, Any],
@@ -126,12 +264,12 @@ class Verifier:
         Enforce hard constraints:
         - Hash comparison ONLY allowed for identical artifact + identical algorithm.
         - Cross-algorithm / cross-artifact inputs output 'undecidable' under INDETERMINATE (never crash).
+        - Artifact identity association requires proven binding (same URL, file list, or release record).
+        - Hash comparison decodes bytes strictly according to encoding; silent .lower() matching prohibited.
         - Hash divergence only proves 'digest conflict', MUST NOT assert mirror corruption or tampering.
         """
-        # If explicit comparison pair provided
         pair = compare_artifacts
         if not pair:
-            # Check if synthetic source provides comparison artifact
             syn = norm_data["sources"].get("synthetic")
             reg = norm_data["sources"].get("registry")
             if syn and reg and syn.get("artifacts") and reg.get("artifacts"):
@@ -146,7 +284,7 @@ class Verifier:
         digs_a = art_a.get("digests", {})
         digs_b = art_b.get("digests", {})
 
-        # Rule 1: Identical artifact check
+        # Rule 1: Identical artifact ID check
         if not id_a or not id_b or id_a != id_b:
             audit_trail.append({
                 "rule_id": "DIGEST_01_ARTIFACT_IDENTITY",
@@ -163,24 +301,30 @@ class Verifier:
                 "avoided_false_positive": "Avoided false-positive 'hash corruption/tampering' alert caused by comparing different build artifact targets (e.g. wheel vs sdist tarball).",
             }
 
-        # Rule 1b: Artifact-level evidence check (cannot determine identity by filename alone)
-        has_ev_a = bool(art_a.get("digests") or art_a.get("url") or art_a.get("download_url") or art_a.get("file_list") or art_a.get("files") or art_a.get("manifest"))
-        has_ev_b = bool(art_b.get("digests") or art_b.get("url") or art_b.get("download_url") or art_b.get("file_list") or art_b.get("files") or art_b.get("manifest"))
-        if not (has_ev_a and has_ev_b):
+        # Rule 1b: Artifact identity association check
+        is_prov_bound, prov_reason = self._check_artifact_identity_provenance(art_a, art_b)
+        if not is_prov_bound:
             audit_trail.append({
-                "rule_id": "DIGEST_01_ARTIFACT_IDENTITY_EVIDENCE",
-                "condition_evaluated": f"has_artifact_level_evidence(art_a={has_ev_a}, art_b={has_ev_b})",
-                "outcome": "FAIL_FILENAME_ONLY",
-                "rationale": "Artifact identity requires artifact-level evidence (digest, download URL, or package file list). Matching filename alone is insufficient to assert artifact identity.",
+                "rule_id": "DIGEST_01_ARTIFACT_IDENTITY_PROVENANCE",
+                "condition_evaluated": "has_artifact_identity_provenance(same_url, same_file_list, same_release_record)",
+                "outcome": "FAIL_IDENTITY_UNPROVEN",
+                "rationale": f"Artifact identity association unproven: {prov_reason}. Merely sharing filename '{id_a}' and both providing digests is insufficient to assert identical artifact.",
             })
             return {
                 "category": "INDETERMINATE",
-                "subcode": "undecidable",
+                "subcode": "ARTIFACT_IDENTITY_UNPROVEN",
                 "confidence": 1.0,
-                "summary": "Artifact identity cannot be determined solely by filename without artifact-level evidence",
-                "details": f"Artifacts share filename '{id_a}', but lack required artifact-level evidence (cryptographic digest, download URL, or package file list). Hard constraint prohibits asserting identical artifact based on filename alone.",
-                "avoided_false_positive": "Avoided comparing unrelated packages or different builds that merely share the same generic filename.",
+                "summary": "Artifact identity association unproven for digest comparison",
+                "details": f"Artifacts share filename '{id_a}', but lack verified artifact identity association (digest must bind to identical download URL, identical package file list, or identical release record). Merely having digests on both sides is insufficient. Enforcing hard constraint: outputs undecidable (subcode ARTIFACT_IDENTITY_UNPROVEN), strictly prohibited from asserting DIGEST_CONFLICT.",
+                "avoided_false_positive": "Avoided false-positive DIGEST_CONFLICT between unlinked files sharing only a common filename.",
             }
+
+        audit_trail.append({
+            "rule_id": "DIGEST_01_ARTIFACT_IDENTITY_PROVENANCE",
+            "condition_evaluated": "has_artifact_identity_provenance(same_url, same_file_list, same_release_record)",
+            "outcome": "PASS_IDENTITY_PROVEN",
+            "rationale": f"Artifact identity verified via {prov_reason}.",
+        })
 
         # Rule 2: Identical algorithm check
         shared_algos = sorted(list(set(digs_a.keys()).intersection(set(digs_b.keys()))))
@@ -200,32 +344,50 @@ class Verifier:
                 "avoided_false_positive": "Avoided crash/exception or false mismatch alert when one source only provides sha1/md5 and another provides sha256/sha512.",
             }
 
-        # Rule 3: Hash value check across shared algorithms with explicit case normalization logging
+        # Rule 3: Hash value check across shared algorithms via byte-level decoding
         conflict_algos = []
         for algo in shared_algos:
-            raw_a = str(digs_a[algo])
-            raw_b = str(digs_b[algo])
-            val_a = raw_a.strip().lower()
-            val_b = raw_b.strip().lower()
+            raw_a = digs_a[algo]
+            raw_b = digs_b[algo]
+
+            bytes_a, enc_a, err_a = self._decode_digest_bytes(raw_a, algo)
+            bytes_b, enc_b, err_b = self._decode_digest_bytes(raw_b, algo)
+
+            if bytes_a is None or bytes_b is None:
+                fail_reason = err_a or err_b or "Unknown or unsupported encoding"
+                audit_trail.append({
+                    "rule_id": "DIGEST_03_BYTE_DECODING",
+                    "condition_evaluated": f"decode_digest_bytes(algo='{algo}', raw_a={raw_a}, raw_b={raw_b})",
+                    "outcome": "ENCODING_UNSUPPORTED",
+                    "rationale": f"Digest decoding failed for algorithm '{algo}': {fail_reason}. Silent .lower() string matching prohibited; unsupported encoding outputs undecidable.",
+                })
+                return {
+                    "category": "INDETERMINATE",
+                    "subcode": "ENCODING_UNSUPPORTED",
+                    "confidence": 1.0,
+                    "summary": f"Digest encoding unknown or unsupported for algorithm '{algo}'",
+                    "details": f"Digest value could not be decoded to raw bytes using supported encodings (hex, base64). Reason: {fail_reason}. Enforcing hard constraint: outputs undecidable (subcode ENCODING_UNSUPPORTED), silent .lower() matching strictly prohibited.",
+                    "avoided_false_positive": "Avoided corrupting case-sensitive digest encodings (such as base64) through naive lowercase string comparison.",
+                }
 
             audit_trail.append({
-                "rule_id": "DIGEST_03_NORMALIZATION",
-                "condition_evaluated": f"normalize_hex_digest(algo='{algo}')",
-                "outcome": "NORMALIZED",
-                "rationale": f"Hex digest comparison restricted to identical algorithm '{algo}'. Case and whitespace normalization recorded: source_a '{raw_a}' -> '{val_a}', source_b '{raw_b}' -> '{val_b}'.",
-                "original_values": {"source_a": raw_a, "source_b": raw_b},
-                "normalized_values": {"source_a": val_a, "source_b": val_b},
+                "rule_id": "DIGEST_03_BYTE_DECODING",
+                "condition_evaluated": f"decode_digest_bytes(algo='{algo}')",
+                "outcome": "DECODED",
+                "rationale": f"Decoded digests to raw bytes for algorithm '{algo}' (encodings: source_a={enc_a}, source_b={enc_b}). Byte-level comparison executed; silent .lower() string matching prohibited.",
+                "original_values": {"source_a": str(raw_a), "source_b": str(raw_b)},
+                "encodings": {"source_a": enc_a, "source_b": enc_b},
             })
 
-            if val_a != val_b:
-                conflict_algos.append((algo, val_a, val_b))
+            if bytes_a != bytes_b:
+                conflict_algos.append((algo, str(raw_a), str(raw_b), enc_a, enc_b))
 
         if conflict_algos:
             audit_trail.append({
                 "rule_id": "DIGEST_03_VALUE_COMPARISON",
-                "condition_evaluated": f"digests_match({conflict_algos})",
+                "condition_evaluated": f"bytes_match({[(c[0], c[3], c[4]) for c in conflict_algos]})",
                 "outcome": "DIGEST_CONFLICT",
-                "rationale": "Different hashes for identical artifact & algorithm prove digest conflict. Strictly prohibited from asserting mirror tampering or corruption.",
+                "rationale": "Different decoded byte values for identical artifact & algorithm prove digest conflict. Strictly prohibited from asserting mirror tampering or corruption.",
             })
             return {
                 "category": "DIGEST_CONFLICT",
@@ -238,9 +400,9 @@ class Verifier:
 
         audit_trail.append({
             "rule_id": "DIGEST_03_VALUE_COMPARISON",
-            "condition_evaluated": f"digests_match(shared={shared_algos})",
+            "condition_evaluated": f"bytes_match(shared={shared_algos})",
             "outcome": "PASS",
-            "rationale": "Identical artifact and identical algorithm hashes match perfectly.",
+            "rationale": "Identical artifact and identical algorithm hashes match perfectly at byte level.",
         })
         return None
 
@@ -250,15 +412,33 @@ class Verifier:
         """
         Evaluate synchronization delay between upstream registry and downstream indexer (deps.dev).
         Requires temporal evidence:
-        - If upstream lacks publication timestamp, delay is undecidable.
-        - If only a single 404 observation exists without a subsequent appearance observation, delay is undecidable.
-        - With complete temporal observation chain, reports provable delay range within tolerance.
+        - HTTP success on subsequent appearance observation (status 200).
+        - Valid publication timestamp.
+        - Forward chronological order: t_observed_after > t_observed_before > t_published.
+        - Demoted suspect / retracted cases output undecidable preserving uncertainty.
         """
         reg = norm_data["sources"].get("registry", {})
         deps = norm_data["sources"].get("deps_dev", {})
 
         # If downstream returned 404 while upstream is 200 available
         if reg.get("available") and not deps.get("available") and deps.get("status") == 404:
+            # Check 0: Suspect or retracted status check (archgraph-layout demotion)
+            if norm_data.get("verification_status") == "suspect" or norm_data.get("audit_status") == "retracted":
+                audit_trail.append({
+                    "rule_id": "SYNC_00_VERIFICATION_STATUS",
+                    "condition_evaluated": "verification_status == 'suspect' or audit_status == 'retracted'",
+                    "outcome": "UNDECIDABLE_SUSPECT",
+                    "rationale": "Observation temporal chain is marked verification_status: suspect / retracted due to temporal inconsistency or lack of raw audit corroboration. Demoted to suspect pending reverification.",
+                })
+                return {
+                    "category": "INDETERMINATE",
+                    "subcode": "undecidable",
+                    "confidence": 0.4,
+                    "summary": "疑似延迟，时间链待核验 (Suspected sync delay, temporal chain unproven)",
+                    "details": "Downstream deps.dev returned HTTP 404 while upstream registry was available, but observation is marked verification_status: 'suspect' / retracted due to temporal chain inconsistency against audit environment. Demoted to suspect; delay is undecidable pending reverification.",
+                    "avoided_false_positive": "Avoided prematurely asserting proven sync delay when observation temporal chain contains unverified or inverted timestamps.",
+                }
+
             up_time_str = reg.get("published_at")
             fetch_time_str = norm_data.get("fetch_timestamp")
             tolerance_seconds = self.rules.get("hard_constraints", {}).get("sync_delay", {}).get("tolerance_window_seconds", 86400)
@@ -284,7 +464,7 @@ class Verifier:
             if fetch_time_str:
                 time_diff_seconds = self._calc_time_diff_seconds(up_time_str, fetch_time_str)
 
-            if time_diff_seconds is None or time_diff_seconds < 0:
+            if time_diff_seconds is None or time_diff_seconds <= 0:
                 audit_trail.append({
                     "rule_id": "SYNC_01_TEMPORAL_WINDOW",
                     "condition_evaluated": f"upstream_published_at='{up_time_str}', fetch_time='{fetch_time_str}', delta={time_diff_seconds}",
@@ -295,12 +475,12 @@ class Verifier:
                     "category": "INDETERMINATE",
                     "subcode": "undecidable",
                     "confidence": 0.3,
-                    "summary": "Synchronization delay cannot be verified due to unparseable temporal delta",
-                    "details": f"Upstream published_at '{up_time_str}' and fetch_timestamp '{fetch_time_str}' could not yield a valid forward time delta. Delay is undecidable.",
+                    "summary": "Synchronization delay cannot be verified due to unparseable temporal delta or time inversion",
+                    "details": f"Upstream published_at '{up_time_str}' and fetch_timestamp '{fetch_time_str}' could not yield a valid forward time delta (delta={time_diff_seconds}). Delay is undecidable.",
                     "avoided_false_positive": "Avoided temporal calculation error false positive.",
                 }
 
-            # Check 2: Temporal chain (upstream release, missing observation, subsequent appearance observation)
+            # Check 2: Subsequent observation must exist
             subsequent_obs = deps.get("subsequent_observation")
             if not subsequent_obs:
                 audit_trail.append({
@@ -318,9 +498,62 @@ class Verifier:
                     "avoided_false_positive": "Avoided asserting sync delay without multi-point temporal evidence chain.",
                 }
 
-            # Complete three-stage observation chain
+            # Check 3: Subsequent observation HTTP status must be success (200)
+            sub_status = subsequent_obs.get("status")
+            if not isinstance(sub_status, int) or not (200 <= sub_status < 300):
+                audit_trail.append({
+                    "rule_id": "SYNC_02_SUBSEQUENT_STATUS",
+                    "condition_evaluated": f"subsequent_status={sub_status} (expected HTTP 200)",
+                    "outcome": "UNDECIDABLE_NON_SUCCESS",
+                    "rationale": f"Subsequent observation returned non-success HTTP status {sub_status}. Without verified successful ingestion, sync delay cannot be proven.",
+                })
+                return {
+                    "category": "INDETERMINATE",
+                    "subcode": "undecidable",
+                    "confidence": 0.4,
+                    "summary": f"Subsequent observation non-success (HTTP {sub_status}); sync delay cannot be verified",
+                    "details": f"Upstream registry reports release at '{up_time_str}'. Initial 404 observed at '{fetch_time_str}'. However, subsequent observation returned HTTP {sub_status} instead of successful 200. Ingestion success is not established; delay is undecidable (suspected delay with uncertainty preserved).",
+                    "avoided_false_positive": "Avoided asserting resolved synchronization delay when downstream indexer continues to return 404 or error.",
+                }
+
+            # Check 4: Subsequent observation timestamp valid
             sub_ts = subsequent_obs.get("observed_at") or subsequent_obs.get("fetch_timestamp")
-            sub_diff = self._calc_time_diff_seconds(up_time_str, sub_ts) if sub_ts else None
+            if not sub_ts:
+                audit_trail.append({
+                    "rule_id": "SYNC_02_SUBSEQUENT_TIMESTAMP",
+                    "condition_evaluated": "subsequent_observation.observed_at is None",
+                    "outcome": "UNDECIDABLE_MISSING_TIME",
+                    "rationale": "Subsequent observation lacks a valid timestamp. Ingestion delay range cannot be computed.",
+                })
+                return {
+                    "category": "INDETERMINATE",
+                    "subcode": "undecidable",
+                    "confidence": 0.4,
+                    "summary": "Subsequent observation missing timestamp; sync delay cannot be verified",
+                    "details": "Subsequent observation lacks a valid timestamp. Ingestion delay range cannot be computed; outputting undecidable (suspected delay).",
+                    "avoided_false_positive": "Avoided computing delay without valid subsequent observation timestamp.",
+                }
+
+            # Check 5: Temporal order check: t_observed_after > t_observed_before
+            delta_after = self._calc_time_diff_seconds(fetch_time_str, sub_ts)
+            if delta_after is None or delta_after <= 0:
+                audit_trail.append({
+                    "rule_id": "SYNC_02_TEMPORAL_ORDER",
+                    "condition_evaluated": f"t_observed_after ('{sub_ts}') > t_observed_before ('{fetch_time_str}')",
+                    "outcome": "UNDECIDABLE_TIME_INVERSION",
+                    "rationale": f"Temporal order invalid: subsequent observation '{sub_ts}' is not strictly greater than initial observation '{fetch_time_str}'. Outputting undecidable.",
+                })
+                return {
+                    "category": "INDETERMINATE",
+                    "subcode": "undecidable",
+                    "confidence": 0.4,
+                    "summary": "Temporal order invalid (time inversion); sync delay cannot be verified",
+                    "details": f"Subsequent observation timestamp '{sub_ts}' does not strictly succeed initial observation '{fetch_time_str}' (delta: {delta_after}s). Lacking valid forward temporal order, delay cannot be proven; outputting undecidable (suspected delay).",
+                    "avoided_false_positive": "Avoided asserting sync delay when observation order is inverted or concurrent.",
+                }
+
+            # If all checks passed, calculate provable range
+            sub_diff = self._calc_time_diff_seconds(up_time_str, sub_ts)
             provable_range_str = f"[{int(time_diff_seconds)}s, {int(sub_diff) if sub_diff else int(time_diff_seconds)}s]"
 
             confidence = 0.96
@@ -354,7 +587,7 @@ class Verifier:
         Evaluate real error: cross-source field contradiction where empirical evidence points to one side being wrong.
         E.g. deps.dev labels standard PSF-2.0 as 'non-standard', while PyPI classifiers explicitly record OSI approved status
         and ClearlyDefined confirms standard Python-2.0.1.
-        Hard constraint: delete DOWNSTREAM_PARSING_ERROR and unilateral parser responsibility assertions unless proven.
+        Hard constraint: requires empirical artifact license text evidence; prohibits hardcoded factual claims without evidence.
         """
         reg = norm_data["sources"].get("registry", {})
         deps = norm_data["sources"].get("deps_dev", {})
@@ -370,18 +603,42 @@ class Verifier:
             is_cd_standard = cd_declared in Normalizer.KNOWN_STANDARD_LICENSES
 
             if has_osi_classifier or is_cd_standard:
+                # Require empirical artifact LICENSE text evidence
+                lic_ev = (
+                    reg.get("license_text_evidence")
+                    or norm_data.get("sources", {}).get("registry", {}).get("license_text_evidence")
+                    or norm_data.get("license_text_evidence")
+                )
+                if not lic_ev or not lic_ev.get("text_snippet"):
+                    audit_trail.append({
+                        "rule_id": "ERROR_01_ARTIFACT_LICENSE_EVIDENCE",
+                        "condition_evaluated": "has_artifact_license_text_evidence=False",
+                        "outcome": "UNDECIDABLE_NO_LICENSE_EVIDENCE",
+                        "rationale": "Downstream reports 'non-standard' vs classifiers/ClearlyDefined, but no empirical artifact LICENSE text evidence is provided. Without direct artifact evidence, REAL_ERROR cannot be proven.",
+                    })
+                    return {
+                        "category": "INDETERMINATE",
+                        "subcode": "undecidable",
+                        "confidence": 0.5,
+                        "summary": "Cannot verify real error due to missing artifact LICENSE text evidence",
+                        "details": f"deps.dev reports licenses: {deps_licenses}. While registry classifiers contain {[c for c in reg_classifiers if 'OSI Approved' in c]} and ClearlyDefined confirms '{cd_declared}', no artifact LICENSE text evidence was provided. Without empirical artifact license text, REAL_ERROR cannot be asserted. Enforcing hard constraint: missing evidence strictly outputs 'undecidable'.",
+                        "avoided_false_positive": "Avoided uncorroborated REAL_ERROR assertion without empirical artifact license text proof.",
+                    }
+
+                file_name = lic_ev.get("file", "dist-info/LICENSE")
+                spdx_id = lic_ev.get("spdx_identifier", "standard license")
                 audit_trail.append({
                     "rule_id": "ERROR_01_STANDARDS_CONTRADICTION",
-                    "condition_evaluated": f"deps.dev reported 'non-standard' vs (osi_classifier={has_osi_classifier}, cd_standard={is_cd_standard})",
+                    "condition_evaluated": f"deps.dev reported 'non-standard' vs (osi_classifier={has_osi_classifier}, cd_standard={is_cd_standard}, artifact_evidence='{file_name}')",
                     "outcome": "REAL_ERROR",
-                    "rationale": "Cross-source license classification contradiction: PyPI classifiers, ClearlyDefined, and artifact license text confirm standard OSI/PSF license, while downstream indexer classifies it as non-standard. Because authoring field omission vs parser fault cannot be definitively proven, unilateral parser blame assertion is removed.",
+                    "rationale": f"Cross-source license classification contradiction: PyPI classifiers, ClearlyDefined, and artifact license text ({file_name}, {spdx_id}) confirm standard license, while downstream indexer classifies it as non-standard. Because authoring field omission vs parser fault cannot be definitively proven, unilateral parser blame assertion is removed.",
                 })
                 return {
                     "category": "REAL_ERROR",
                     "subcode": "STANDARDS_CONTRADICTION",
                     "confidence": 1.0,
                     "summary": "Downstream index license classification contradicts upstream and curated standards",
-                    "details": f"deps.dev reports licenses: {deps_licenses}. In contrast, PyPI registry classifiers contain '{[c for c in reg_classifiers if 'OSI Approved' in c]}' and ClearlyDefined confirms '{cd_declared}'. The artifact dist-info/LICENSE contains the standard Python Software Foundation License Version 2. Because upstream core metadata omits an explicit PEP 639 License-Expression header, authoring field omission versus downstream classifier parsing fault cannot be separated. Enforcing hard constraint: deleted DOWNSTREAM_PARSING_ERROR and removed unilateral parser responsibility assertion; recorded verifiable metadata contradiction.",
+                    "details": f"deps.dev reports licenses: {deps_licenses}. In contrast, PyPI registry classifiers contain '{[c for c in reg_classifiers if 'OSI Approved' in c]}' and ClearlyDefined confirms '{cd_declared}'. The artifact {file_name} contains verified license text ({spdx_id}). Because upstream core metadata omits an explicit PEP 639 License-Expression header, authoring field omission versus downstream classifier parsing fault cannot be separated. Enforcing hard constraint: deleted DOWNSTREAM_PARSING_ERROR and removed unilateral parser responsibility assertion; recorded verifiable metadata contradiction.",
                     "avoided_false_positive": "Avoided discarding or flagging a legitimate package as license-incompatible while avoiding unverified attribution of parser fault.",
                 }
 
@@ -391,9 +648,8 @@ class Verifier:
         self, norm_data: Dict[str, Any], audit_trail: List[Dict[str, Any]]
     ) -> Optional[Dict[str, Any]]:
         """
-        Evaluate semantic divergence: e.g. license AND/OR or compound expression difference.
-        Hard constraint: Cannot automatically assume both sides are right or pick one.
-        E.g. npm registry declares 'BSD-2-Clause', but ClearlyDefined discovers and declares 'BSD-2-Clause AND BSD-3-Clause'.
+        Evaluate semantic divergence: e.g. license AND/OR compound expressions or conflicting license declarations (MIT vs Apache-2.0).
+        Hard constraint: Cannot automatically assume both sides are right or pick one without actual field comparison.
         """
         reg = norm_data["sources"].get("registry", {})
         cd = norm_data["sources"].get("clearlydefined", {})
@@ -405,10 +661,11 @@ class Verifier:
         cd_discovered = cd.get("discovered_licenses", [])
         deps_lics = deps.get("licenses", [])
 
+        # 1. Compound boolean operator disparity (e.g. esprima)
         if reg_str and cd_declared and reg_str != cd_declared:
             has_compound_op = (" AND " in cd_declared or " OR " in cd_declared or
                                " AND " in reg_str or " OR " in reg_str)
-            if has_compound_op or set(reg_lics) != set(cd_discovered):
+            if has_compound_op:
                 audit_trail.append({
                     "rule_id": "SEMANTIC_01_BOOLEAN_OPERATOR_DISPARITY",
                     "condition_evaluated": f"registry.license='{reg_str}' != clearlydefined.licensed.declared='{cd_declared}'",
@@ -434,6 +691,40 @@ class Verifier:
                     "avoided_false_positive": "Avoided naive diff failure that blindly accepts the simple top-level declaration while ignoring dual-clause compliance obligations discovered in repository files.",
                 }
 
+        # 2. General cross-source license divergence check (e.g. MIT vs Apache-2.0)
+        sources = norm_data.get("sources", {})
+        source_license_map: Dict[str, List[str]] = {}
+        for s_key, s_val in sources.items():
+            if not (s_val.get("available") and s_val.get("status") == 200):
+                continue
+            lics = s_val.get("licenses") or []
+            if not lics and s_val.get("declared_license"):
+                lics = [s_val["declared_license"]]
+            if lics and lics != ["non-standard"]:
+                source_license_map[s_key] = [str(x).strip() for x in lics if str(x).strip()]
+
+        s_keys = sorted(list(source_license_map.keys()))
+        for i in range(len(s_keys)):
+            for j in range(i + 1, len(s_keys)):
+                k1, k2 = s_keys[i], s_keys[j]
+                lics1 = set(source_license_map[k1])
+                lics2 = set(source_license_map[k2])
+                if lics1 != lics2:
+                    audit_trail.append({
+                        "rule_id": "SEMANTIC_02_LICENSE_DISCREPANCY",
+                        "condition_evaluated": f"{k1}.licenses ({sorted(lics1)}) != {k2}.licenses ({sorted(lics2)})",
+                        "outcome": "SEMANTIC_DIVERGENCE",
+                        "rationale": f"Explicit cross-source license divergence: source '{k1}' declares {sorted(lics1)} while source '{k2}' declares {sorted(lics2)}. Enforcing hard constraint: prohibited from judging consistent without comparison.",
+                    })
+                    return {
+                        "category": "SEMANTIC_DIVERGENCE",
+                        "subcode": "LICENSE_DECLARATION_DISCREPANCY",
+                        "confidence": 0.95,
+                        "summary": f"Cross-source license declarations diverge ({', '.join(sorted(lics1))} vs {', '.join(sorted(lics2))})",
+                        "details": f"Cross-source metadata comparison detected license divergence: source '{k1}' reports {sorted(lics1)} while source '{k2}' reports {sorted(lics2)}. Enforcing hard constraint: prohibited from judging consistent without comparison.",
+                        "avoided_false_positive": "Avoided false-positive CONSISTENT verdict by actively comparing license fields across sources.",
+                    }
+
         return None
 
     def _evaluate_consistent(
@@ -441,12 +732,15 @@ class Verifier:
     ) -> Dict[str, Any]:
         """
         Evaluate consistency when no prior rules triggered divergence or delay.
-        Hard constraint: Empty or missing evidence MUST NOT return CONSISTENT, must return undecidable.
+        Hard constraints:
+        - Empty or missing evidence MUST NOT return CONSISTENT, must return undecidable.
+        - If any source lacks comparable fields, MUST NOT return CONSISTENT, must return undecidable.
+        - Strict prohibition: 'no comparison, no consistency'.
         """
         sources = norm_data.get("sources", {})
         avail_sources = [s for s in sources.values() if s.get("available") and s.get("status") == 200]
 
-        # Hard constraint: empty or insufficient evidence (< 2 sources) cannot prove consistency
+        # Check 1: Evidence sufficiency (< 2 sources)
         if len(avail_sources) < 2:
             audit_trail.append({
                 "rule_id": "CONSISTENCY_01_EVIDENCE_SUFFICIENCY",
@@ -463,7 +757,7 @@ class Verifier:
                 "avoided_false_positive": "Avoided false-positive 'CONSISTENT' verdict when verification evidence is absent or uncorroborated.",
             }
 
-        # Check that sources provide substantive metadata
+        # Check 2: Sources must provide substantive metadata
         has_substantive = any(
             bool(s.get("licenses") or s.get("artifacts") or s.get("declared_license") or s.get("published_at"))
             for s in avail_sources
@@ -484,11 +778,37 @@ class Verifier:
                 "avoided_false_positive": "Avoided asserting consistency on empty or vacuous metadata.",
             }
 
+        # Check 3: Comparable fields check across sources (prohibit "no comparison, judging consistent")
+        sources_with_license = [
+            s.get("source_id", "unknown") for s in avail_sources
+            if bool(s.get("licenses") or s.get("declared_license"))
+        ]
+        sources_without_license = [
+            s.get("source_id", "unknown") for s in avail_sources
+            if not bool(s.get("licenses") or s.get("declared_license"))
+        ]
+
+        if sources_with_license and sources_without_license:
+            audit_trail.append({
+                "rule_id": "CONSISTENCY_01_COMPARABLE_FIELDS",
+                "condition_evaluated": f"all_sources_have_comparable_licenses(with={sources_with_license}, without={sources_without_license})",
+                "outcome": "INCOMPARABLE_FIELDS",
+                "rationale": f"One source provides license fields ({sources_with_license}) while another lacks comparable fields ({sources_without_license}). Lacking comparable fields, consistency cannot be determined.",
+            })
+            return {
+                "category": "INDETERMINATE",
+                "subcode": "undecidable",
+                "confidence": 0.0,
+                "summary": "Cannot determine consistency due to missing comparable license fields across sources",
+                "details": f"Source(s) {sources_with_license} provide license declarations, but source(s) {sources_without_license} lack comparable license metadata. Enforcing hard constraint: missing comparable fields strictly outputs 'undecidable', NEVER defaults to CONSISTENT.",
+                "avoided_false_positive": "Avoided false-positive 'CONSISTENT' verdict when one source lacks comparable fields to verify against.",
+            }
+
         audit_trail.append({
             "rule_id": "CONSISTENCY_02_CORROBORATION",
             "condition_evaluated": f"all_sources_match(sources_count={len(avail_sources)})",
             "outcome": "CONSISTENT",
-            "rationale": "Metadata fields are mutually consistent across available corroborating sources.",
+            "rationale": "Metadata fields are mutually consistent across available corroborating sources with verified comparable fields.",
         })
         return {
             "category": "CONSISTENT",
@@ -502,7 +822,6 @@ class Verifier:
     def _calc_time_diff_seconds(self, t1_str: str, t2_str: str) -> Optional[float]:
         """Calculate signed delta (t2 - t1) in seconds between two ISO-8601 timestamps."""
         try:
-            # Clean trailing Z / precision
             t1_clean = t1_str.replace("Z", "+00:00")
             t2_clean = t2_str.replace("Z", "+00:00")
             dt1 = datetime.fromisoformat(t1_clean)

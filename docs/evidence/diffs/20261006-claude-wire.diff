@@ -1,0 +1,53 @@
+--- /tmp/wire-gemini-orig.js	2026-10-06 18:32:11.380819032 +0800
++++ /tmp/wire-fixed.js	2026-10-06 18:31:36.530848725 +0800
+@@ -262,6 +262,13 @@
+         if (!isSameModel) continue;
+         if (!String(block.text ?? "").trim()) continue;
+         const meta = metaOf(message, content.indexOf(block));
++        // Claude (Anthropic via Vertex) requires thinking.signature on replay;
++        // an unsigned thought block is rejected with 400
++        // "messages.*.content.*.thinking.signature: Field required".
++        // The signature is only available when the stream assembler emitted
++        // replayState; for history without it (old sessions), dropping the
++        // thinking block is accepted upstream and preserves the tool call.
++        if (isClaude && !isValidThoughtSignature(meta?.signature)) continue;
+         parts.push({
+           thought: true,
+           text: sanitizeText(block.text),
+@@ -380,7 +387,18 @@
+ 
+   const generationConfig = {};
+   if (maxTokens !== undefined) generationConfig.maxOutputTokens = maxTokens;
+-  const thinkingConfig = thinkingFor(runtimeModel, effort);
++  let thinkingConfig = thinkingFor(runtimeModel, effort);
++  // Anthropic rejects max_tokens <= thinking.budget_tokens. Small calls
++  // (e.g. dsh session-title generation with maxTokens=64) would always 400
++  // with Claude's fixed 1024 budget, so disable thinking there instead.
++  if (
++    runtimeModel.startsWith("claude-") &&
++    maxTokens !== undefined &&
++    thinkingConfig &&
++    Number(thinkingConfig.thinkingBudget ?? 0) >= Number(maxTokens)
++  ) {
++    thinkingConfig = { includeThoughts: false, thinkingBudget: 0 };
++  }
+   if (thinkingConfig) generationConfig.thinkingConfig = thinkingConfig;
+ 
+   const request = { contents, systemInstruction: { role: "user", parts: systemParts } };
+@@ -557,7 +575,15 @@
+       if (blocks.length === 0 && reason.kind === "stop") {
+         reason = { kind: "error", failure: { message: "Antigravity returned an empty response", code: "EMPTY_RESPONSE" } };
+       }
+-      emit({ type: "finish", reason });
++      // Persist per-block signatures for the next request. Without this the
++      // harness has no replayState, so multi-step Claude turns replay a
++      // thinking block without its required signature and upstream 400s
++      // (masked downstream as a 429 from the last endpoint fallback).
++      const replayState =
++        blocks.length > 0
++          ? { blocks: blocks.map((b) => ({ kind: b.kind, ...(b.signature ? { signature: b.signature } : {}) })) }
++          : undefined;
++      emit({ type: "finish", reason, ...(replayState ? { replayState } : {}) });
+     },
+   };
+ }
