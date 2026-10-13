@@ -110,7 +110,7 @@
 - 公开提交：https://github.com/yijigao/pkgmeta-verify @41d6a55（含附件：dsh-patches.md＋4 diff、披露草稿、条目4重建件）。**计数纠正**：此前写的"14 prompt、13 output"不符实际，且 pmv-fix3-gemini.txt（8,427 字节）当时未拷贝公开。实际应为 13 prompt、19 output，pmv-fix3-gemini.txt 已在本轮补入。
 
 ## 条目 14 — Astra 八轮终审（主聊侧发起；重建件已补入）
-- 轮次：adjudication（13:46）、rev1（14:04）、rev2（14:40）、rev3（15:09）、rev3fix（15:41）、rev3fix2（16:10）、rev3fix3（17:33）、final（17:57），均为 2026-10-13 北京时间
+- 轮次：adjudication（13:46）、rev1（14:04）、rev2（14:40）、rev3（15:09）、rev3fix（15:41）、rev3fix2（16:10；首轮下达丢失，17:03 重派）、rev3fix3（17:33）、final（17:57），均为 2026-10-13 北京时间（时间精确到 5 分钟）
 - 模型：Astra Max（gpt-6-astra，reasoning effort max；本机 codex 直连，主聊侧下达）
 - Prompt：**重建件**——原件为 /tmp 下 heredoc 文件，已被系统清理；主聊侧（阿仁）根据执行记录重建，文字与下达时一致，但**非逐字节原件**。重建件：~/workspace/nlnet-codesupply-council/prompts-reconstructed/（00-README 说明＋01～08 八个文件，含时间、模型、输出文件对应关系）；公开副本：docs/evidence/prompts-reconstructed/。
 - 未编辑输出：ASTRA-ADJUDICATION-2026-10-13.md、ASTRA-REV1-2026-10-13.md、ASTRA-REV2-2026-10-13.md、ASTRA-REV3-2026-10-13.md、ASTRA-REV3FIX-2026-10-13.md、ASTRA-REV3FIX2-2026-10-13.md、ASTRA-REV3FIX3-2026-10-13.md、ASTRA-FINAL-2026-10-13.md（全文存档，未编辑；公开副本：docs/evidence/outputs/）
