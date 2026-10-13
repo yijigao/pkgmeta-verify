@@ -78,6 +78,7 @@
 - 用途：rev3 大纲（10 项 checklist 逐项落实）。提案正文人工主笔。
 
 ## 公开归档索引（提交材料用，评审可访问）
+- 当前提交：41d6a55（2026-10-13；此前索引指向 f25484f 已过期，以此为准）
 - PMV 公开仓库：https://github.com/yijigao/pkgmeta-verify（commit f25484f，main 分支；含代码、evidence/ 快照与 MANIFEST.sha256、rerun-report.md、schemas/、docs/evidence/dsh-patches.md、PROMPT-LOG.md 本日志副本）
 - AboutCode 对齐 issue：https://github.com/aboutcode-org/purl-validator/issues/39（2026-10-13 发起，只写"已发起技术对齐"，不写获认可）；archgraph-layout 案例纠正评论 https://github.com/aboutcode-org/purl-validator/issues/39#issuecomment-6140484558（降级为疑似延迟）
 - PR #228（MEC 履历证据）：https://github.com/Anil-matcha/awesome-muse-connectors/pull/228（描述已按终审更新成熟度措辞＋评论留痕；SKILL.md 同步）
@@ -99,3 +100,11 @@
 
 ## 条目 4 补记（已补入重建件）
 - 2026-10-13 主聊提供重建件（非逐字节原件，已如实标注）。"完整日志"一项待本轮所有附件推送公开后关闭。
+
+## 条目 13 — PMV 第三轮 bug 修复完成＋归档补齐（按 Astra rev3fix）
+- 日期：2026-10-13 16:10 CST（完成）
+- 模型：Gemini（dsh --profile gemini-sub，订阅版）
+- Prompt：~/workspace/nlnet-codesupply-council/TASK-PMV-FIX3-gemini.md（原文存档）
+- 未编辑输出：~/workspace/nlnet-codesupply-council/pmv-fix3-gemini.txt（DSH_EXIT=0；现有测试零失败）
+- 用途：修复 5 组新反例（制品身份文件名清单排除、摘要长度校验、延迟未来时间拒绝＋容差阈值文档化、许可证实际比较＋置信度按证据、硬编码断言删除）＋README 口径收窄＋回归测试＋新基线冻结。
+- 公开提交：https://github.com/yijigao/pkgmeta-verify @41d6a55（含全部附件：dsh-patches.md＋4 diff、14 prompt、13 output、披露草稿、条目4重建件）。
