@@ -3,7 +3,7 @@
 - **交付版本**：tag `delivery-2026-10-13-sealed`（对应 commit 见 `git rev-list -n 1 delivery-2026-10-13-sealed`；文件不可自含其所在提交的 hash，故以 tag 绑定具体版本）
 - **交付目录**：https://github.com/yijigao/pkgmeta-verify（公开仓库，免登录可读）
 - **清单生成时间**：2026-10-13（UTC+8）；共 130 个文件（含本清单与主张登记表自身）
-- **修改规则**：每个文件同时只允许一个修改者；冻结文件（已冻结）不得修改，改则重新走验收；**改文件必同步重生成本清单**
+- **修改规则**：每个文件同时只允许一个修改者；冻结文件（已冻结）不得修改，改则重新走验收；**改文件必同步重生成本清单；清单必须是所有文件定稿后的最后一步，单独生成、单独提交，之后不许再动任何文件**
 - **排除范围**：仓库内无重复目录；/tmp 中转目录、__pycache__ 等构建产物不属于交付
 - **哈希说明**：SHA-256 为完整 40 位 git blob hash，可用 `git hash-object <文件>` 独立校验；本清单自身为自指文件，以交付版本 tag 保证完整性
 
@@ -14,12 +14,12 @@
 | 3 | `PROMPT-LOG.md` | Prompt provenance 总日志 | 30454 | `4247defb1eaa576697a15a6ab7a44eb9b991708e` |
 | 4 | `README.md` | 说明文档 | 18094 | `a6a982752f3c5fcffb4c54d5b2b2f38baeabf0f6` |
 | 5 | `bin/pkgmeta-verify` | 复跑程序与报告 | 869 | `898c267073d300b75e96f2a45ece6e39e9fe4980` |
-| 6 | `docs/evidence/CLAIM-REGISTRY.md` | 主张登记表 | 5904 | `dacb68c92380e45d531174d24bd63d72624e6253` |
+| 6 | `docs/evidence/CLAIM-REGISTRY.md` | 主张登记表 | 6320 | `ead96282331f26cb35a476a7921f83c4d0d7efd5` |
 | 7 | `docs/evidence/CREDENTIALS-INDEX.md` | 履历索引 | 2321 | `1b1b40b4b23997b89aca10ea6375a23b0a348b6f` |
-| 8 | `docs/evidence/DELIVERY-MANIFEST.md` | 交付清单（本文件；自指，见注） | 20431 | `自指（本文件）；完整性由交付版本 tag/commit 保证` |
+| 8 | `docs/evidence/DELIVERY-MANIFEST.md` | 交付清单（本文件；自指，见注） | 19844 | `自指（本文件）；完整性由交付版本 tag/commit 保证` |
 | 9 | `docs/evidence/GENAI-DISCLOSURE-DRAFT.md` | GenAI 披露草稿（据实版） | 2482 | `8801c5a78000895a92cec381c59205591296d617` |
-| 10 | `docs/evidence/INDEPENDENT-RERUN-AREN.md` | 独立复跑记录 | 2106 | `5a99a7a9177c3ed6c7a4f2064b68ff1e83eb2f88` |
-| 11 | `docs/evidence/INDEPENDENT-RERUN.md` | 独立复跑记录 | 2202 | `a42b46d6f3046387f21b940df11a80885b5e232a` |
+| 10 | `docs/evidence/INDEPENDENT-RERUN-AREN.md` | 其他 | 2106 | `5a99a7a9177c3ed6c7a4f2064b68ff1e83eb2f88` |
+| 11 | `docs/evidence/INDEPENDENT-RERUN.md` | 其他 | 2202 | `a42b46d6f3046387f21b940df11a80885b5e232a` |
 | 12 | `docs/evidence/PROPOSAL-DRAFT.md` | 提案正文草稿（待 Joey 定稿） | 22671 | `33e6b64b0025640aa98885fa648e7b500b6dc5c8` |
 | 13 | `docs/evidence/README.md` | 说明文档 | 786 | `c67850846512f493515b01be00d873f166d08df5` |
 | 14 | `docs/evidence/diffs/20261002-adapter.js.diff` | 申请人 dsh 补丁证据 | 8430 | `bcb9458ad1df6d376103cac51c786ebde8c0fe55` |
@@ -27,9 +27,9 @@
 | 16 | `docs/evidence/diffs/20261002-wire.js.diff` | 申请人 dsh 补丁证据 | 1457 | `116b790ee2812bde360d1db5f5a30b40f68fc720` |
 | 17 | `docs/evidence/diffs/20261006-claude-wire.diff` | 申请人 dsh 补丁证据 | 2659 | `180902e01ead4ca3248efeb9695dd636c69365c8` |
 | 18 | `docs/evidence/dsh-patches.md` | 申请人 dsh 补丁证据 | 2701 | `ce2383dc5005887c98f05e4a96e0fe36fe1c3d3e` |
-| 19 | `docs/evidence/independent-rerun.log` | 独立复跑记录 | 1269 | `b72837c44f6f7747f8a220b7e3ed7ea8e387d8e0` |
-| 20 | `docs/evidence/independent-tests-attempt1-failed.log` | 独立复跑记录 | 1170 | `52b7051555ad3937872cf82313431cbff5d889c5` |
-| 21 | `docs/evidence/independent-tests-success.log` | 独立复跑记录 | 374 | `28b7afb3a62d3ed5f9b346d8679e69f04a3a2ec1` |
+| 19 | `docs/evidence/independent-rerun.log` | 其他 | 1269 | `b72837c44f6f7747f8a220b7e3ed7ea8e387d8e0` |
+| 20 | `docs/evidence/independent-tests-attempt1-failed.log` | 其他 | 1170 | `52b7051555ad3937872cf82313431cbff5d889c5` |
+| 21 | `docs/evidence/independent-tests-success.log` | 其他 | 374 | `28b7afb3a62d3ed5f9b346d8679e69f04a3a2ec1` |
 | 22 | `docs/evidence/outputs/ASTRA-ADJUDICATION-2026-10-13.md` | GenAI 过程归档（prompt/未编辑输出） | 3647 | `d8d0482105ac23062d96ea269ae7330d46feffdf` |
 | 23 | `docs/evidence/outputs/ASTRA-FINAL-2026-10-13.md` | GenAI 过程归档（prompt/未编辑输出） | 2194 | `de6cba0b675b7341cb376ae67aa8a46f49381f62` |
 | 24 | `docs/evidence/outputs/ASTRA-PROPOSAL-FINAL-2026-10-13.md` | GenAI 过程归档（prompt/未编辑输出） | 5285 | `6facc3f8f11b568786eddd651fca4fc83b7f03cf` |
@@ -93,8 +93,8 @@
 | 82 | `docs/evidence/prompts/TASK-REV2-deepseek.md` | GenAI 过程归档（prompt/未编辑输出） | 3570 | `b01f15a409799c50741da539c925e25be6d3e89f` |
 | 83 | `docs/evidence/prompts/TASK-REV3-sol.md` | GenAI 过程归档（prompt/未编辑输出） | 3031 | `e2336ddda8e16f77a59c29b23195425b56d2df75` |
 | 84 | `docs/evidence/prompts/TASK.md` | GenAI 过程归档（prompt/未编辑输出） | 1919 | `b1b7bece5cff6a658caec81f15ba2e593284591c` |
-| 85 | `docs/evidence/pytest-full.log` | 独立复跑记录 | 8048 | `ee30eef3eaf58587ca582918a9496d03d8ec082d` |
-| 86 | `docs/evidence/rerun-full.log` | 独立复跑记录 | 1866 | `2fc5840641b7eb5a23dea0bcafce6395c0b1614e` |
+| 85 | `docs/evidence/pytest-full.log` | 其他 | 8048 | `ee30eef3eaf58587ca582918a9496d03d8ec082d` |
+| 86 | `docs/evidence/rerun-full.log` | 其他 | 1866 | `2fc5840641b7eb5a23dea0bcafce6395c0b1614e` |
 | 87 | `evidence/MANIFEST.sha256` | 冻结基线清单 | 1306 | `78b775f9160c5b0728149bb8bc57bd7443700407` |
 | 88 | `evidence/cases.md` | 证据分析报告 | 3774 | `d829465e93b5c9d36ff8ed80ad42725dfd9d6ad3` |
 | 89 | `evidence/delay-chain.md` | 证据分析报告 | 6452 | `eddd13c84d2ea675e0cc3a3a33e99f28bf16bb16` |
