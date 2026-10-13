@@ -109,6 +109,20 @@ class IngestionGatePipeline:
         conf = verdict["confidence"]
         purl = pmv_output["purl"]
 
+        # Retracted fault attribution: STANDARDS_CONTRADICTION carries no
+        # unilateral fault claim (typing-extensions case). Route to human review,
+        # never to SECURITY_BLOCK, regardless of the top-level category.
+        if subcode == "STANDARDS_CONTRADICTION":
+            return TriageDecision(
+                purl=purl,
+                category=cat,
+                subcode=subcode,
+                confidence=conf,
+                action=ActionType.MANUAL_REVIEW,
+                reason="Standards contradiction: sources comply with different specs. No fault attributed.",
+                audit_notes="Route to human analyst; do NOT treat as security incident.",
+            )
+
         if cat == "CONSISTENT":
             return TriageDecision(
                 purl=purl,
@@ -116,8 +130,8 @@ class IngestionGatePipeline:
                 subcode=subcode,
                 confidence=conf,
                 action=ActionType.APPROVE,
-                reason="Cross-source metadata strictly consistent. Fast-track approval for production deployment.",
-                audit_notes="Bypasses quarantine. Safe to distribute.",
+                reason="Cross-source metadata consistent within the checked fields. NOT a safety guarantee for production deployment.",
+                audit_notes="Consistency verdict only; deployment decisions require separate review.",
             )
 
         elif cat == "SYNC_DELAY":
@@ -147,16 +161,16 @@ class IngestionGatePipeline:
             )
 
         elif cat in ("REAL_ERROR", "DIGEST_CONFLICT"):
-            # Conflicting checksums or contradictory metadata standards.
+            # Conflicting checksums or contradictory metadata.
             return TriageDecision(
                 purl=purl,
                 category=cat,
                 subcode=subcode,
                 confidence=conf,
                 action=ActionType.SECURITY_BLOCK,
-                reason="High-severity metadata conflict or digest mismatch. Ingestion blocked immediately.",
+                reason="Metadata conflict or digest mismatch. Ingestion blocked pending review.",
                 quarantine_status=True,
-                audit_notes="Critical security alert: quarantine artifact and notify security operations.",
+                audit_notes="Quarantine artifact and notify reviewers; block is precautionary, not proof of malice.",
             )
 
         elif cat == "INDETERMINATE":

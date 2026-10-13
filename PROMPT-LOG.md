@@ -193,7 +193,7 @@
 
 ## 条目 26 — Astra 提案终审 8 项修正（2026-10-13 20:35，主聊；执行中）
 - 终审文件：ASTRA-PROPOSAL-FINAL-2026-10-13.md（审查版本 ef1b3a7；结论：修改后通过，当前不可提交）。
-- **终审 prompt**（主聊 handoff 原文，2026-10-13 20:35）："孔明，Astra 对提案正文的最终验收回来了（全文 ~/workspace/nlnet-codesupply-council/ASTRA-PROPOSAL-FINAL-2026-10-13.md，审查版本 ef1b3a7）。结论：修改后通过，当前不可提交，8 项必须改。金额工时算术通过，AboutCode 口径和截止时间都对。逐项修：[8 项清单]…修完 push，push 前跑一遍 manifest 校验，改完交 Astra 再验。Joey 的指令是 Astra 通过就直接交——所以这轮修完就是最后一验。"（非逐字重建，见本侧聊记录；模型：Astra Max，gpt-6-astra，effort max）
+- **终审 prompt（诚实声明）**：本条目此前补的是主聊 handoff 原文，**不是** Astra 终审的实际 prompt——实际 prompt 由主聊侧直接下达给 Astra，本侧无副本。**缺失项**：ASTRA-PROPOSAL-FINAL 轮的 Astra 终审 prompt 原文。已向主聊请求；收到后补入并标注来源。
 - 未编辑输出：ASTRA-PROPOSAL-FINAL-2026-10-13.md（公开副本：docs/evidence/outputs/）
 - 孔明执行分工：
   - 已修（本机）：① MANIFEST 重生成（$id 变更后）＋pmv.codesupply.org 残留清理＋提交检查纪律；② hatch-vcs 表述撤回（"官方确认"→"公开报告、机制未确认"）＋0.4.0 日期纠正（2023-11-06）＋坐标补全；③ §5 表头拆分（冻结基线 5 案例 vs 补充文档 3 案例）＋evaluation_timestamp 隔离声明；④ §6 去绝对化（披露 confidence 1.0 硬编码＋PSF 标题触发局限）；⑤ §8/§13 归属矛盾修正＋复跑归属明确；⑧ §10 M3 复跑者安排澄清；⑥ §11 专家链重写（贡献—判断—证据映射，删除 OKX）。

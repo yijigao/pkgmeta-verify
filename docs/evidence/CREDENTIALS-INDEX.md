@@ -9,7 +9,7 @@
 |---|---|---|
 | 设计 Market Evidence Check 规则体系（版本化规则、时效判断、结构化理由、固定快照） | 聚合类证据必须从固定输入复现，不能依赖实时页面 | https://github.com/yijigao/market-evidence-check-devday（代码、规则、测试记录） |
 | 定位 dsh 适配器三处故障并编写修复（工具结果协议错配、429 重试策略、Claude thinking 签名回放） | endpoint 级联回退会掩盖真实错误；加逐 endpoint 状态/body 日志暴露之 | docs/evidence/dsh-patches.md＋4 diff（SHA-256＋回归记录）；dsh 本体为 DeepSeek 项目，fork 仅承载本人补丁 |
-| 编写 PMV 判定规则与证据契约（rules v0.1、输出 Schema） | 缺证据必须判 undecidable，不能伪装"一致"；置信度跟随证据强度 | 本仓库：规则、Schema、56 回归测试、冻结基线 |
+| 设定 PMV 验证原则与验收纪律（缺证据→undecidable；"现有测试零失败（56/56），PMV 为概念验证"公开口径；规则集冻结；同团队复跑如实披露） | 诚实收窄比过度宣称更符合例外口要求；规则细节由 AI 按原则起草 | PROMPT-LOG.md 条目 17、25（2026-10-13 决策记录）；明细规格 TASK-PMV-gemini.md 由 AI 编写，非本人手写 |
 
 ## AI 贡献说明
 - PMV 实现代码由 AI（Gemini）按任务书编写；大纲修订用过 DeepSeek/GPT-6.1-Sol/Astra Max；本草稿为 AI 辅助起草。

@@ -203,15 +203,15 @@ dfec2c06defdb4648eb66f6aadf7b57453d732cd HEAD
 
 ## 3. 最终综合结论与关口 1 补救处置
 
-1. **关口 1 真实错误案例补救成功**:
-   - 选定 **`pkg:pypi/hatch-vcs@0.4.0`** 作为全新、真实、闭环且不可辩驳的 **REAL_ERROR (下游解析器故障导致的字段事实错误)** 案例。
-   - 该案例在以下维度均具备不可动摇的直接证据：
+1. **关口 1 真实错误案例补救**:
+   - 选定 **`pkg:pypi/hatch-vcs@0.4.0`** 作为真实错误案例：**链接错误成立（字段事实错误），具体解析机制未确认**。
+   - 证据：
      - **错误字段定位**: `links.SOURCE_REPO` / `relatedProjects.SOURCE_REPO`
      - **客观真值证伪**: 原始制品 `METADATA` 明确将该链接标识为 `Funding`，并将真实的 `Source` 标识为 `https://github.com/ofek/hatch-vcs`；且物理执行 `git ls-remote` 证明被提取的 URL 根本无法作为 Git 仓库响应。
-     - **权威责任归因**: deps.dev 官方 Issue #220 承认为解析器处理规范变更时的提取缺陷。
+     - **公开报告**: deps.dev Issue #220 已公开报告该链接错误；官方回复仅表示怀疑与规范变化有关、会调查——**未确认根因，此前"官方承认解析器故障"的表述撤回**。
 2. **四维严格区分判定表**:
    - `Field Error`: **YES**（字段值虚假，指向非仓库页面）
-   - `Parser Fault`: **YES**（下游摄取器误读 PEP 566 标签）
+   - `Parser Fault`: **机制未确认**（此前"YES（下游摄取器误读 PEP 566 标签）"的断言撤回）
    - `Sync Delay`: **NO**（已持久化 2 年以上，HTTP 200 稳态）
    - `Semantic Difference`: **NO**（代码仓库与赞助主页概念互斥，无兼容解读余地）
 3. **保持基线与冻结约束**:

@@ -28,8 +28,8 @@
     "recheck_executed": false
   },
   {
-    "final_action": "SECURITY_BLOCK",
-    "initial_action": "SECURITY_BLOCK",
+    "final_action": "MANUAL_REVIEW",
+    "initial_action": "MANUAL_REVIEW",
     "initial_verdict": {
       "avoided_false_positive": "Avoided discarding or flagging a legitimate package as license-incompatible while avoiding unverified attribution of parser fault.",
       "category": "REAL_ERROR",
