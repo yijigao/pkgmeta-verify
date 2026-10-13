@@ -21,7 +21,7 @@
 - 模型：DeepSeek（谷时席 12:05 经 gate 调 dsh --profile headless；输出 deepseek-draft.txt，DSH_EXIT=0）、Gemini（dsh --profile gemini-sub；输出 gemini-draft.txt，DSH_EXIT=0）、Astra Max（gpt-6-astra，effort max，本机 codex；输出 astra-draft.txt，CODEX_EXIT=0）
 - Prompt：~/workspace/nlnet-codesupply-council/TASK.md（原文存档）
 - 未编辑输出：~/workspace/nlnet-codesupply-council/{deepseek,gemini,astra}-draft.txt
-- 用途：选题评估（条件投/不投独立意见）。合成稿 ~/workspace/nlnet-codesupply-council/SYNTHESIS.md 由阿析人工编写。
+- 用途：选题评估（条件投/不投独立意见）。合成稿 ~/workspace/nlnet-codesupply-council/SYNTHESIS.md 由阿析（AI 代理，主聊侧）编写。
 
 ## 条目 4 — Astra 终审建议
 - 日期：2026-10-13（主聊发起，本机读取）
@@ -40,14 +40,14 @@
 - 模型：DeepSeek（谷时经 ~/workspace/tools/dsh-deepseek-valley.sh 调 dsh --profile headless）
 - Prompt：~/workspace/nlnet-codesupply-council/TASK-A2-revise.md（原文存档）
 - 未编辑输出：~/workspace/nlnet-codesupply-council/outline-rev1-deepseek.txt（DSH_EXIT=0）
-- 用途：大纲修改（选题收窄为独立质检组件、竞品差异表、真实冲突样例设计、里程碑 M1–M4 新验收表、预算 €55/h≈273h 或 €60/h≈250h 二选一）。后续由阿析人工代填负责人（Joey/Jigao Yi 个人申请，按主聊 13:53 指令）。
+- 用途：大纲修改（选题收窄为独立质检组件、竞品差异表、真实冲突样例设计、里程碑 M1–M4 新验收表、预算 €55/h≈273h 或 €60/h≈250h 二选一）。后续由阿析（AI 代理，主聊侧）代填负责人（Joey/Jigao Yi 个人申请，按主聊 13:53 指令）。
 
 ## 条目 6 — demo 设计修改（按 Astra 终审意见）
 - 日期：2026-10-13 13:54 CST
 - 模型：Gemini（dsh --profile gemini-sub，订阅版）
 - Prompt：~/workspace/nlnet-codesupply-council/TASK-B2-revise.md（原文存档）
 - 未编辑输出：~/workspace/nlnet-codesupply-council/demo-rev1-gemini.txt（DSH_EXIT=0）
-- 用途：demo 设计修改（输入/输出/接入示例、四类冲突样例、同一制品同一算法哈希硬约束、npm+PyPI 双生态锁定）。后续由阿析人工代填负责人（Joey/Jigao Yi 个人申请，按主聊 13:53 指令）。
+- 用途：demo 设计修改（输入/输出/接入示例、四类冲突样例、同一制品同一算法哈希硬约束、npm+PyPI 双生态锁定）。后续由阿析（AI 代理，主聊侧）代填负责人（Joey/Jigao Yi 个人申请，按主聊 13:53 指令）。
 
 ## 条目 7 — PMV 原型实现（按 Astra rev1 终审 item 8）
 - 日期：2026-10-13 14:12 CST（启动）
@@ -137,3 +137,10 @@
 - 公开口径统一收窄为"现有测试零失败（56/56），PMV 为概念验证"（README、rerun-report、提案大纲同步）。
 - 火力转 5 项提交前关口：真实错误案例最终确认、延迟时间链核验、自然不可判定案例、Schema $id 落实、独立复跑＋材料统一＋履历索引；11/2 内部提交日前关闭。
 - 提案正文（人工主笔）可开始，大纲 rev3 已过。
+
+## 条目 18 — Astra 最终验收 4 项诚实修正（2026-10-13 18:05，主聊）
+- 模型：孔明（dsh 执行岗）直接执行
+- 修正 1：独立复跑记录拆分——尝试 1（53 tests FAILED，缺 jsonschema 依赖，环境问题）如实保留为 independent-tests-attempt1-failed.log；尝试 2（56/56 OK，2026-10-13T10:06:08Z–10:06:09Z）完整记录为 independent-tests-success.log。署名记录 INDEPENDENT-RERUN.md 重写，两次都保留。
+- 修正 2：README L168"覆盖全部误判缺陷的 25 个回归测试用例"改为"56 项回归测试（现有测试零失败）；仅覆盖已发现的误判类别，PMV 为概念验证"。
+- 修正 3：条目 14 五轮终审 prompt 缺件——待主聊重建件，收到后标注来源和不确定性补入。
+- 修正 4：条目 3/5/6"阿析人工编写/代填"改为"阿析（AI 代理，主聊侧）"；披露草稿 L6"human-written technical specification"据实改写（TASK-PMV-gemini.md 为 AI 代理编写，无人类原稿）。
