@@ -1,0 +1,106 @@
+# NLnet CodeSupply · PMV 第三轮 Bug 修复（Astra 实核新反例）工作汇报
+
+**口径声明**：本轮审查与修复严格遵循 Astra 实核要求，客观汇报**“现有测试零失败”**，不宣称判定绝对正确。
+
+---
+
+## 一、5 组新反例逐项修复明细
+
+### 1. 制品身份关联（`pmv/verifier.py` L128）
+- **反例原状**：两个不同来源仅提供相同的 `["README", "LICENSE"]` 单纯文件名清单，被误判为身份已证明，进而判出 `DIGEST_CONFLICT`。
+- **修复方案**：
+  - 增加 `Verifier._manifest_has_hashes()` 方法，校验文件清单是否包含密码学哈希。单纯的文件名列表**不得**作为制品身份证明；
+  - 身份关联严格限定为：证明 digest 绑定到同一制品发布记录、同一下载 URL、或包内文件清单含 hash 其一；
+  - 否则一律判定为 `INDETERMINATE`（子状态码 `ARTIFACT_IDENTITY_UNPROVEN`），严格禁止误判为 `DIGEST_CONFLICT`。
+
+### 2. 摘要长度校验（`pmv/verifier.py` L159，测试 L266）
+- **反例原状**：声明算法 SHA-256 输入 `hex:00`、`hex:01`（1 字节）仍被判为摘要冲突；原测试使用 5 字节数据（`"base64:dGVzdDE="`）冒充 SHA-256。
+- **修复方案**：
+  - 在 `Verifier` 中引入 `EXPECTED_DIGEST_LENGTHS` 常量映射（SHA-256 对应 32 字节，SHA-512 对应 64 字节等）；
+  - 解码后增加严格长度校验：若解码字节数与声明算法要求不匹配，严格判定为 `INDETERMINATE`（子状态码 `DIGEST_LENGTH_MISMATCH`），严禁判出 `DIGEST_CONFLICT`；
+  - 修正原测试用例中的冒充向量，替换为真实的 32 字节 Base64 SHA-256 向量（在大小写敏感下解码字节不同，但在字符串 `.lower()` 下易被误判的针对性真实向量）。
+
+### 3. 延迟三条件校验与容差如实报告（`pmv/verifier.py` L537）
+- **反例原状**：后续观察写 2099 年仍判已证明延迟；42 天延迟声称“在 86400 秒容差内”。
+- **修复方案**：
+  - 增加时间上限校验：后续观察时间必须 $\le$ 当前执行/评估时间（拒绝未来时间），违者判定为 `INDETERMINATE`（子状态码 `undecidable`）；
+  - 明确定义容差阈值常量 `DEFAULT_SYNC_DELAY_TOLERANCE_SECONDS = 86400`（并在代码 docstring 及 README 中明确说明）；
+  - 增加 `_format_delay_duration()` 格式化函数，超出容差严格禁止宣称“在容差内”，42 天延迟如实报告为 `42 days (3628800s)`，并明确注明 `exceeds sync tolerance window (86400s)`。
+
+### 4. 许可证比较与置信度动态计算（`pmv/verifier.py` L694）
+- **反例原状**：MIT vs non-standard 被漏检，以及双方均无许可证、仅有不同发布时间时，仍误判为 `CONSISTENT` 且置信度恒为 1.0。
+- **修复方案**：
+  - 移除了 `lics != ["non-standard"]` 的过滤，使 `non-standard` 参与跨源对比：MIT vs non-standard 判定为 `SEMANTIC_DIVERGENCE`（子状态码 `LICENSE_DECLARATION_DISCREPANCY`）；
+  - 双方均无许可证时判定为无可比证据（`NO_COMPARABLE_LICENSE_EVIDENCE`），输出 `INDETERMINATE`（`undecidable`）；
+  - 校验发布时间戳一致性（若存在跨源时间戳冲突输出 `undecidable`）；
+  - `CONSISTENT` 仅在实际比对且一致时输出，置信度根据证据强度（源数量、时间戳匹配、摘要一致性、深度分析器佐证等）动态计算（范围 0.85～0.98，严格 $< 1.0$），严禁恒为 1.0。
+
+### 5. 硬编码事实断言与 SPDX 语义如实描述（`pmv/verifier.py` L607）
+- **反例原状**：任意非空 `text_snippet` 触发“已验证标准许可证”；硬编码写入“缺少 PEP 639 License-Expression”；OR 复合表达式被描述为 AND 双重义务。
+- **修复方案**：
+  - 增加 `_has_standard_license_match_evidence()` 方法，必须具备许可证原文与对应标准文本（PSF-2.0、MIT、Apache-2.0、GPL 等）的模式匹配证据或明确验证标记，否则不得断言 `REAL_ERROR`（输出 `undecidable`）；
+  - 彻底删除 `details` 中“缺少 PEP 639 License-Expression”硬编码表述，改为客观记录跨源元数据矛盾且不进行单边主观归咎；
+  - 区分 `OR` 与 `AND` 表达式：`OR` 表达式严格按照 SPDX 语义描述为“许可选择（alternative licensing choice）”，子状态码为 `LICENSE_EXPRESSION_DISJUNCTION_MISMATCH`，严禁描述为 AND 双重义务。
+
+---
+
+## 二、公开口径收窄
+
+- **`README.md` 第 12 行**：
+  - 原表述：`彻底避免普通字段比对的误判`
+  - 已收窄为：`减少特定类别的误判（以回归测试为准）`
+- 同步更新了 `README.md` 第 4 节中的各项判定规则描述与阈值说明。
+
+---
+
+## 三、针对性回归测试结果
+
+针对上述 5 组反例，在 `tests/test_verifier_rules.py` 中补充了针对性回归测试用例：
+1. `test_astra_counterexample_1_bare_file_list_does_not_prove_identity`：复现单纯 `["README", "LICENSE"]` 输入，验证输出 `ARTIFACT_IDENTITY_UNPROVEN`，不判定 `DIGEST_CONFLICT`。
+2. `test_astra_counterexample_1_hashed_file_list_proves_identity`：验证带哈希的文件清单成立身份关联，输出 `DIGEST_CONFLICT`。
+3. `test_astra_counterexample_2_sha256_short_hex_yields_length_mismatch`：复现 `hex:00` 与 `hex:01`，验证输出 `DIGEST_LENGTH_MISMATCH`。
+4. `test_rev3_fix2_base64_case_difference_does_not_silently_match`：更新为真实 32 字节 Base64 向量测试。
+5. `test_astra_counterexample_3_future_observation_year_2099_rejected`：复现 2099 年未来时间输入，验证被拒绝并输出 `undecidable`。
+6. `test_astra_counterexample_3_42_day_delay_truthfully_reported_exceeding_tolerance`：复现 42 天延迟输入，验证如实报告 `42 days` 且声明 `exceeds sync tolerance window`，不报告“在容差内”。
+7. `test_astra_counterexample_4_mit_vs_non_standard_yields_divergence`：复现 MIT vs non-standard，验证输出 `SEMANTIC_DIVERGENCE`，严禁 `CONSISTENT`。
+8. `test_astra_counterexample_4_no_license_differing_publication_time_yields_undecidable`：复现无许可证不同发布时间，验证输出 `undecidable`。
+9. `test_astra_counterexample_4_consistent_confidence_strictly_less_than_one`：验证一致时置信度按证据计算且严格 $< 1.0$。
+10. `test_astra_counterexample_5_arbitrary_snippet_without_standard_match_yields_undecidable`：复现无标准匹配的任意文本，验证输出 `undecidable`。
+11. `test_astra_counterexample_5_pep_639_assertion_removed_from_real_error`：验证真实错误详情中绝无 `PEP 639` 硬编码字样。
+12. `test_astra_counterexample_5_or_expression_described_as_spdx_disjunction_not_and_obligation`：复现 OR 表达式，验证按 SPDX 语义描述为许可选择，无“双重义务”字样。
+
+**测试执行结果**：
+```
+Ran 36 tests in 0.081s
+OK (现有测试零失败)
+```
+
+---
+
+## 四、基线重新冻结与 `rerun.sh` 复跑结果
+
+因删除了 `typing-extensions` 中的“PEP 639”硬编码表述，基线结果文件 `evidence/results/pkg-pypi-typing-extensions-4.12.2.result.json` 已同步更新，并重新生成了 `evidence/MANIFEST.sha256` 密码学哈希清单。
+
+执行 `./rerun.sh` 完整脱网离线重跑：
+1. **Phase 1（密码学哈希清单校验）**：全部 12/12 文件 SHA-256 精确匹配（`PASS`）。
+2. **Phase 2（JSON Schema 自检与基线实例校验）**：Schema Draft 2020-12 校验 100% 通过（`PASS`）。
+3. **Phase 3（规则回归测试集）**：36 项针对性回归测试全部通过（`PASS: 现有测试零失败`）。
+4. **Phase 4（确定性离线快照复跑与逐字节比对）**：
+   - `pkg:pypi/typing-extensions@4.12.2`: `PASS` (0 diff, Schema VALID)
+   - `pkg:pypi/archgraph-layout@2.3.0`: `PASS` (0 diff, Schema VALID)
+   - `pkg:npm/esprima@4.0.1`: `PASS` (0 diff, Schema VALID)
+   - `pkg:npm/debug@4.3.4`: `PASS` (0 diff, Schema VALID)
+   - `pkg:npm/synthetic-fixture@1.0.0`: `PASS` (0 diff, Schema VALID)
+5. **Phase 5（审计报告生成）**：已写入 `pmv/rerun-report.md`。
+
+**复跑最终结论**：
+```
+=== Final Status ===
+Test Result: 现有测试零失败 (0 failures)
+Passed Cases: 5/5
+Report written to: /home/hatch/workspace/nlnet-codesupply-council/pmv/rerun-report.md
+现有测试零失败 (ALL TESTS PASSED)
+```
+
+*(技术负责人保持 Joey（Jigao Yi）个人申请，未触及提案正文。)*
+DSH_EXIT=0

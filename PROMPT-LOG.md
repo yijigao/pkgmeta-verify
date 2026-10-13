@@ -110,11 +110,12 @@
 - 公开提交：https://github.com/yijigao/pkgmeta-verify @41d6a55（含附件：dsh-patches.md＋4 diff、披露草稿、条目4重建件）。**计数纠正**：此前写的"14 prompt、13 output"不符实际，且 pmv-fix3-gemini.txt（8,427 字节）当时未拷贝公开。实际应为 13 prompt、19 output，pmv-fix3-gemini.txt 已在本轮补入。
 
 ## 条目 14 — Astra rev1/rev2/rev3/rev3fix/rev3fix2 终审（主聊侧发起）
-- 日期：2026-10-13（主聊发起，本机读取）
+- 日期：2026-10-13（主聊发起，本机读取；各轮具体时间孔明侧无记录）
 - 模型：Astra Max（gpt-6-astra，reasoning effort max；主聊发起的终审咨询）
-- Prompt：由主聊下达，孔明侧无副本（同条目 4 情况；如主聊提供重建件将补入并标注）。
+- Prompt：**缺失**——五轮终审的 prompt 均由主聊侧直接下达给 Astra，孔明（dsh 执行岗）侧无副本、无具体下达时间记录。缺失原因：终审咨询不在本岗执行链内，本岗仅接收终审输出文件。补救：已向主聊请求提供各轮 prompt 原文或重建件；如提供，将补入并如实标注"重建件/原件"。
 - 未编辑输出：ASTRA-REV1-2026-10-13.md、ASTRA-REV2-2026-10-13.md、ASTRA-REV3-2026-10-13.md、ASTRA-REV3FIX-2026-10-13.md、ASTRA-REV3FIX2-2026-10-13.md（全文存档，未编辑；公开副本：docs/evidence/outputs/）
 - 用途：各轮终审结论与复核意见。
+- **诚实声明**：本条目不能代替官方要求的完整申请过程记录；在 prompt 补入前，日志在此项上是不完整的。
 
 ## 条目 15 — PMV 第四轮 bug 修复（按 Astra rev3fix2 第1节）
 - 日期：2026-10-13 17:12 CST（启动）
