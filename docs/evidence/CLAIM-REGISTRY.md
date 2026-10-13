@@ -19,10 +19,12 @@
 | CLM-004 | deps.dev #220 官方回复内容 | https://github.com/google/deps.dev/issues/220#issuecomment-2803737650 | "怀疑与 PEP 753 规范变化有关，会调查" | 该 issue | 已证明 | real-error-case-v2.md L143 |
 | CLM-005 | ofek 的跟进 | 同上 issue #220 | 询问处理进展 | 该 issue | 已记录 | real-error-case-v2.md |
 | CLM-006 | hatch-vcs@0.4.0 上传时间 | PyPI JSON API | 2023-11-06T06:24:55Z | 该版本 | 已证明 | real-error-case-v2.md |
-| CLM-007 | validfilepath 延迟观察 | 单次网络采集 2026-10-13 | 404→200，两次观察 | 该版本单次 | **候选**（历史同期原始记录缺失） | delay-chain.md；PROPOSAL §5/§14 |
+| CLM-007 | validfilepath 延迟观察 | 单次网络采集 2026-10-13 | 404→200，两次观察 | 该版本单次 | **候选**（历史同期原始记录缺失） | delay-chain.md；PROPOSAL §5/§14；evidence/cases.md L14/L29；README L121；evidence/supplementary/README.md L14 |
 | CLM-008 | archgraph-layout 延迟 | 早期复跑报告 | 07:03 报告引用 07:15 观察（倒序） | 该版本 | **已撤回**（suspect/retracted） | delay-chain.md；PROPOSAL §5 |
 | CLM-009 | django-flowcontrol 声明字段缺失 | PyPI JSON＋deps.dev API 实测 | info.license=null，licenses=[] | 声明字段 | 已记录（LICENSE 文件未核验） | natural-undecidable-case.md；PROPOSAL §5 |
 | CLM-010 | typing-extensions 下游责任断言 | — | — | — | **已撤回** | real-error-case-v2.md（撤回记录）；PROPOSAL §5 |
+| CLM-026 | typing-extensions FAQ 政策归因（已撤回） | — | "下游 FAQ 明确声明仅提取 License: 标头""双方均未违反自身规范" | — | **已撤回**（无官方原文支持） | real-error-case-v2.md L17–19（撤回记录） |
+| CLM-027 | "老版本＋HTTP 200 排除延迟"规则（已撤回） | — | 四维表排除条件 | — | **已撤回** | real-error-case-v2.md（四维表，已删除） |
 
 ## 许可与数据事实
 
@@ -47,6 +49,8 @@
 | CLM-023 | GenAI 政策 v1.1 | https://nlnet.nl/foundation/policies/generativeAI/ | 2026-01-26 生效 | 政策版本 | 已证明 | PROMPT-LOG 条目 25 |
 | CLM-024 | 截止 2026-11-03 12:00 CET | https://nlnet.nl/codesupply/ | 北京时间 19:00 | 本申请 | 已证明 | PROPOSAL §1 |
 | CLM-025 | 生态范围 npm＋PyPI | Joey 决策 | 大纲 | 本申请 | 已证明（决策） | PROPOSAL §4 |
+
+| CLM-028 | PSF 分支标题触发局限 | `verifier.py` L346 实测 | 标题＋"version 2"即触发 | PMV 概念验证 | 已记录（已知局限） | README；rerun-report.md；PROPOSAL §6 |
 
 ## 状态机
 

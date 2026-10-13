@@ -90,7 +90,7 @@ PMV 锁定 **npm** 与 **PyPI** 双生态，每个生态均包含权威注册表
      $$C = \min\left(0.95, \max\left(0.60, C_{\text{base}} + N_{\text{items}} \cdot W_{\text{item}} + I_{\text{indep}} \cdot W_{\text{indep}} - P_{\text{time}}\right)\right)$$
      其中 $C_{\text{base}}=0.70$，维度项（许可、哈希、仓库、时间）每项加 $0.03\sim0.06$，独立源加 $0.08$（派生源仅加 $0.02$），时间差引入时间跨度惩罚 $P_{\text{time}}$。
 5. **真实错误经验证据实质比对、降权自证标记与空源脱敏 (`REAL_ERROR`)**：
-   - 标准文本判定必须具备原文与已知标准文本核心法律条款（授权条款、条件与免责条款）的实质比对证据，**彻底排除否定模式**（如 `"This is not an MIT license"` 判定不匹配）。
+   - **已知局限**：PSF 分支可仅凭标题文本加 "version 2" 触发（`verifier.py` L346），不要求授权/条件/免责条款实质比对；部分判定路径仍有硬编码 `confidence: 1.0`（L1097）。详见提案 §6 "Known limitations"。
    - `matches_standard=True` 等自报标记一律降权，仅作为输入声明，**不得单独作为判定依据**。
    - 缺少 ClearlyDefined 等外部数据源时，如实输出“ClearlyDefined: 未覆盖”，**严禁输出“确认了 None”**。
    - 删除一切硬编码事实断言（如“缺少 PEP 639”），客观判定为 `STANDARDS_CONTRADICTION`。
@@ -118,7 +118,7 @@ PMV 锁定 **npm** 与 **PyPI** 双生态，每个生态均包含权威注册表
 | 判定类别 | 案例坐标 (PURL) | 对照源与状态 | 实测判定依据 | 相较普通 Diff 避免的误判 |
 |---|---|---|---|---|
 | **`REAL_ERROR`**<br>(真实错误) | `pkg:pypi/typing-extensions@4.12.2` | PyPI JSON (200)<br>deps.dev v3 (200)<br>ClearlyDefined (200) | 基于制品内 `typing_extensions-4.12.2.dist-info/LICENSE` 经验证据与 PyPI 分类器明确为标准 PSF-2.0，ClearlyDefined 验证为 `Python-2.0.1`。但 deps.dev 标注为 `['non-standard']`。动态引用经验证据，客观判定为 `STANDARDS_CONTRADICTION`，删除单边归因。 | 普通 Diff 仅报告字符串不一致或直接归咎某方。PMV 客观记录标准冲突，避免合规系统误拒合规核心库。 |
-| **`INDETERMINATE`**<br>(疑似延迟，时间链待核验) | `pkg:pypi/archgraph-layout@2.3.0` | PyPI JSON (200)<br>deps.dev v3 (404 & 200) | 按照 Astra rev3 审查要求，该案例降级为“疑似延迟，时间链待核验”，标记 `verification_status: suspect` 与 `audit_status: retracted`。从已证明延迟案例撤下，判定为 `INDETERMINATE` (`undecidable`)。新采已证明案例见 `evidence/delay-chain.md` (`validfilepath@0.1`)。 | 避免在缺乏原始日志核验时武断宣称延迟已获确凿证明。保留快照审计记录并保留不确定性。 |
+| **`INDETERMINATE`**<br>(疑似延迟，时间链待核验) | `pkg:pypi/archgraph-layout@2.3.0` | PyPI JSON (200)<br>deps.dev v3 (404 & 200) | 按照 Astra rev3 审查要求，该案例降级为“疑似延迟，时间链待核验”，标记 `verification_status: suspect` 与 `audit_status: retracted`。从已证明延迟案例撤下，判定为 `INDETERMINATE` (`undecidable`)。候选延迟观察见 `evidence/delay-chain.md` (`validfilepath@0.1`，单次采集，未证明)。 | 避免在缺乏原始日志核验时武断宣称延迟已获确凿证明。保留快照审计记录并保留不确定性。 |
 | **`SEMANTIC_DIVERGENCE`**<br>(语义差异) | `pkg:npm/esprima@4.0.1` | npm packument (200)<br>ClearlyDefined (200) | 明确判定源（`npm_registry`, `clearlydefined`, `deps_dev`）与字段。ClearlyDefined 全仓库核心切面文件级扫描发现并声明 `BSD-2-Clause AND BSD-3-Clause`，与 npm 顶层声明 `BSD-2-Clause` 存在布尔与义务差异，禁止自动采信单方。 | 普通 Diff 会强行以顶层声明覆盖深度扫描，或机械合并导致许可冲突。PMV 标识复合布尔语义差异。 |
 | **`INDETERMINATE`**<br>(无法判定) | `pkg:npm/debug@4.3.4`<br>*(synthetic=true)* | npm packument (200) | 跨算法比对测试：输入仅有 SHA-1 (`3d75be84...`) 与外部 SHA-256 请求。因缺乏共享算法，判定输出 `undecidable`。输入明确标为 `synthetic=true` 与真实案例分开统计。真实自然不可判定案例见 `evidence/natural-undecidable-case.md` (`django-flowcontrol@0.0.21`)。 | 普通 Diff 会因字符串不相等直接报警“哈希不匹配/被篡改”，或因算法键缺失触发 `KeyError` 崩溃。PMV 优雅降级为 `undecidable`。 |
 | **`DIGEST_CONFLICT`**<br>(*构造用例, synthetic=true*) | `pkg:npm/synthetic-fixture@1.0.0` | npm registry (200)<br>synthetic mirror (200) | 同一制品 `synthetic-fixture-1.0.0.tgz`（具备版本发布记录与 origin_url 身份绑定证据）与同一算法 `SHA-256`，解码字节不同 (`aaa...` vs `bbb...`)。 | 普通 Diff 会断言“镜像遭黑客篡改/损坏”。PMV 恪守客观边界，仅认定“摘要冲突”，要求进一步核验镜像源证明。 |

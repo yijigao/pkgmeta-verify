@@ -88,7 +88,7 @@ OK
 2. **算法规范化与长度约束强制执行**: 算法名称先做大小写与别名映射归一化（SHA-256/sha256/sha-256 同等处理）；未知算法输出 `undecidable` (`ENCODING_UNSUPPORTED`)，严禁跳过长度约束；所有规范化算法强制执行精确字节长度校验（截断输出 `DIGEST_LENGTH_MISMATCH`）。
 3. **延迟时间链真实时钟校验与精确状态码报告**: 未来时间检查必须对照真实当前系统时钟（拒绝信任输入自带的 evaluation_timestamp）；HTTP 状态码精确如实报告（HTTP 204 即报告为 HTTP 204，严禁改写为 200）；3xx/4xx/5xx 分类明确输出 undecidable。
 4. **许可证空值扫荡、全两两时间比对与置信度公式**: 空白数组、空白字符串、"unknown"、"see license file" 等无信息值归一化后视同无可比证据（`undecidable`）；多源发布时间强制执行全两两比对（跨源跨年差距判定为 `TIMESTAMP_DIVERGENCE`，严禁仅比对前两项或输出拍脑袋高置信度）；置信度严格依据证据项数、来源独立性、时间跨度惩罚等公式动态计算（严格 < 1.0）。
-5. **标准文本实质比对、降权自证标记与空源脱敏**: 彻底排除否定模式（如 "This is not an MIT license"）与名称关键词假命中；matches_standard=True 等自证标记一律降权，仅作为输入声明不得作为判定证据；必须具备核心法律条款实质比对证据；缺少 ClearlyDefined 时如实输出“ClearlyDefined: 未覆盖”，严禁输出“确认了 None”。
+5. **标准文本实质比对、降权自证标记与空源脱敏**: 彻底排除否定模式（如 "This is not an MIT license"）与名称关键词假命中；matches_standard=True 等自证标记一律降权，仅作为输入声明不得作为判定证据；（已知局限：PSF 分支可仅凭标题文本加 "version 2" 触发，不要求授权/条件/免责条款实质比对；详见提案 §6）；缺少 ClearlyDefined 时如实输出“ClearlyDefined: 未覆盖”，严禁输出“确认了 None”。
 
 ## 4. Diff 详细说明
 本次固定输入基线的复跑结果（所有案例在离线快照复跑中与基线输出逐字节比对完全一致，0 diff，动态 `evaluation_timestamp` 字段中立隔离；注：若改变运行时钟或引入外部动态时变输入，判定可能发生变化，不代表全环境或未来时段的绝对确定性）。

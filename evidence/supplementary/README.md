@@ -11,7 +11,7 @@
 | 软件包坐标 (PURL) | 原始抓取记录 (Raw JSON) | 快照文件 (Snapshot) | 验证输出 (Result) | 案例性质 |
 |---|---|---|---|---|
 | `pkg:pypi/hatch-vcs@0.4.0` | `pkg-pypi-hatch-vcs-0.4.0.raw.json` | `snapshot-pkg-pypi-hatch-vcs-0.4.0.json` | `result-pkg-pypi-hatch-vcs-0.4.0.json` | 仓库链接错误（Issue #220 已公开报告，机制调查中） |
-| `pkg:pypi/validfilepath@0.1` | `pkg-pypi-validfilepath-0.1.raw.json` | `snapshot-pkg-pypi-validfilepath-0.1.json` | `result-pkg-pypi-validfilepath-0.1.json` | 下游索引同步延迟（瞬态 404 → 稳态 200） |
+| `pkg:pypi/validfilepath@0.1` | `pkg-pypi-validfilepath-0.1.raw.json` | `snapshot-pkg-pypi-validfilepath-0.1.json` | `result-pkg-pypi-validfilepath-0.1.json` | 候选延迟观察（单次 404→200；未证明为同步延迟） |
 | `pkg:pypi/django-flowcontrol@0.0.21` | `pkg-pypi-django-flowcontrol-0.0.21.raw.json` | `snapshot-pkg-pypi-django-flowcontrol-0.0.21.json` | `result-pkg-pypi-django-flowcontrol-0.0.21.json` | 真实自然不可判定（多源许可证事实证据真空） |
 
 ---
