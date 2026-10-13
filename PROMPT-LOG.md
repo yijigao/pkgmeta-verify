@@ -193,7 +193,7 @@
 
 ## 条目 26 — Astra 提案终审 8 项修正（2026-10-13 20:35，主聊；执行中）
 - 终审文件：ASTRA-PROPOSAL-FINAL-2026-10-13.md（审查版本 ef1b3a7；结论：修改后通过，当前不可提交）。
-- **终审 prompt（诚实声明）**：本条目此前补的是主聊 handoff 原文，**不是** Astra 终审的实际 prompt——实际 prompt 由主聊侧直接下达给 Astra，本侧无副本。**缺失项**：ASTRA-PROPOSAL-FINAL 轮的 Astra 终审 prompt 原文。已向主聊请求；收到后补入并标注来源。
+- **终审 prompt**：`docs/evidence/prompts-reconstructed/09-proposal-final-2025.md`（主聊提供，2026-10-13 22:48；**重建件，非逐字节原件**，据执行记录重建；模型 gpt-6-astra，时间约 20:25，未编辑输出 ASTRA-PROPOSAL-FINAL-2026-10-13.md）。
 - 未编辑输出：ASTRA-PROPOSAL-FINAL-2026-10-13.md（公开副本：docs/evidence/outputs/）
 - 孔明执行分工：
   - 已修（本机）：① MANIFEST 重生成（$id 变更后）＋pmv.codesupply.org 残留清理＋提交检查纪律；② hatch-vcs 表述撤回（"官方确认"→"公开报告、机制未确认"）＋0.4.0 日期纠正（2023-11-06）＋坐标补全；③ §5 表头拆分（冻结基线 5 案例 vs 补充文档 3 案例）＋evaluation_timestamp 隔离声明；④ §6 去绝对化（披露 confidence 1.0 硬编码＋PSF 标题触发局限）；⑤ §8/§13 归属矛盾修正＋复跑归属明确；⑧ §10 M3 复跑者安排澄清；⑥ §11 专家链重写（贡献—判断—证据映射，删除 OKX）。
@@ -208,7 +208,7 @@
 - verifier.py/测试/MANIFEST 均未动；rerun.sh 12/12、56/56 不受影响。
 
 ## 条目 28 — Astra 提案二审 8 项修正（2026-10-13 21:01，主聊；已修完）
-- 终审文件：ASTRA-PROPOSAL-FINAL2-2026-10-13.md（审查版本 565c70e）。
+- 终审文件：ASTRA-PROPOSAL-FINAL2-2026-10-13.md（审查版本 565c70e）。终审 prompt：`docs/evidence/prompts-reconstructed/10-proposal-final2-2051.md`（主聊提供；重建件，非逐字节原件；约 20:51）。
 - ① hatch-vcs：附件 L139"官方确认/贪婪匹配/解析器故障成立"全部撤回→"链接错误成立，具体机制未确认"（官方仅怀疑＋调查）。
 - ② validfilepath："可证明区间""100% 封闭完整""通常 7–12 分钟"撤回→单次观察记录；正文 §14 同步。
 - ③ django-flowcontrol：收窄为"所采声明字段缺失"，披露 LICENSE 文件未核验、不能推出整包无许可。
@@ -220,6 +220,7 @@
 - 56/56 通过，MANIFEST 12/12 通过。
 
 ## 条目 29 — 6 项残留修正＋新纪律（2026-10-13 21:09，主聊；已修完）
+- 触发终审：ASTRA-PROPOSAL-FINAL3-2026-10-13.md；prompt：`docs/evidence/prompts-reconstructed/11-proposal-final3-2106.md`（主聊提供；重建件，非逐字节原件；约 21:06）。
 - 背景：第三次"报完工实际没改干净"。新纪律：**任何"修完"必须先全文 grep 相关关键词确认无残留，再报完工**。
 - ① real-error-case-v2.md 总结段："官方承认/Parser Fault:YES/贪婪匹配"全部撤回→"链接错误成立，机制未确认"；grep 确认无残留（仅剩撤回声明本身）。
 - ② delay-chain.md blochsim 段："可证明/通常 7~12 分钟"撤回→单次观察。
@@ -231,7 +232,7 @@
 - **等 Astra 全量根因扫描报告**，不再一轮一补（Joey 指令）。
 
 ## 条目 30 — Astra 窄范围扫描 11 项修正（2026-10-13 22:29，主聊；已修完）
-- 终审文件：ASTRA-SWEEP1-2026-10-13.md（审查版本 22435cb5）。
+- 终审文件：ASTRA-SWEEP1-2026-10-13.md（审查版本 22435cb5）。终审 prompt：`docs/evidence/prompts-reconstructed/12-sweep1-2218.md`（主聊提供；重建件；约 22:18）。
 - ① delay-chain：摘要/节点结论/提案统一为"候选延迟观察；历史 404→200 未获同期原始记录验证"；删除"已被预填/未校准时钟"无证据归因。
 - ② real-error-case-v2 L151："100% 封闭可证明的下游解析器故障"撤回→"字段错误成立，机制未确认"。
 - ③ 删除 deps.dev FAQ 政策归因（无原文支持）；提案 typing-extensions 行同步。
@@ -247,7 +248,30 @@
 - **等 Astra 根因报告**，不再一轮一补。
 
 ## 条目 31 — 结构性改变：交付清单＋主张登记表（2026-10-13 22:33，主聊；待验收）
-- 背景：Astra 根因报告（ASTRA-ROOTCAUSE-2026-10-13.md）结论"修—验方式不能可靠收敛"；Joey 指令暂停散点修补。
+- 背景：Astra 根因报告（ASTRA-ROOTCAUSE-2026-10-13.md；prompt：`docs/evidence/prompts-reconstructed/13-rootcause-2131.md`，主聊提供；重建件；约 21:31）结论"修—验方式不能可靠收敛"；Joey 指令暂停散点修补。
 - 交付物 1：docs/evidence/DELIVERY-MANIFEST.md —— 交付版本 956cec4＋tag v0.1；117 个文件（路径/用途/字节数/哈希）；冻结文件标注；重复目录已排除。
 - 交付物 2：docs/evidence/CLAIM-REGISTRY.md —— 25 条主张（CLM-001～CLM-025），每条含原始来源、观察值、适用范围、结论强度（已证明/已记录/候选/未知/已撤回）、全部出现位置。
 - 状态：**已修改，待验收**。终检人：阿仁（主聊）。
+
+## 条目 32 — 终检 3 项修正（2026-10-13 22:35，主聊；待验收）
+- ① 交付版本：文件不可能自含其所在提交的 hash（密码学不可能），改以 tag `delivery-2026-10-13` 绑定具体版本（commit 6a5ef4570aa4ecff945227cd375db3e66b533040）。
+- ② 清单含自身：120 个文件（含 DELIVERY-MANIFEST.md、CLAIM-REGISTRY.md）。
+- ③ 哈希：全部 40 位完整 git blob hash；清单自身为自指文件，以 tag 保证。
+- 全新 clone 验证：tag 可解析、120 文件、头部正确。
+- 状态：**已修改，待验收**。
+
+## 条目 33 — 终检验收通过（2026-10-13 22:38，主聊）
+- 阿仁复验：tag→commit 对上、120 文件、抽查 3 文件 40 位哈希全对。状态：**已验收**。
+- 自指问题解法（tag 绑定版本）记为有效模式。
+- 下一步：Astra 对 tag `delivery-2026-10-13` 做最终确认扫描；通过即"已封版"。
+- 纪律：封版后任何修改重新走验收（状态机回退到"待修改"）。
+
+## 条目 34 — 封版阻断 4 项修正（2026-10-13 22:47，主聊；已闭环）
+- 封版确认 prompt：`docs/evidence/prompts-reconstructed/14-seal-2237.md`（主聊提供；重建件；约 22:37）。
+- 第 4 项（终审 prompt 缺失）已闭环：09～14 重建件已归档公开，条目 26/28/29/30/31/34 均已挂接。
+- ① cases.md L14/L29、README L121、supplementary README L14：延迟表述统一降级为"候选"；CLM-007 补上漏列位置。
+- ② real-error-case-v2.md L17–27：发现窄扫描第 3 项修改实际没落盘（write 漏了），已彻底删除 FAQ 归因＋"双方均未违反规范"＋四维表"老版本排除延迟"规则；登记表新增 CLM-026/027（已撤回）。
+- ③ README L93＋rerun-report：实质比对宣称→已知局限（PSF 标题触发）；登记表新增 CLM-028。
+- ④ 条目 26/29 终审 prompt 缺失：已向主聊请求原文；收到后补入。
+- 56/56，12/12，grep 无残留。提交 3fbda10。
+- 状态：**已修改，待验收**（第 4 项待主聊回复后闭环）。
