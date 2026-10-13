@@ -150,3 +150,9 @@
 - $id 变更后本地 56/56 测试通过（test_schema 断言 `/schemas/pmv-output/` 子串，地址已按此调整）。
 - 条目 14：主聊提供八轮终审 prompt 重建件（~/workspace/nlnet-codesupply-council/prompts-reconstructed/，01～08），如实标注"重建件、非逐字节原件"，公开副本已推送。
 - 独立复跑：主聊已派烛龙（非实现者、干净环境）执行，结果回主聊侧统一归档；孔明此前的自跑仅作自检。
+
+## 条目 20 — 阿仁独立复跑发现 MANIFEST 过期＋修复（2026-10-13 18:10，主聊）
+- 阿仁（主聊侧，非实现者）干净环境复跑抓到真问题：6545bc4 改了 Schema $id，但 evidence/MANIFEST.sha256 未同步，rerun.sh Phase 1 报 `schemas/pmv-output.schema.json: FAILED`。
+- 修复：已按当前 12 个文件重新生成 MANIFEST.sha256，`sha256sum -c` 12/12 OK；基线重新冻结。
+- 阿仁的复跑记录原文归档：docs/evidence/INDEPENDENT-RERUN-AREN.md（**逐字归档，未改写其结论**，含"本次复跑不能作为全部检查通过的证据"）。
+- **缺件**：记录中引用的 pytest-full.log、rerun-full.log 原始日志尚未收到，已向主聊索取；收到后补入归档。
