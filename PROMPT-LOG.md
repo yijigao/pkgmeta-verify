@@ -168,3 +168,8 @@
 - 关口 3（自然不可判定）：**django-flowcontrol@0.0.21 成立**（真实缺证、INDETERMINATE、非构造）。
 - 证据文件：evidence/real-error-case.md、delay-chain.md、natural-undecidable-case.md、cases.md；README §5 索引已更新。
 - verifier.py 保持冻结未改；MANIFEST 12/12 仍有效。
+
+## 条目 23 — 剩余三项开工（2026-10-13 19:30，主聊催进度）
+- 新真实错误案例：Gemini 已派工（TASK-REALERROR-gemini.md），最多试 3 个候选。
+- 材料统一：已核查——README/大纲/日志/披露草稿口径一致（56/56、PMV 概念验证、262h 未来人类预算）；大纲 L336 为历史修正记录，非过度承诺。
+- 履历索引：新建 CREDENTIALS-INDEX.md（6 项：dsh 补丁、MEC、terramike、PR #228、purl#39、PMV），每项写明主张/证据/验证范围。
