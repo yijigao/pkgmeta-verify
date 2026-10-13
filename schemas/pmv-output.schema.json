@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://pmv.codesupply.org/schemas/pmv-output/v0.1.json",
+  "$id": "https://raw.githubusercontent.com/yijigao/pkgmeta-verify/<tag>/schemas/pmv-output/v0.1.json",
   "title": "PMVVerificationOutput",
   "description": "Standardized output schema for CodeSupply Package Metadata Verification (PMV)",
   "type": "object",

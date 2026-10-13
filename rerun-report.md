@@ -4,7 +4,7 @@
 - **执行环境 (Environment)**: Linux 7.0.0-39-generic / Python 3.12.3
 - **技术负责人 (Technical Lead)**: Joey (Jigao Yi) 个人申请
 - **规则集版本 (Ruleset Version)**: `rules v0.1` (`rules/rules-v0.1.json`)
-- **输出规范 (Output Schema)**: `schemas/pmv-output.schema.json` (Draft 2020-12, $id: `https://pmv.codesupply.org/schemas/pmv-output/v0.1.json`)
+- **输出规范 (Output Schema)**: `schemas/pmv-output.schema.json` (Draft 2020-12, $id: `https://raw.githubusercontent.com/yijigao/pkgmeta-verify/<tag>/schemas/pmv-output/v0.1.json`)
 - **复跑模式 (Mode)**: 完全脱网离线快照复跑 (`--offline`)，固定输入源于 `evidence/snapshots/`
 - **时间戳隔离策略 (Timestamp Isolation)**: 仅对运行时字段 `evaluation_timestamp` 进行中立隔离，其余全部结构、证据字段与推导理由执行逐字节比对
 

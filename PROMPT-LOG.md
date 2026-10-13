@@ -109,13 +109,13 @@
 - 用途：修复 5 组新反例（制品身份文件名清单排除、摘要长度校验、延迟未来时间拒绝＋容差阈值文档化、许可证实际比较＋置信度按证据、硬编码断言删除）＋README 口径收窄＋回归测试＋新基线冻结。
 - 公开提交：https://github.com/yijigao/pkgmeta-verify @41d6a55（含附件：dsh-patches.md＋4 diff、披露草稿、条目4重建件）。**计数纠正**：此前写的"14 prompt、13 output"不符实际，且 pmv-fix3-gemini.txt（8,427 字节）当时未拷贝公开。实际应为 13 prompt、19 output，pmv-fix3-gemini.txt 已在本轮补入。
 
-## 条目 14 — Astra rev1/rev2/rev3/rev3fix/rev3fix2 终审（主聊侧发起）
-- 日期：2026-10-13（主聊发起，本机读取；各轮具体时间孔明侧无记录）
-- 模型：Astra Max（gpt-6-astra，reasoning effort max；主聊发起的终审咨询）
-- Prompt：**缺失**——五轮终审的 prompt 均由主聊侧直接下达给 Astra，孔明（dsh 执行岗）侧无副本、无具体下达时间记录。缺失原因：终审咨询不在本岗执行链内，本岗仅接收终审输出文件。补救：已向主聊请求提供各轮 prompt 原文或重建件；如提供，将补入并如实标注"重建件/原件"。
-- 未编辑输出：ASTRA-REV1-2026-10-13.md、ASTRA-REV2-2026-10-13.md、ASTRA-REV3-2026-10-13.md、ASTRA-REV3FIX-2026-10-13.md、ASTRA-REV3FIX2-2026-10-13.md（全文存档，未编辑；公开副本：docs/evidence/outputs/）
+## 条目 14 — Astra 八轮终审（主聊侧发起；重建件已补入）
+- 轮次：adjudication（13:46）、rev1（14:04）、rev2（14:40）、rev3（15:09）、rev3fix（15:41）、rev3fix2（16:10）、rev3fix3（17:33）、final（17:57），均为 2026-10-13 北京时间
+- 模型：Astra Max（gpt-6-astra，reasoning effort max；本机 codex 直连，主聊侧下达）
+- Prompt：**重建件**——原件为 /tmp 下 heredoc 文件，已被系统清理；主聊侧（阿仁）根据执行记录重建，文字与下达时一致，但**非逐字节原件**。重建件：~/workspace/nlnet-codesupply-council/prompts-reconstructed/（00-README 说明＋01～08 八个文件，含时间、模型、输出文件对应关系）；公开副本：docs/evidence/prompts-reconstructed/。
+- 未编辑输出：ASTRA-ADJUDICATION-2026-10-13.md、ASTRA-REV1-2026-10-13.md、ASTRA-REV2-2026-10-13.md、ASTRA-REV3-2026-10-13.md、ASTRA-REV3FIX-2026-10-13.md、ASTRA-REV3FIX2-2026-10-13.md、ASTRA-REV3FIX3-2026-10-13.md、ASTRA-FINAL-2026-10-13.md（全文存档，未编辑；公开副本：docs/evidence/outputs/）
 - 用途：各轮终审结论与复核意见。
-- **诚实声明**：本条目不能代替官方要求的完整申请过程记录；在 prompt 补入前，日志在此项上是不完整的。
+- **诚实声明**：prompt 为重建件已如实标注；输出为未编辑原件。
 
 ## 条目 15 — PMV 第四轮 bug 修复（按 Astra rev3fix2 第1节）
 - 日期：2026-10-13 17:12 CST（启动）
@@ -144,3 +144,9 @@
 - 修正 2：README L168"覆盖全部误判缺陷的 25 个回归测试用例"改为"56 项回归测试（现有测试零失败）；仅覆盖已发现的误判类别，PMV 为概念验证"。
 - 修正 3：条目 14 五轮终审 prompt 缺件——待主聊重建件，收到后标注来源和不确定性补入。
 - 修正 4：条目 3/5/6"阿析人工编写/代填"改为"阿析（AI 代理，主聊侧）"；披露草稿 L6"human-written technical specification"据实改写（TASK-PMV-gemini.md 为 AI 代理编写，无人类原稿）。
+
+## 条目 19 — Schema $id 落实＋条目 14 重建件补入（2026-10-13 18:07，主聊）
+- Schema $id：由占位 `https://pmv.codesupply.org/...` 改为版本化地址 `https://raw.githubusercontent.com/yijigao/pkgmeta-verify/<tag>/schemas/pmv-output/v0.1.json`（主聊 18:07 指令；Joey 未定域名前的推荐方案）。**注意**：`<tag>` 为占位符，提交前打 tag 时必须替换为实际 tag 名；替换后重跑 56 测试确认。
+- $id 变更后本地 56/56 测试通过（test_schema 断言 `/schemas/pmv-output/` 子串，地址已按此调整）。
+- 条目 14：主聊提供八轮终审 prompt 重建件（~/workspace/nlnet-codesupply-council/prompts-reconstructed/，01～08），如实标注"重建件、非逐字节原件"，公开副本已推送。
+- 独立复跑：主聊已派烛龙（非实现者、干净环境）执行，结果回主聊侧统一归档；孔明此前的自跑仅作自检。
