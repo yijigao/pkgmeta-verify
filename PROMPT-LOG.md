@@ -229,3 +229,19 @@
 - ⑥ 接入示例：删除仓库内重复目录 examples/integration/integration/；修复 triage——STANDARDS_CONTRADICTION 按 subcode 优先分流人工复核（实测 typing-extensions → MANUAL_REVIEW）；README"彻底避免误报"撤回。
 - manifest 12/12（全新 clone），56/56 通过。
 - **等 Astra 全量根因扫描报告**，不再一轮一补（Joey 指令）。
+
+## 条目 30 — Astra 窄范围扫描 11 项修正（2026-10-13 22:29，主聊；已修完）
+- 终审文件：ASTRA-SWEEP1-2026-10-13.md（审查版本 22435cb5）。
+- ① delay-chain：摘要/节点结论/提案统一为"候选延迟观察；历史 404→200 未获同期原始记录验证"；删除"已被预填/未校准时钟"无证据归因。
+- ② real-error-case-v2 L151："100% 封闭可证明的下游解析器故障"撤回→"字段错误成立，机制未确认"。
+- ③ 删除 deps.dev FAQ 政策归因（无原文支持）；提案 typing-extensions 行同步。
+- ④ 删除"老版本＋HTTP 200 即稳定"排除规则；Sync Delay 改为未判定。
+- ⑤ ofek："确认错误"→"跟进询问进展"。
+- ⑥ 版本补零："三段式 SemVer"归因→"内部键规范化"。
+- ⑦ delay-chain：倒序原因改为"未知"，维持撤回。
+- ⑧ natural-undecidable：ClearlyDefined 标"未核实，不参与判断"。
+- ⑨ 删除"企业放行侵权代码"推导→"错误的一致性结论；不能判断授权状态"。
+- ⑩ §11："申请人的任务规格"→"AI 起草、申请人定原则的详细规格"。
+- ⑪ §10：申请人 262h 明确为准备/协调/分析；第三方为预算外无偿投入。
+- grep 残留检查通过；56/56，MANIFEST 12/12。
+- **等 Astra 根因报告**，不再一轮一补。

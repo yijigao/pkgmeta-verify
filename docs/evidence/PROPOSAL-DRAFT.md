@@ -72,7 +72,7 @@ A runnable minimum prototype exists at https://github.com/yijigao/pkgmeta-verify
 
 | Case | Verdict | Status |
 |---|---|---|
-| `pkg:pypi/typing-extensions@4.12.2` | Standards contradiction (earlier fault attribution falsified and removed) | Documented |
+| `pkg:pypi/typing-extensions@4.12.2` | Earlier downstream fault attribution falsified and removed; license-representation difference mechanism and specification responsibility undetermined | Documented |
 | `pkg:pypi/archgraph-layout@2.3.0` | Suspected delay | **suspect/retracted** — time-order contradiction unresolved |
 | `pkg:npm/esprima@4.0.1` | License semantic difference | Documented with field/facet scope |
 | `pkg:npm/debug@4.3.4` | INDETERMINATE | Synthetic cross-algorithm test, `synthetic=true` |
@@ -83,7 +83,7 @@ A runnable minimum prototype exists at https://github.com/yijigao/pkgmeta-verify
 | Case | Verdict | Status |
 |---|---|---|
 | `pkg:pypi/hatch-vcs@0.4.0` | Real repository-link error (deps.dev listed the funding URL as SOURCE_REPO) | **Documented** — link error publicly reported in deps.dev issue #220; the specific parsing mechanism is unconfirmed (the deps.dev team suspects a spec-change-related cause and is investigating); `git ls-remote` shows the funding URL is not a Git repository |
-| `pkg:pypi/validfilepath@0.1` | Sync delay | **Documented** — complete time chain claimed; original HTTP records being archived as supplementary evidence |
+| `pkg:pypi/validfilepath@0.1` | Candidate delay observation | **Documented** — single observation; historical 404→200 lacks contemporaneous raw records; not a proven sync delay or delay interval |
 | `pkg:pypi/django-flowcontrol@0.0.21` | INDETERMINATE | **Documented** — genuine missing evidence, naturally undecidable, not constructed |
 
 Byte-identical replay results are reported after isolating `evaluation_timestamp` (clock-dependent fields are normalised before comparison; this is documented in `rerun-report.md`).
@@ -181,12 +181,12 @@ Labour: €14,400 ÷ €55/h = **261.82h ≈ 262h**, of which 235.82h planned wo
 Hour breakdown:
 - M1: interfaces/Schema 14h; adapters + snapshots 24h; general rules + boundary completion 26h; CLI/library/CI/samples 32.73h.
 - M2: lifecycle 18h; observation + sampling 22h; boundary corpus 18h; data packaging + docs 21.27h.
-- M3: reproduction package + independent reruns 20.64h; scorecard 18h.
+- M3: reproduction package preparation + rerun coordination + result analysis 20.64h (applicant); scorecard 18h. Third-party rerun execution is off-budget voluntary input, not applicant hours.
 - M4: release/SBOM/docs 10h; upstream adaptation + feedback 11.18h.
 - 26h rework listed separately, not double-counted.
 - 9 months at 160h/month ≈ 0.182 FTE; budget includes no long-term hosting commitment.
 
-The ~262h is a **forward-looking budget for human work**: software development, code review, dataset integration, independent verification runs, documentation, and upstream coordination by the applicant. AI-assisted artefacts do not substitute for this human contribution.
+The ~262h is a **forward-looking budget for human work**: software development, code review, dataset integration, reproduction-package preparation, rerun coordination and result analysis, documentation, and upstream coordination by the applicant. Third-party independent rerun execution is separate voluntary input, not counted in the 262h. AI-assisted artefacts do not substitute for this human contribution.
 
 ---
 
@@ -213,7 +213,7 @@ Contribution — technical judgment — verifiable evidence mapping (applicant's
 | Set PMV's verification principles and acceptance discipline: missing evidence → `undecidable` (never false "consistent"); "zero failures in existing tests (56/56), PMV is a proof of concept" as the public claim standard; ruleset freeze; same-team rerun disclosed as such | Judged that honest scoping beats overclaiming for the exception route | PROMPT-LOG.md entries 17, 25 (2026-10-13 decisions); the detailed rule specification (TASK-PMV-gemini.md) was drafted by an AI agent **to these principles** — the applicant's contribution is the principles and the acceptance discipline, not the line-by-line spec |
 
 - terramike's external verification covered the `muse.md` + OpenAPI path for generating a reusable read-only skill, passing three smoke checks; it is **not** generalised to CLI/directory install-path verification or production maturity. [External report](https://github.com/terramike/xrpl-muse-skill/issues/8#issuecomment-6109879435)
-- AI contributions: the PMV implementation was written by an AI agent (Gemini) to the applicant's task specification; outline revisions used DeepSeek/GPT-6.1-Sol/Astra Max; this draft was AI-assisted. All are logged in PROMPT-LOG.md. The applicant's claimed expertise is in the **specification, fault diagnosis, and verification design** — not in hand-writing every line.
+- AI contributions: the PMV implementation was written by an AI agent (Gemini) to an AI-drafted detailed specification (TASK-PMV-gemini.md) based on principles set by the applicant; outline revisions used DeepSeek/GPT-6.1-Sol/Astra Max; this draft was AI-assisted. All are logged in PROMPT-LOG.md. The applicant's claimed expertise is in the **principles, fault diagnosis, and acceptance decisions** — not in hand-writing the detailed spec or every line of code.
 - PMV's own evidence and the above credentials jointly support the application; general engineering credentials are not presented as a substitute for domain-specific expertise argumentation.
 
 ### 11.3 Concrete European benefit
@@ -263,7 +263,7 @@ A prompt provenance log — model, date/time, prompts, and unedited outputs — 
 |---|---|---|
 | 56/56 regression tests, zero failures | `tests/`, `rerun-report.md`, independent rerun logs | Existing test set only; PMV is a proof of concept |
 | hatch-vcs real link error | `evidence/real-error-case-v2.md` | Link error publicly reported (deps.dev #220); root-cause mechanism unconfirmed — **not** claimed as officially confirmed |
-| validfilepath sync delay | `evidence/delay-chain.md` | Complete time chain + original HTTP headers |
+| validfilepath candidate delay | `evidence/delay-chain.md` | Single observation; historical records unverified — **not** claimed as proven |
 | django-flowcontrol INDETERMINATE | `evidence/natural-undecidable-case.md` | Genuine missing evidence, not constructed |
 | archgraph-layout suspected delay | `evidence/delay-chain.md` + issue #39 comment | suspect/retracted; contradiction unresolved |
 | Independent rerun | `docs/evidence/INDEPENDENT-RERUN-AREN.md` + raw logs | Non-implementer, clean env; same AI team, external rerun may be requested |

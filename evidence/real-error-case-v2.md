@@ -140,15 +140,15 @@ dfec2c06defdb4648eb66f6aadf7b57453d732cd HEAD
 在 [google/deps.dev Issue #220 (pypi/hatch-vcs wrong repo link)](https://github.com/google/deps.dev/issues/220) 中：
 - 社区提出 hatch-vcs 的 `SOURCE_REPO` 被错误指向 `github.com/sponsors/ofek`；
 - deps.dev 团队成员（`@distractible`）回复：“怀疑与 PEP 753 及后续更新改变了表示方式有关，会调查。”——**仅为怀疑＋调查承诺，未确认根因**；
-- hatch-vcs 维护者（`@ofek`）亲自介入跟进确认该错误。
+- hatch-vcs 维护者（`@ofek`）曾跟进询问处理进展（未确认根因）。
 
 #### 2.4 四维严格判定归因
 1. **字段错误 (Field Error)**: **成立**。deps.dev 输出的 `links[label="SOURCE_REPO"].url` 为客观错误事实。其字段值并非源码仓库，而是赞助打赏页面。
 2. **解析器故障 (Parser Fault)**: **机制未确认**。deps.dev 输出的 SOURCE_REPO 链接错误是客观事实（字段错误成立）；但具体是解析器缺陷、标签映射规则还是规范版本差异导致，**尚未确认**——deps.dev 官方回复仅表示怀疑与 PEP 753 规范变化有关、会调查（Issue #220），未确认根因。此前"贪婪或首个匹配"的断言**撤回**。
-3. **同步延迟 (Sync Delay)**: **排除**。该版本于 2023-11-06 上传，距今已超 2 年；deps.dev 返回 HTTP 200 正常消费结果，处于数据持久化稳定态，绝非下游写入延迟。
+3. **同步延迟 (Sync Delay)**: **本例不作排除断言**。此前"老版本＋HTTP 200 即记录稳定"的排除规则删除（deps.dev FAQ 明确不活跃包可能呈现较旧数据）。本例只确认链接字段错误；是否存在更新传播滞后，须另有更新时间或连续观测证据。
 4. **语义差异 (Semantic Difference)**: **排除**。“软件源代码仓库”与“开发者个人赞助主页”在计算机科学与开源法律范畴内具有零语义重叠，无法被归类为合理的多重视角解读。
 
-- **核验结论**: **成立 (ESTABLISHED)**。本案例构成了 100% 封闭可证明的真实跨源事实冲突与下游解析器故障案例。
+- **核验结论**: **仓库链接字段错误成立**；具体解析机制和故障环节**未确认**（此前“100% 封闭可证明的下游解析器故障”的断言撤回）。
 
 ---
 
@@ -194,9 +194,8 @@ dfec2c06defdb4648eb66f6aadf7b57453d732cd HEAD
      assert Version("1.5") == Version("1.5.0")
      ```
    - PyPI 官方 Simple 索引及 JSON API 亦提供对规范化版本号的自动等价重定向（访问 `https://pypi.org/pypi/blinker/1.5.0/json` 同样返回 HTTP 200 并对应到同一 release）。
-2. **下游三段式 SemVer 建模属于架构设计策略而非故障**:
-   - deps.dev 统一面向跨语言多生态（npm、Maven、PyPI、Go），采用三段式 SemVer 规整化属于跨生态索引系统的既定数据对齐策略。
-   - 既然两个值在 PEP 440 下严格等价，且未破坏制品的哈希校验或安装依赖解析，则无法在证据学上指控任何一方“存在事实性错误”。
+2. **版本键规范化不属于故障**:
+   - deps.dev 对 PEP 440 等价版本进行内部键规范化（至少补足三段）；本例补零不改变版本等价关系。此前"跨生态统一三段式 SemVer"的归因删除。
 - **核验结论**: **不成立 (REJECTED)**。
 
 ---
@@ -212,7 +211,7 @@ dfec2c06defdb4648eb66f6aadf7b57453d732cd HEAD
 2. **四维严格区分判定表**:
    - `Field Error`: **YES**（字段值虚假，指向非仓库页面）
    - `Parser Fault`: **机制未确认**（此前"YES（下游摄取器误读 PEP 566 标签）"的断言撤回）
-   - `Sync Delay`: **NO**（已持久化 2 年以上，HTTP 200 稳态）
+   - `Sync Delay`: **未判定**（排除规则已删除；须另有证据）
    - `Semantic Difference`: **NO**（代码仓库与赞助主页概念互斥，无兼容解读余地）
 3. **保持基线与冻结约束**:
    - `pmv/verifier.py` 严格保持代码冻结；
