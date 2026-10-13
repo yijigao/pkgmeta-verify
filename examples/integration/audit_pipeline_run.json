@@ -6,12 +6,13 @@
       "avoided_false_positive": "Verified consistent metadata across sources without false alarm.",
       "category": "CONSISTENT",
       "confidence": 0.78,
-      "details": "All verified coordinates, release timestamps, and license declarations match across 2 available sources (evaluated confidence: 0.78 based on evidence strength).",
+      "details": "[DEMO RECONSTRUCTION \u2014 not measured proof] All verified coordinates, release timestamps, and license declarations match across 2 available sources (evaluated confidence: 0.78 based on evidence strength).",
       "subcode": "MUTUALLY_CONSISTENT",
-      "summary": "Package metadata is consistent across consulted sources"
+      "summary": "[DEMO RECONSTRUCTION \u2014 not measured proof] Package metadata is consistent across consulted sources"
     },
     "purl": "pkg:npm/example-clean@1.0.0",
-    "recheck_executed": false
+    "recheck_executed": false,
+    "record_provenance": "DEMO_RECONSTRUCTION"
   },
   {
     "final_action": "COMPLIANCE_TRIAGE",
@@ -25,7 +26,8 @@
       "summary": "Declared package license diverges from deeply discovered multi-license AND conjunction"
     },
     "purl": "pkg:npm/esprima@4.0.1",
-    "recheck_executed": false
+    "recheck_executed": false,
+    "record_provenance": "measured"
   },
   {
     "final_action": "MANUAL_REVIEW",
@@ -39,7 +41,8 @@
       "summary": "Downstream index license classification contradicts upstream and curated standards"
     },
     "purl": "pkg:pypi/typing-extensions@4.12.2",
-    "recheck_executed": false
+    "recheck_executed": false,
+    "record_provenance": "measured"
   },
   {
     "final_action": "SECURITY_BLOCK",
@@ -48,12 +51,13 @@
       "avoided_false_positive": "Avoided defamatory or premature assertion of 'mirror tampered / compromised'; accurately scoped factual claim to verifiable 'digest conflict'.",
       "category": "DIGEST_CONFLICT",
       "confidence": 1.0,
-      "details": "Digest discrepancy on artifact 'synthetic-fixture-1.0.0.tgz' for algorithm(s): sha256. Evidence proves conflicting digests across sources. Enforcing hard constraint: strictly prohibited from asserting mirror corruption or malicious tampering.",
+      "details": "[DEMO RECONSTRUCTION \u2014 not measured proof] Digest discrepancy on artifact 'synthetic-fixture-1.0.0.tgz' for algorithm(s): sha256. Evidence proves conflicting digests across sources. Enforcing hard constraint: strictly prohibited from asserting mirror corruption or malicious tampering.",
       "subcode": "ARTIFACT_DIGEST_MISMATCH",
-      "summary": "Digest conflict observed between sources for identical artifact and algorithm"
+      "summary": "[DEMO RECONSTRUCTION \u2014 not measured proof] Digest conflict observed between sources for identical artifact and algorithm"
     },
     "purl": "pkg:npm/synthetic-fixture@1.0.0",
-    "recheck_executed": false
+    "recheck_executed": false,
+    "record_provenance": "DEMO_RECONSTRUCTION"
   },
   {
     "final_action": "MANUAL_REVIEW",
@@ -67,7 +71,8 @@
       "summary": "Cannot determine consistency: no comparable license evidence across sources"
     },
     "purl": "pkg:pypi/django-flowcontrol@0.0.21",
-    "recheck_executed": false
+    "recheck_executed": false,
+    "record_provenance": "measured"
   },
   {
     "final_action": "APPROVE",
@@ -76,11 +81,12 @@
       "avoided_false_positive": "Avoided misclassifying normal downstream indexing latency as upstream publication failure or missing package integrity fault.",
       "category": "SYNC_DELAY",
       "confidence": 0.979,
-      "details": "[DEMO RECONSTRUCTION — not measured proof] Illustrative record based on a single observation session: upstream 2026-10-13T09:59:55Z, downstream 404 at 10:07:26Z, 200 at 10:11:15Z. The [451s, 680s] range is a single-observation value, not a proven delay interval.",
+      "details": "[DEMO RECONSTRUCTION \u2014 not measured proof] Upstream registry reports release published at '2026-10-13T09:59:55Z'. Temporal observation chain verified: downstream missing (404) observed at '2026-10-13T10:07:26Z' (delta 7 minutes (451s)), subsequent appearance (HTTP 200) observed at '2026-10-13T10:11:15Z'. Provable delay range is [7 minutes (451s), 11 minutes (680s)], which within sync tolerance window (86400s). Preserving uncertainty; not judged as missing package or mirror defect.",
       "subcode": "DOWNSTREAM_INGESTION_LAG",
-      "summary": "[DEMO] Illustrative sync-delay record (reconstructed; not verified proof)"
+      "summary": "[DEMO RECONSTRUCTION \u2014 not measured proof] Downstream index ingested release with verified temporal delay chain"
     },
     "purl": "pkg:pypi/validfilepath@0.1",
-    "recheck_executed": true
+    "recheck_executed": true,
+    "record_provenance": "DEMO_RECONSTRUCTION"
   }
 ]

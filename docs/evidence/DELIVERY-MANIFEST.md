@@ -1,6 +1,6 @@
 # 交付清单（Delivery Manifest）
 
-- **交付版本**：tag `delivery-2026-10-13-sealed`（对应 commit 见 `git rev-list -n 1 delivery-2026-10-13-sealed`；文件不可自含其所在提交的 hash，故以 tag 绑定具体版本）
+- **交付版本**：tag `delivery-2026-10-13-sealed2`（对应 commit 见 `git rev-list -n 1 delivery-2026-10-13-sealed2`；文件不可自含其所在提交的 hash，故以 tag 绑定具体版本）
 - **交付目录**：https://github.com/yijigao/pkgmeta-verify（公开仓库，免登录可读）
 - **清单生成时间**：2026-10-13（UTC+8）；共 130 个文件（含本清单与主张登记表自身）
 - **修改规则**：每个文件同时只允许一个修改者；冻结文件（已冻结）不得修改，改则重新走验收；**改文件必同步重生成本清单；清单必须是所有文件定稿后的最后一步，单独生成、单独提交，之后不许再动任何文件**
@@ -16,7 +16,7 @@
 | 5 | `bin/pkgmeta-verify` | 复跑程序与报告 | 869 | `898c267073d300b75e96f2a45ece6e39e9fe4980` |
 | 6 | `docs/evidence/CLAIM-REGISTRY.md` | 主张登记表 | 6320 | `ead96282331f26cb35a476a7921f83c4d0d7efd5` |
 | 7 | `docs/evidence/CREDENTIALS-INDEX.md` | 履历索引 | 2321 | `1b1b40b4b23997b89aca10ea6375a23b0a348b6f` |
-| 8 | `docs/evidence/DELIVERY-MANIFEST.md` | 交付清单（本文件；自指，见注） | 19844 | `自指（本文件）；完整性由交付版本 tag/commit 保证` |
+| 8 | `docs/evidence/DELIVERY-MANIFEST.md` | 交付清单（本文件；自指，见注） | 19879 | `自指（本文件）；完整性由交付版本 tag/commit 保证` |
 | 9 | `docs/evidence/GENAI-DISCLOSURE-DRAFT.md` | GenAI 披露草稿（据实版） | 2482 | `8801c5a78000895a92cec381c59205591296d617` |
 | 10 | `docs/evidence/INDEPENDENT-RERUN-AREN.md` | 其他 | 2106 | `5a99a7a9177c3ed6c7a4f2064b68ff1e83eb2f88` |
 | 11 | `docs/evidence/INDEPENDENT-RERUN.md` | 其他 | 2202 | `a42b46d6f3046387f21b940df11a80885b5e232a` |
@@ -123,8 +123,8 @@
 | 112 | `evidence/supplementary/snapshot-pkg-pypi-hatch-vcs-0.4.0.json` | 补充证据（不在冻结基线内） | 5498 | `0f2d492c745819f5d512078b6c6bded9f92e32d3` |
 | 113 | `evidence/supplementary/snapshot-pkg-pypi-validfilepath-0.1.json` | 补充证据（不在冻结基线内） | 4611 | `ab481a80af268b6849bb757522127653e8294b84` |
 | 114 | `examples/integration/README.md` | 接入示例 | 9725 | `b0f09737f4d802abc7ab766ee51b02ce49f42861` |
-| 115 | `examples/integration/audit_pipeline_run.json` | 接入示例 | 5628 | `fc8d0959deeb9ba3b47bb9d07d32b91df0320924` |
-| 116 | `examples/integration/pipeline_demo.py` | 接入示例 | 16316 | `77569780928da2efd8d442d3a0e93735413e4564` |
+| 115 | `examples/integration/audit_pipeline_run.json` | 接入示例 | 6344 | `6db1ad693d286d78a9c51a7cb3f371e67ebea0f6` |
+| 116 | `examples/integration/pipeline_demo.py` | 接入示例 | 17221 | `ec881b32ca8c8fc6f4f091feaf8179e151c8e39f` |
 | 117 | `pmv/__init__.py` | PMV 实现代码（已冻结） | 803 | `02044242e589b788efea8744676bd98d3d0bae1a` |
 | 118 | `pmv/cli.py` | PMV 实现代码（已冻结） | 5569 | `411a2a9f71ffaf8772394b09958e7ccdf8e584d6` |
 | 119 | `pmv/collector.py` | PMV 实现代码（已冻结） | 8827 | `2e424f595189e9b7b96646a30265d46d5fffd3f5` |

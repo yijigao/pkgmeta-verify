@@ -337,6 +337,8 @@ def run_pipeline():
     pipeline = IngestionGatePipeline()
     batch = load_sample_records()
     print(f"Loaded {len(batch)} input package records for quality verification.\n")
+    print("NOTE: records flagged synthetic=True are RECONSTRUCTED DEMO inputs;")
+    print("their timestamps are illustrative, not measured proof.\n")
 
     audit_log = []
 
@@ -351,6 +353,16 @@ def run_pipeline():
         print(f"  PMV Verdict:    {verdict['category']} ({verdict['subcode']})")
         print(f"  Confidence:     {verdict['confidence']:.2f}")
         print(f"  Summary:        {verdict['summary']}")
+
+        # Demo provenance stamping (survives re-runs: applied at generation time).
+        # Records flagged synthetic=True are reconstructed demo inputs, not measured proof.
+        is_demo = bool(raw_record.get("synthetic"))
+        if is_demo:
+            verdict = dict(verdict)
+            verdict["summary"] = "[DEMO RECONSTRUCTION — not measured proof] " + str(verdict.get("summary", ""))
+            details = verdict.get("details")
+            if isinstance(details, str):
+                verdict["details"] = "[DEMO RECONSTRUCTION — not measured proof] " + details
 
         # Step 3: Triage Decision
         decision = pipeline.triage_verdict(pmv_output)
@@ -367,6 +379,7 @@ def run_pipeline():
             print(f"  [RE-CHECK PASS] Post-delay outcome: [{recheck_decision.action.value}] - {recheck_decision.reason}")
             audit_log.append({
                 "purl": purl,
+                "record_provenance": "DEMO_RECONSTRUCTION" if is_demo else "measured",
                 "initial_verdict": verdict,
                 "initial_action": decision.action.value,
                 "recheck_executed": True,
@@ -375,6 +388,7 @@ def run_pipeline():
         else:
             audit_log.append({
                 "purl": purl,
+                "record_provenance": "DEMO_RECONSTRUCTION" if is_demo else "measured",
                 "initial_verdict": verdict,
                 "initial_action": decision.action.value,
                 "recheck_executed": False,
