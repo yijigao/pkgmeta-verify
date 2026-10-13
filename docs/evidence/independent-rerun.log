@@ -1,0 +1,28 @@
+=== CodeSupply PMV Rigorous Independent Offline Rerun Runner ===
+Workdir: /tmp/indep-rerun
+Temp dir: /tmp/pmv-rerun-rCufWk
+
+--- Phase 1: Verifying Cryptographic Baseline Manifest (evidence/MANIFEST.sha256) ---
+PASS: All 12/12 files in MANIFEST.sha256 verified successfully with exact SHA-256 match.
+
+--- Phase 2: Validating JSON Schema & Baseline Result Files ---
+PASS: Schema self-check and baseline instances verified successfully.
+
+--- Phase 3: Executing Regression Test Suite (tests/test_*.py) ---
+PASS: All 56 targeted regression tests passed cleanly.
+
+--- Phase 4: Executing Deterministic Offline Replay & Byte-for-Byte Diff ---
+Rerunning pkg:pypi/typing-extensions@4.12.2 ... PASS (0 diff, Schema VALID)
+Rerunning pkg:pypi/archgraph-layout@2.3.0 ... PASS (0 diff, Schema VALID)
+Rerunning pkg:npm/esprima@4.0.1 ... PASS (0 diff, Schema VALID)
+Rerunning pkg:npm/debug@4.3.4 ... PASS (0 diff, Schema VALID)
+Rerunning pkg:npm/synthetic-fixture@1.0.0 ... PASS (0 diff, Schema VALID)
+
+--- Phase 5: Generating Full Dynamic Audit Report (/tmp/indep-rerun/rerun-report.md) ---
+
+=== Final Status ===
+Test Result: 现有测试零失败 (0 failures)
+Passed Cases: 5/5
+Report written to: /tmp/indep-rerun/rerun-report.md
+现有测试零失败 (ALL TESTS PASSED)
+RERUN_EXIT=0
